@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goose Clicker</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;min-height:100vh}
+a{color:#7aa2ff}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #22243f}
+header h1{font-size:1.1rem;margin:0;letter-spacing:-.01em}
+.wrap{display:grid;grid-template-columns:1fr 340px;gap:1.25rem;padding:1.25rem;max-width:1100px;margin:0 auto}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+.panel{background:#16182e;border:1px solid #22243f;border-radius:14px;padding:1.25rem}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:52vh;position:relative;overflow:hidden}
+#bank{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;margin:0;text-align:center}
+#bank small{display:block;font-size:.85rem;font-weight:500;color:#a3a3b8;letter-spacing:0}
+#rate{color:#a3a3b8;margin:.35rem 0 1.5rem;font-size:.95rem}
+#goose{font-size:7rem;cursor:pointer;user-select:none;line-height:1;padding:1rem 1.75rem;border-radius:20px;transition:transform .06s ease;background:none;border:none}
+#goose:active{transform:scale(.92) rotate(-4deg)}
+.hint{color:#6f7190;font-size:.85rem;margin-top:1.25rem}
+.float{position:absolute;pointer-events:none;font-weight:700;animation:rise 1s ease-out forwards;color:#5ee6a8}
+@keyframes rise{to{transform:translateY(-70px);opacity:0}}
+.tabs{display:flex;gap:.4rem;margin-bottom:1rem}
+.tab{flex:1;padding:.5rem;border-radius:9px;border:1px solid #22243f;background:#101227;color:#a3a3b8;cursor:pointer;font-size:.85rem;font-family:inherit}
+.tab.on{background:#3b6ef5;color:#fff;border-color:#3b6ef5}
+.item{width:100%;text-align:left;display:flex;gap:.75rem;align-items:center;background:#101227;border:1px solid #22243f;border-radius:11px;padding:.7rem .8rem;margin-bottom:.5rem;cursor:pointer;color:inherit;font-family:inherit}
+.item:disabled{opacity:.45;cursor:not-allowed}
+.item:not(:disabled):hover{border-color:#3b6ef5}
+.ico{font-size:1.4rem;width:2rem;text-align:center;flex:none}
+.meta{flex:1;min-width:0}
+.name{font-weight:600;font-size:.92rem}
+.desc{color:#8a8ca8;font-size:.78rem;margin-top:.1rem}
+.cost{font-size:.85rem;font-weight:600;color:#5ee6a8;flex:none}
+.cost.no{color:#e6705e}
+.owned{font-size:.78rem;color:#6f7190;flex:none;margin-left:.3rem}
+.locked .name,.locked .desc{filter:blur(3px)}
+footer{text-align:center;color:#6f7190;font-size:.8rem;padding:1.5rem}
+.reset{background:none;border:1px solid #33364f;color:#8a8ca8;border-radius:8px;padding:.35rem .7rem;cursor:pointer;font-size:.78rem;font-family:inherit}
+.g-gold{filter:sepia(1) saturate(4) hue-rotate(-18deg) brightness(1.15) drop-shadow(0 0 22px rgba(255,212,94,.6))}
+.g-angry{filter:hue-rotate(-50deg) saturate(3) drop-shadow(0 0 18px rgba(255,70,70,.65))}
+.g-neon{filter:saturate(2.5) hue-rotate(80deg) drop-shadow(0 0 12px #5ee6a8) drop-shadow(0 0 30px rgba(94,230,168,.6))}
+.g-mirror{transform:scaleX(-1)}
+.g-ghost{opacity:.45;filter:grayscale(1) brightness(1.6) drop-shadow(0 0 18px rgba(200,220,255,.55))}
+.g-rainbow{animation:hue 4s linear infinite;filter:saturate(2)}
+@keyframes hue{to{filter:saturate(2) hue-rotate(360deg)}}
+.g-glitch{animation:gl .35s steps(2) infinite}
+@keyframes gl{50%{transform:skewX(9deg) translateX(3px);filter:hue-rotate(140deg) saturate(3)}}
+.g-fire{filter:saturate(2.2) hue-rotate(-28deg) drop-shadow(0 -6px 16px #ff4d2d) drop-shadow(0 -18px 30px rgba(255,150,40,.7));animation:fl .6s ease-in-out infinite alternate}
+@keyframes fl{to{filter:saturate(2.6) hue-rotate(-28deg) drop-shadow(0 -9px 22px #ff4d2d) drop-shadow(0 -26px 40px rgba(255,180,60,.8))}}
+.g-cosmic{animation:cos 6s linear infinite}
+@keyframes cos{to{filter:hue-rotate(360deg) saturate(2.4) drop-shadow(0 0 24px rgba(150,110,255,.7))}}
+.gb1{font-size:8.5rem}.gb2{font-size:10rem}.gb3{font-size:12rem}
+</style>
+</head>
+<body>
+<header>
+<h1>Goose Clicker</h1>
+<a href="/">&larr; all games</a>
+</header>
+
+<div class="wrap">
+  <div class="panel stage">
+    <p id="bank">0<small>honks</small></p>
+    <div id="rate">0 / sec</div>
+    <button id="goose">&#129727;</button>
+    <div class="hint">Click the goose. It would like you to know it is honking.</div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button class="tab on" data-tab="gen">Flock</button>
+      <button class="tab" data-tab="clk">Honk</button>
+      <button class="tab" data-tab="skin">Goose</button>
+    </div>
+    <div id="shop"></div>
+    <div style="margin-top:1rem;text-align:right"><button class="reset" id="reset">Reset save</button></div>
+  </div>
+</div>
+
+<footer>No geese were consulted during development.</footer>
+<script>
+(function(){
+"use strict";
+
+var GENS = [
+  {id:"g2", ico:"🪿", name:"A Second Goose", desc:"Honks in harmony.", cost:15, cps:0.5},
+  {id:"pond", ico:"💧", name:"Pond", desc:"Geese gather here uninvited.", cost:120, cps:3},
+  {id:"bread", ico:"🍞", name:"Bread Truck", desc:"Payment in carbohydrates.", cost:900, cps:14},
+  {id:"park", ico:"🏞️", name:"Occupied Park", desc:"The benches are theirs now.", cost:7500, cps:85},
+  {id:"tower", ico:"📡", name:"Honk Tower", desc:"Broadcasts the honk regionally.", cost:62000, cps:520},
+  {id:"hatch", ico:"🥚", name:"Hatchery", desc:"More geese. Always more geese.", cost:500000, cps:3400},
+  {id:"migrate", ico:"🧭", name:"Migration Route", desc:"Honks arrive seasonally, forever.", cost:4200000, cps:22000},
+  {id:"moon", ico:"🌕", name:"Goose Moon", desc:"It honks at the tides.", cost:36000000, cps:160000}
+];
+
+var CLICKS = [
+  {id:"c1", ico:"🫁", name:"Deeper Lungs", desc:"Honks are worth double.", cost:100, mult:2},
+  {id:"c2", ico:"📣", name:"Bigger Beak", desc:"Double again.", cost:1200, mult:2},
+  {id:"c3", ico:"🦢", name:"Neck Extension", desc:"Triple this time.", cost:18000, mult:3},
+  {id:"c4", ico:"🔊", name:"Megahonk", desc:"Triple again.", cost:260000, mult:3},
+  {id:"c5", ico:"💥", name:"Sonic Honk", desc:"Five times. Windows rattle.", cost:4000000, mult:5},
+  {id:"c6", ico:"⚡", name:"Honk of the Ancients", desc:"Ten times. Nobody is happy.", cost:70000000, mult:10}
+];
+
+var SKINS = [
+  {id:"plain", ico:"⚪", name:"Plain Goose", desc:"Standard issue.", cost:0, cls:""},
+  {id:"gold", ico:"🥇", name:"Gold Goose", desc:"Suspiciously valuable.", cost:500, cls:"g-gold"},
+  {id:"mirror", ico:"🪞", name:"Backwards Goose", desc:"Faces the other way. That is it.", cost:2500, cls:"g-mirror"},
+  {id:"angry", ico:"😠", name:"Angry Goose", desc:"It has seen your bread.", cost:9000, cls:"g-angry"},
+  {id:"gb1", ico:"🔍", name:"Bigger Goose", desc:"Just larger.", cost:30000, cls:"gb1"},
+  {id:"neon", ico:"💡", name:"Neon Goose", desc:"Glows. Still honks.", cost:90000, cls:"g-neon"},
+  {id:"ghost", ico:"👻", name:"Ghost Goose", desc:"Honks from beyond.", cost:400000, cls:"g-ghost"},
+  {id:"gb2", ico:"📏", name:"Huge Goose", desc:"Even larger.", cost:1500000, cls:"gb2"},
+  {id:"rainbow", ico:"🌈", name:"Rainbow Goose", desc:"All the colors, cycling.", cost:6000000, cls:"g-rainbow"},
+  {id:"glitch", ico:"👾", name:"Corrupted Goose", desc:"Something is wrong with it.", cost:25000000, cls:"g-glitch"},
+  {id:"fire", ico:"🔥", name:"Flaming Goose", desc:"On fire. Unbothered.", cost:120000000, cls:"g-fire"},
+  {id:"cosmic", ico:"✨", name:"Cosmic Goose", desc:"Transcendent waterfowl.", cost:900000000, cls:"g-cosmic"}
+];
+
+var KEY = "goose.save.v1";
+var S = {bank:0, total:0, gens:{}, clicks:{}, skins:{plain:1}, skin:"plain"};
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    var o = JSON.parse(raw);
+    if(o && typeof o === "object"){
+      S.bank = +o.bank || 0;
+      S.total = +o.total || 0;
+      S.gens = o.gens || {};
+      S.clicks = o.clicks || {};
+      S.skins = o.skins || {plain:1};
+      S.skins.plain = 1;
+      S.skin = o.skin || "plain";
+    }
+  }catch(e){}
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+}
+
+function fmt(n){
+  if(n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
+  var u = ["","K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc"], i = 0;
+  while(n >= 1000 && i < u.length-1){ n /= 1000; i++; }
+  return (Math.round(n*100)/100) + u[i];
+}
+function genCost(g){ return Math.ceil(g.cost * Math.pow(1.15, S.gens[g.id] || 0)); }
+function perSec(){
+  var t = 0;
+  for(var i=0;i<GENS.length;i++){ t += (S.gens[GENS[i].id]||0) * GENS[i].cps; }
+  return t;
+}
+function perClick(){
+  var m = 1;
+  for(var i=0;i<CLICKS.length;i++){ if(S.clicks[CLICKS[i].id]) m *= CLICKS[i].mult; }
+  return m;
+}
+
+var elBank = document.getElementById("bank");
+var elRate = document.getElementById("rate");
+var elG = document.getElementById("goose");
+var elShop = document.getElementById("shop");
+var stage = document.querySelector(".stage");
+var tab = "gen";
+
+function applySkin(){
+  var s = null;
+  for(var i=0;i<SKINS.length;i++){ if(SKINS[i].id === S.skin) s = SKINS[i]; }
+  elG.className = "";
+  if(s && s.cls) elG.className = s.cls;
+}
+
+function paintTop(){
+  elBank.innerHTML = fmt(S.bank) + "<small>honks</small>";
+  elRate.textContent = fmt(perSec()) + " / sec  ·  " + fmt(perClick()) + " per honk";
+}
+
+function row(opts){
+  var b = document.createElement("button");
+  b.className = "item" + (opts.locked ? " locked" : "");
+  b.disabled = !!opts.disabled;
+  var right = opts.ownedText ? '<span class="owned">' + opts.ownedText + '</span>' : "";
+  b.innerHTML =
+    '<span class="ico">' + opts.ico + '</span>' +
+    '<span class="meta"><span class="name">' + opts.name + '</span>' +
+    '<span class="desc">' + opts.desc + '</span></span>' +
+    '<span class="cost' + (opts.afford ? "" : " no") + '">' + opts.costText + '</span>' + right;
+  if(opts.onclick) b.addEventListener("click", opts.onclick);
+  return b;
+}
+function paintShop(){
+  elShop.innerHTML = "";
+  var i;
+  if(tab === "gen"){
+    for(i=0;i<GENS.length;i++){
+      (function(g){
+        var owned = S.gens[g.id] || 0;
+        var c = genCost(g);
+        var seen = owned > 0 || S.total >= g.cost * 0.4;
+        elShop.appendChild(row({
+          ico: seen ? g.ico : "❓",
+          name: seen ? g.name : "???",
+          desc: seen ? g.desc + " (+" + fmt(g.cps) + "/sec)" : "Keep honking.",
+          costText: seen ? fmt(c) : "—",
+          afford: S.bank >= c,
+          disabled: !seen || S.bank < c,
+          locked: !seen,
+          ownedText: owned ? String(owned) : "",
+          onclick: function(){
+            var cost = genCost(g);
+            if(S.bank < cost) return;
+            S.bank -= cost;
+            S.gens[g.id] = (S.gens[g.id] || 0) + 1;
+            save(); paintTop(); paintShop();
+          }
+        }));
+      })(GENS[i]);
+    }
+  } else if(tab === "clk"){
+    for(i=0;i<CLICKS.length;i++){
+      (function(u){
+        var have = !!S.clicks[u.id];
+        var seen = have || S.total >= u.cost * 0.3;
+        elShop.appendChild(row({
+          ico: seen ? u.ico : "❓",
+          name: seen ? u.name : "???",
+          desc: seen ? u.desc : "Keep honking.",
+          costText: have ? "owned" : (seen ? fmt(u.cost) : "—"),
+          afford: have || S.bank >= u.cost,
+          disabled: have || !seen || S.bank < u.cost,
+          locked: !seen,
+          onclick: function(){
+            if(S.clicks[u.id] || S.bank < u.cost) return;
+            S.bank -= u.cost;
+            S.clicks[u.id] = 1;
+            save(); paintTop(); paintShop();
+          }
+        }));
+      })(CLICKS[i]);
+    }
+  } else {
+    for(i=0;i<SKINS.length;i++){
+      (function(sk){
+        var have = !!S.skins[sk.id];
+        var on = S.skin === sk.id;
+        elShop.appendChild(row({
+          ico: sk.ico,
+          name: sk.name,
+          desc: sk.desc,
+          costText: on ? "equipped" : (have ? "equip" : fmt(sk.cost)),
+          afford: have || S.bank >= sk.cost,
+          disabled: on || (!have && S.bank < sk.cost),
+          onclick: function(){
+            if(!S.skins[sk.id]){
+              if(S.bank < sk.cost) return;
+              S.bank -= sk.cost;
+              S.skins[sk.id] = 1;
+            }
+            S.skin = sk.id;
+            applySkin(); save(); paintTop(); paintShop();
+          }
+        }));
+      })(SKINS[i]);
+    }
+  }
+}
+
+elG.addEventListener("click", function(ev){
+  var gain = perClick();
+  S.bank += gain; S.total += gain;
+  var f = document.createElement("span");
+  f.className = "float";
+  f.textContent = "+" + fmt(gain) + " HONK";
+  var r = stage.getBoundingClientRect();
+  f.style.left = (ev.clientX - r.left - 24) + "px";
+  f.style.top = (ev.clientY - r.top - 18) + "px";
+  stage.appendChild(f);
+  setTimeout(function(){ f.remove(); }, 1000);
+  paintTop();
+});
+
+var tabs = document.querySelectorAll(".tab");
+for(var t=0;t<tabs.length;t++){
+  tabs[t].addEventListener("click", function(){
+    for(var k=0;k<tabs.length;k++) tabs[k].classList.remove("on");
+    this.classList.add("on");
+    tab = this.getAttribute("data-tab");
+    paintShop();
+  });
+}
+
+document.getElementById("reset").addEventListener("click", function(){
+  if(!confirm("Wipe your save and start over?")) return;
+  S = {bank:0, total:0, gens:{}, clicks:{}, skins:{plain:1}, skin:"plain"};
+  applySkin(); save(); paintTop(); paintShop();
+});
+
+var last = Date.now();
+setInterval(function(){
+  var now = Date.now();
+  var dt = Math.min((now - last) / 1000, 5);
+  last = now;
+  var g = perSec() * dt;
+  if(g > 0){ S.bank += g; S.total += g; paintTop(); }
+}, 100);
+
+setInterval(paintShop, 500);
+setInterval(save, 5000);
+window.addEventListener("beforeunload", save);
+
+load(); applySkin(); paintTop(); paintShop();
+})();
+</script>
+</body>
+</html>
