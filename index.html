@@ -4,45 +4,92 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Argyle Smarts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;padding:2rem 1rem}
-.card{width:100%;max-width:520px;text-align:center}
-h1{font-size:clamp(2.2rem,7vw,3.6rem);margin:0 0 .4rem;letter-spacing:-.025em}
-.tag{color:#a3a3b8;margin:0 0 2.25rem;font-size:1.05rem}
-.links{display:grid;gap:.75rem}
-a.tile{display:flex;align-items:center;gap:1rem;text-align:left;text-decoration:none;color:inherit;background:#16182e;border:1px solid #22243f;border-radius:14px;padding:1rem 1.1rem;transition:border-color .15s,transform .1s}
-a.tile:hover{border-color:#3b6ef5;transform:translateY(-1px)}
-.ico{font-size:1.6rem;font-weight:800;flex:none;width:2.6rem;text-align:center;color:#9ab6ff}
-.txt{flex:1;min-width:0}
-.t{display:block;font-weight:650;font-size:1.02rem}
-.d{display:block;color:#8a8ca8;font-size:.85rem;margin-top:.15rem}
-footer{color:#5c5e7a;font-size:.78rem;margin-top:2.25rem}
+body{margin:0;background:#faf7f2;color:#1b1523;font-family:Inter,sans-serif;padding:2rem 1.25rem 3rem}
+.page{max-width:980px;margin:0 auto}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.mark{font-family:Fredoka,sans-serif;font-weight:700;font-size:30px;letter-spacing:-.5px;margin:0}
+.mark b{color:#4a7af5;font-weight:700}
+.tagline{font-size:14px;font-weight:500;color:#6e667c;margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.card{position:relative;overflow:hidden;border-radius:22px;padding:1.4rem 1.5rem;min-height:250px;display:flex;flex-direction:column;text-decoration:none;color:inherit;transition:transform .14s ease}
+.card:hover{transform:translateY(-3px)}
+.card.wide{grid-column:1 / -1;min-height:290px}
+.eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin:0 0 .5rem}
+.title{font-family:Fredoka,sans-serif;font-weight:700;font-size:30px;letter-spacing:-.4px;margin:0 0 .45rem;line-height:1.1}
+.blurb{font-size:14px;line-height:1.45;margin:0;max-width:34ch}
+.art{position:absolute;inset:0;pointer-events:none;z-index:0}
+.card>*{position:relative;z-index:1}
+.c-clicker{background:linear-gradient(160deg,#2b2350 0%,#43306e 55%,#6d3f8e 100%);box-shadow:0 14px 30px -14px rgba(50,30,90,.6)}
+.c-clicker .eyebrow{color:#c3b4e8}
+.c-clicker .title{color:#fdf6e8}
+.c-clicker .blurb{color:#cdc3e4}
+.bignum{position:absolute;right:-.1em;bottom:-.34em;font-family:Fredoka,sans-serif;font-weight:700;font-size:15rem;line-height:1;color:rgba(255,255,255,.1);letter-spacing:-.04em}
+.coin{position:absolute;border-radius:50%;background:radial-gradient(circle at 34% 30%,#ffe9a8,#f5c344 62%,#d79a1d);box-shadow:0 3px 10px rgba(0,0,0,.28)}
+.k1{width:34px;height:34px;right:26%;top:20%}
+.k2{width:22px;height:22px;right:17%;top:48%}
+.k3{width:15px;height:15px;right:31%;top:58%}
+.c-calc{background:linear-gradient(160deg,#fdf1dc 0%,#f6e0bd 100%);box-shadow:0 14px 30px -14px rgba(150,110,50,.5)}
+.c-calc .eyebrow{color:#9a7137}
+.c-calc .title{color:#3c2a12}
+.c-calc .blurb{color:#6d5530}
+.keys{position:absolute;right:1.3rem;bottom:1.3rem;display:grid;grid-template-columns:repeat(3,30px);gap:7px}
+.keys i{display:block;height:30px;border-radius:9px;background:#fffaf0;border:1.5px solid #e2cba4}
+.keys i.hot{background:#4a7af5;border-color:#4a7af5}
+.c-soon{background:#f1ece4;border:1.5px dashed #d8cfc0}
+.c-soon .eyebrow{color:#9c9183}
+.c-soon .title{color:#6b6253}
+.c-soon .blurb{color:#938876}
+.foot{margin-top:2.5rem;padding-top:1.4rem;border-top:1px solid #e8e1d6;font-size:14px;color:#6e667c;line-height:1.6}
+.foot b{color:#1b1523}
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>Argyle Smarts</h1>
-  <p class="tag">Small games and small tools.</p>
+<div class="page">
 
-  <div class="links">
-    <a class="tile" href="/67clicker/">
-      <span class="ico">67</span>
-      <span class="txt">
-        <span class="t">67 Clicker</span>
-        <span class="d">Click the 67. Buy upgrades. Watch it get strange.</span>
-      </span>
-    </a>
-    <a class="tile" href="/calculator/">
-      <span class="ico">=</span>
-      <span class="txt">
-        <span class="t">Calculator</span>
-        <span class="d">Adds, subtracts, multiplies, divides. That is all.</span>
-      </span>
-    </a>
+  <div class="top">
+    <h1 class="mark">Argyle<b>.Smarts</b></h1>
+    <p class="tagline">small games and little tools &mdash; click into one</p>
   </div>
 
-  <footer>More coming.</footer>
+  <div class="grid">
+
+    <a class="card wide c-clicker" href="/67clicker/">
+      <div class="art">
+        <span class="bignum">67</span>
+        <span class="coin k1"></span>
+        <span class="coin k2"></span>
+        <span class="coin k3"></span>
+      </div>
+      <p class="eyebrow">Idle &middot; Twenty-six upgrades</p>
+      <h2 class="title">67 Clicker</h2>
+      <p class="blurb">Click the 67 and it pays you in 67 dollars. Hire a choir, buy a factory, and watch the number itself turn gold, then neon, then cosmic.</p>
+    </a>
+
+    <a class="card c-calc" href="/calculator/">
+      <div class="art">
+        <span class="keys"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="hot"></i></span>
+      </div>
+      <p class="eyebrow">Tool &middot; Four operations</p>
+      <h2 class="title">Calculator</h2>
+      <p class="blurb">Adds, subtracts, multiplies, divides. Keyboard works. That is the whole feature list.</p>
+    </a>
+
+    <div class="card c-soon">
+      <p class="eyebrow">In progress</p>
+      <h2 class="title">More soon</h2>
+      <p class="blurb">Next game is being built. Check back.</p>
+    </div>
+
+  </div>
+
+  <p class="foot">Hi, I'm <b>Hudson</b>. Small games and tools I build for fun &mdash; sister site to <b>Hudson.Party</b>.</p>
+
 </div>
 </body>
 </html>
