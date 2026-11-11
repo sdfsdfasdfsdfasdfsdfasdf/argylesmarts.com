@@ -23,6 +23,10 @@ button:active{filter:brightness(.85)}
 .fn{background:#141730;color:#a3a3b8}
 .wide{grid-column:span 2}
 .note{color:#6f7190;font-size:.8rem;text-align:center;margin-top:1.1rem}
+#secret{margin-top:1.25rem;padding:.9rem 1rem;border-radius:12px;border:1px solid #2f5a3f;background:#13241b;text-align:center;animation:pop .35s ease-out}
+#secret .k{display:block;font-size:.72rem;letter-spacing:1.4px;text-transform:uppercase;color:#5ee6a8;font-weight:700;margin-bottom:.3rem}
+#secret a{font-weight:600;color:#9af5c8}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}}
 </style>
 </head>
 <body>
@@ -62,6 +66,11 @@ button:active{filter:brightness(.85)}
     <button class="eq" data-k="=">=</button>
   </div>
   <p class="note">Keyboard works too. Esc clears, Backspace deletes.</p>
+
+  <div id="secret" hidden>
+    <span class="k">You found it</span>
+    <a href="/67clicker/">67 Clicker is unlocked &rarr;</a>
+  </div>
 </div>
 
 <script>
@@ -74,10 +83,24 @@ var fresh = true;
 
 var elMain = document.getElementById("main");
 var elSub = document.getElementById("sub");
+var elSecret = document.getElementById("secret");
+var UKEY = "argyle.secret67";
+
+function unlocked(){
+  try{ return localStorage.getItem(UKEY) === "1"; }catch(e){ return false; }
+}
+function unlock(){
+  try{ localStorage.setItem(UKEY, "1"); }catch(e){}
+  if(elSecret) elSecret.hidden = false;
+}
+function checkSecret(){
+  if(cur === "6767") unlock();
+}
 
 function show(){
   elMain.textContent = cur;
   elSub.textContent = (prev === null) ? "" : trim(prev) + " " + symbol(op);
+  checkSecret();
 }
 function symbol(o){
   return o === "*" ? "×" : o === "/" ? "÷" : o === "-" ? "−" : o === "+" ? "+" : "";
@@ -153,7 +176,7 @@ function press(k){
 
 var btns = document.querySelectorAll("[data-k]");
 for(var i = 0; i < btns.length; i++){
-  btns[i].addEventListener("click", function(){ press(this.getAttribute("data-k")); });
+  btns[i].addEventListener("click", function(){ this.blur(); press(this.getAttribute("data-k")); });
 }
 
 document.addEventListener("keydown", function(e){
@@ -168,6 +191,7 @@ document.addEventListener("keydown", function(e){
   else return;
 });
 
+if(unlocked() && elSecret) elSecret.hidden = false;
 show();
 })();
 </script>
