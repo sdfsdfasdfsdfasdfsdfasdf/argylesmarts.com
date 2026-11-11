@@ -4,93 +4,80 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>67 Clicker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#faf7f2;color:#1b1523;font-family:Inter,sans-serif;padding:2rem 1.25rem 3rem}
-.page{max-width:1060px;margin:0 auto}
-.top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
-.mark{font-family:Fredoka,sans-serif;font-weight:700;font-size:26px;letter-spacing:-.5px;margin:0}
-.mark b{color:#4a7af5}
-.back{font-size:14px;font-weight:500;color:#6e667c;text-decoration:none}
-.back:hover{color:#4a7af5}
-.wrap{display:grid;grid-template-columns:1fr 348px;gap:12px}
-@media(max-width:860px){.wrap{grid-template-columns:1fr}}
-.stage{position:relative;overflow:hidden;border-radius:22px;padding:1.6rem;min-height:460px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#2b2350 0%,#43306e 55%,#6d3f8e 100%);box-shadow:0 14px 30px -14px rgba(50,30,90,.6)}
-.eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin:0 0 .75rem;color:#c3b4e8}
-#bank{font-family:Fredoka,sans-serif;font-size:2.7rem;font-weight:700;letter-spacing:-.5px;margin:0;color:#fdf6e8;text-align:center}
-#bank small{display:block;font-family:Inter,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#b9a9e0;margin-top:.15rem}
-#rate{color:#cdc3e4;margin:.6rem 0 1.6rem;font-size:13px;font-family:"Space Mono",monospace;font-weight:700}
-#sixtyseven{font-family:Fredoka,sans-serif;font-size:7rem;font-weight:700;cursor:pointer;user-select:none;line-height:1;padding:.7rem 1.6rem;border-radius:22px;transition:transform .06s ease;background:none;border:none;color:#fdf6e8;letter-spacing:-.03em}
+body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;min-height:100vh}
+a{color:#7aa2ff}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #22243f}
+header h1{font-size:1.1rem;margin:0;letter-spacing:-.01em}
+.wrap{display:grid;grid-template-columns:1fr 340px;gap:1.25rem;padding:1.25rem;max-width:1100px;margin:0 auto}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+.panel{background:#16182e;border:1px solid #22243f;border-radius:14px;padding:1.25rem}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:52vh;position:relative;overflow:hidden}
+#bank{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;margin:0}
+#bank small{display:block;font-size:.85rem;font-weight:500;color:#a3a3b8;letter-spacing:0;text-align:center}
+#rate{color:#a3a3b8;margin:.35rem 0 1.5rem;font-size:.95rem}
+#sixtyseven{font-size:7rem;font-weight:800;cursor:pointer;user-select:none;line-height:1;padding:1rem 1.75rem;border-radius:20px;transition:transform .06s ease;background:none;border:none;color:inherit;font-family:inherit}
 #sixtyseven:active{transform:scale(.94)}
-.hint{color:#a496cc;font-size:13px;margin-top:1.4rem;text-align:center}
-.float{position:absolute;pointer-events:none;font-family:Fredoka,sans-serif;font-weight:700;animation:rise 1s ease-out forwards;color:#ffd45e;font-size:1.1rem}
+.hint{color:#6f7190;font-size:.85rem;margin-top:1.25rem}
+.float{position:absolute;pointer-events:none;font-weight:700;animation:rise 1s ease-out forwards;color:#5ee6a8}
 @keyframes rise{to{transform:translateY(-70px);opacity:0}}
-.shop{background:#fff;border:1.5px solid #ece5d9;border-radius:22px;padding:1.1rem;box-shadow:0 14px 30px -18px rgba(120,100,70,.35)}
-.tabs{display:flex;gap:.4rem;margin-bottom:.9rem}
-.tab{flex:1;padding:.55rem;border-radius:11px;border:1.5px solid #ece5d9;background:#faf7f2;color:#6e667c;cursor:pointer;font-size:12px;font-weight:600;font-family:Inter,sans-serif}
-.tab.on{background:#4a7af5;color:#fff;border-color:#4a7af5}
-.item{width:100%;text-align:left;display:flex;gap:.7rem;align-items:center;background:#faf7f2;border:1.5px solid #efe8dc;border-radius:14px;padding:.65rem .75rem;margin-bottom:.45rem;cursor:pointer;color:inherit;font-family:Inter,sans-serif}
-.item:disabled{opacity:.5;cursor:not-allowed}
-.item:not(:disabled):hover{border-color:#4a7af5;background:#fff}
-.ico{font-size:1.35rem;width:2rem;text-align:center;flex:none}
+.tabs{display:flex;gap:.4rem;margin-bottom:1rem}
+.tab{flex:1;padding:.5rem;border-radius:9px;border:1px solid #22243f;background:#101227;color:#a3a3b8;cursor:pointer;font-size:.85rem;font-family:inherit}
+.tab.on{background:#3b6ef5;color:#fff;border-color:#3b6ef5}
+.item{width:100%;text-align:left;display:flex;gap:.75rem;align-items:center;background:#101227;border:1px solid #22243f;border-radius:11px;padding:.7rem .8rem;margin-bottom:.5rem;cursor:pointer;color:inherit;font-family:inherit}
+.item:disabled{opacity:.45;cursor:not-allowed}
+.item:not(:disabled):hover{border-color:#3b6ef5}
+.ico{font-size:1.4rem;width:2rem;text-align:center;flex:none}
 .meta{flex:1;min-width:0}
-.name{font-family:Fredoka,sans-serif;font-weight:600;font-size:14px;color:#1b1523}
-.desc{color:#8b8295;font-size:11.5px;margin-top:.1rem;line-height:1.35}
-.cost{font-family:"Space Mono",monospace;font-size:12px;font-weight:700;color:#1f9d5a;flex:none}
-.cost.no{color:#c96a56}
-.owned{font-family:"Space Mono",monospace;font-size:11px;color:#9a91a5;flex:none;margin-left:.3rem}
+.name{font-weight:600;font-size:.92rem}
+.desc{color:#8a8ca8;font-size:.78rem;margin-top:.1rem}
+.cost{font-size:.85rem;font-weight:600;color:#5ee6a8;flex:none}
+.cost.no{color:#e6705e}
+.owned{font-size:.78rem;color:#6f7190;flex:none;margin-left:.3rem}
 .locked .name,.locked .desc{filter:blur(3px)}
-.reset{background:none;border:1.5px solid #e6ddd0;color:#8b8295;border-radius:50px;padding:.4rem .9rem;cursor:pointer;font-size:12px;font-family:Inter,sans-serif;font-weight:500}
-.reset:hover{border-color:#c96a56;color:#c96a56}
-.foot{margin-top:2rem;padding-top:1.2rem;border-top:1px solid #e8e1d6;font-size:13px;color:#8b8295}
-.s-gold{color:#ffd45e !important;text-shadow:0 0 26px rgba(255,212,94,.5)}
-.s-neon{color:#5ee6a8 !important;text-shadow:0 0 12px #5ee6a8,0 0 36px rgba(94,230,168,.6)}
-.s-rainbow{background:linear-gradient(92deg,#ff5e7a,#ffd45e,#5ee6a8,#5ea8ff,#b45eff);-webkit-background-clip:text;background-clip:text;color:transparent !important;filter:drop-shadow(0 0 16px rgba(180,94,255,.4))}
-.s-glitch{color:#fff !important;text-shadow:2px 0 #ff2d6f,-2px 0 #00e5ff;animation:gl .9s infinite steps(2)}
+footer{text-align:center;color:#6f7190;font-size:.8rem;padding:1.5rem}
+.reset{background:none;border:1px solid #33364f;color:#8a8ca8;border-radius:8px;padding:.35rem .7rem;cursor:pointer;font-size:.78rem;font-family:inherit}
+.s-gold{color:#ffd45e;text-shadow:0 0 22px rgba(255,212,94,.45)}
+.s-neon{color:#5ee6a8;text-shadow:0 0 10px #5ee6a8,0 0 34px rgba(94,230,168,.55)}
+.s-rainbow{background:linear-gradient(92deg,#ff5e7a,#ffd45e,#5ee6a8,#5ea8ff,#b45eff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 16px rgba(180,94,255,.35))}
+.s-glitch{color:#fff;text-shadow:2px 0 #ff2d6f,-2px 0 #00e5ff;animation:gl .9s infinite steps(2)}
 @keyframes gl{50%{text-shadow:-2px 0 #ff2d6f,2px 0 #00e5ff}}
-.s-fire{color:#ffb04a !important;text-shadow:0 -4px 14px #ff4d2d,0 -14px 26px rgba(255,120,30,.6);animation:fl .6s ease-in-out infinite alternate}
+.s-fire{color:#ffb04a;text-shadow:0 -4px 14px #ff4d2d,0 -14px 26px rgba(255,120,30,.6);animation:fl .6s ease-in-out infinite alternate}
 @keyframes fl{to{text-shadow:0 -6px 20px #ff4d2d,0 -20px 34px rgba(255,160,40,.75)}}
-.s-cosmic{background:conic-gradient(from 0deg,#b45eff,#5ea8ff,#5ee6a8,#ffd45e,#b45eff);-webkit-background-clip:text;background-clip:text;color:transparent !important;animation:spin 7s linear infinite;filter:drop-shadow(0 0 20px rgba(94,168,255,.5))}
+.s-cosmic{background:conic-gradient(from 0deg,#b45eff,#5ea8ff,#5ee6a8,#ffd45e,#b45eff);-webkit-background-clip:text;background-clip:text;color:transparent;animation:spin 7s linear infinite;filter:drop-shadow(0 0 20px rgba(94,168,255,.5))}
 @keyframes spin{to{filter:drop-shadow(0 0 20px rgba(180,94,255,.6)) hue-rotate(360deg)}}
-.f-serif{font-family:Georgia,serif !important}
-.f-mono{font-family:"Space Mono",monospace !important}
-.big1{font-size:8.5rem !important}.big2{font-size:10rem !important}.big3{font-size:11.5rem !important}
+.f-serif{font-family:Georgia,serif}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.big1{font-size:8.5rem}.big2{font-size:10rem}.big3{font-size:12rem}
 </style>
 </head>
 <body>
-<div class="page">
-
-<div class="top">
-<h1 class="mark">Argyle<b>.Smarts</b></h1>
-<a class="back" href="/">&larr; all games</a>
-</div>
+<header>
+<h1>67 Clicker</h1>
+<a href="/">&larr; all games</a>
+</header>
 
 <div class="wrap">
-  <div class="stage">
-    <p class="eyebrow">Idle &middot; Twenty-six upgrades</p>
+  <div class="panel stage">
     <p id="bank">$0<small>67 dollars</small></p>
     <div id="rate">0 / sec</div>
     <button id="sixtyseven">67</button>
     <div class="hint">Click the 67. Buy upgrades. Make it weirder.</div>
   </div>
 
-  <div class="shop">
+  <div class="panel">
     <div class="tabs">
       <button class="tab on" data-tab="gen">Workers</button>
       <button class="tab" data-tab="clk">Clicks</button>
       <button class="tab" data-tab="skin">Looks</button>
     </div>
     <div id="shop"></div>
-    <div style="margin-top:.9rem;text-align:right"><button class="reset" id="reset">Reset save</button></div>
+    <div style="margin-top:1rem;text-align:right"><button class="reset" id="reset">Reset save</button></div>
   </div>
 </div>
 
-<p class="foot">Numbers go up. That is the whole thing.</p>
-
-</div>
+<footer>Numbers go up. That is the whole thing.</footer>
 <script>
 (function(){
 "use strict";
