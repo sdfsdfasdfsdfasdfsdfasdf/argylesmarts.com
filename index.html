@@ -20,25 +20,25 @@ body{margin:0;background:#faf7f2;color:#1b1523;font-family:Inter,sans-serif;padd
 .card{position:relative;overflow:hidden;border-radius:22px;padding:1.4rem 1.5rem;min-height:250px;display:flex;flex-direction:column;text-decoration:none;color:inherit;transition:transform .14s ease}
 .card:hover{transform:translateY(-3px)}
 .card.wide{grid-column:1 / -1;min-height:290px}
+.art{position:absolute;inset:0;z-index:0;pointer-events:none}
+.eyebrow,.title,.blurb{position:relative;z-index:1}
 .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin:0 0 .5rem}
 .title{font-family:Fredoka,sans-serif;font-weight:700;font-size:30px;letter-spacing:-.4px;margin:0 0 .45rem;line-height:1.1}
 .blurb{font-size:14px;line-height:1.45;margin:0;max-width:34ch}
-.art{position:absolute;inset:0;pointer-events:none;z-index:0}
-.card>*{position:relative;z-index:1}
 .c-clicker{background:linear-gradient(160deg,#2b2350 0%,#43306e 55%,#6d3f8e 100%);box-shadow:0 14px 30px -14px rgba(50,30,90,.6)}
 .c-clicker .eyebrow{color:#c3b4e8}
 .c-clicker .title{color:#fdf6e8}
 .c-clicker .blurb{color:#cdc3e4}
-.bignum{position:absolute;right:-.1em;bottom:-.34em;font-family:Fredoka,sans-serif;font-weight:700;font-size:15rem;line-height:1;color:rgba(255,255,255,.1);letter-spacing:-.04em}
+.bignum{position:absolute;right:.4rem;bottom:-3.2rem;font-family:Fredoka,sans-serif;font-weight:700;font-size:13rem;line-height:1;color:rgba(255,255,255,.1);letter-spacing:-.04em}
 .coin{position:absolute;border-radius:50%;background:radial-gradient(circle at 34% 30%,#ffe9a8,#f5c344 62%,#d79a1d);box-shadow:0 3px 10px rgba(0,0,0,.28)}
-.k1{width:34px;height:34px;right:26%;top:20%}
-.k2{width:22px;height:22px;right:17%;top:48%}
-.k3{width:15px;height:15px;right:31%;top:58%}
+.k1{width:34px;height:34px;right:22%;top:24%}
+.k2{width:22px;height:22px;right:12%;top:52%}
+.k3{width:15px;height:15px;right:28%;top:64%}
 .c-calc{background:linear-gradient(160deg,#fdf1dc 0%,#f6e0bd 100%);box-shadow:0 14px 30px -14px rgba(150,110,50,.5)}
 .c-calc .eyebrow{color:#9a7137}
 .c-calc .title{color:#3c2a12}
 .c-calc .blurb{color:#6d5530}
-.keys{position:absolute;right:1.3rem;bottom:1.3rem;display:grid;grid-template-columns:repeat(3,30px);gap:7px}
+.keys{position:absolute;right:1.4rem;bottom:1.4rem;display:grid;grid-template-columns:repeat(3,30px);gap:7px}
 .keys i{display:block;height:30px;border-radius:9px;background:#fffaf0;border:1.5px solid #e2cba4}
 .keys i.hot{background:#4a7af5;border-color:#4a7af5}
 .c-soon{background:#f1ece4;border:1.5px dashed #d8cfc0}
