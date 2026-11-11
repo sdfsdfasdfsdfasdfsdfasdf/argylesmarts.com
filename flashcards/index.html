@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biology Flashcards</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;min-height:100vh}
+a{color:#7aa2ff}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #22243f}
+header h1{font-size:1.1rem;margin:0}
+.wrap{max-width:660px;margin:1.75rem auto 3rem;padding:0 1.25rem}
+.decks{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:1.5rem}
+.deck{padding:.85rem .7rem;border-radius:12px;border:1px solid #22243f;background:#16182e;color:#a3a3b8;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:600;text-align:center;transition:border-color .12s}
+.deck:hover{border-color:#3b6ef5}
+.deck.on{background:#3b6ef5;border-color:#3b6ef5;color:#fff}
+.deck small{display:block;font-weight:500;font-size:.72rem;opacity:.75;margin-top:.15rem}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.75rem;color:#8a8ca8;font-size:.85rem}
+.track{flex:1;height:6px;border-radius:99px;background:#1b1e36;overflow:hidden}
+.fill{height:100%;background:#5ee6a8;width:0;transition:width .25s ease}
+.card{position:relative;width:100%;min-height:270px;border-radius:18px;border:1px solid #22243f;background:#16182e;padding:2rem 1.75rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;user-select:none}
+.card:hover{border-color:#2f3358}
+.side{font-size:.7rem;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;color:#5c5e7a;margin-bottom:1rem}
+.term{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.def{font-size:1.1rem;line-height:1.5;color:#dcdce6;max-width:42ch}
+.tap{position:absolute;bottom:1rem;left:0;right:0;font-size:.78rem;color:#4e5070}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.75rem}
+.acts button{padding:.9rem;border-radius:12px;border:1px solid #22243f;background:#1b1e36;color:#f2f2f7;font-family:inherit;font-size:.95rem;font-weight:600;cursor:pointer}
+.acts button:disabled{opacity:.35;cursor:not-allowed}
+.again{color:#ffb4a4}
+.again:not(:disabled):hover{border-color:#e6705e}
+.got{color:#9af5c8}
+.got:not(:disabled):hover{border-color:#5ee6a8}
+.done{text-align:center;padding:2.5rem 1rem}
+.done h2{font-size:1.6rem;margin:0 0 .4rem}
+.done p{color:#8a8ca8;margin:0 0 1.4rem}
+.restart{padding:.8rem 1.4rem;border-radius:12px;border:1px solid #3b6ef5;background:#3b6ef5;color:#fff;font-family:inherit;font-weight:600;font-size:.95rem;cursor:pointer}
+.hintrow{margin-top:1rem;text-align:center;color:#4e5070;font-size:.78rem}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>Biology Flashcards</h1>
+<a href="/">&larr; all games</a>
+</header>
+
+<div class="wrap">
+  <div class="decks" id="decks"></div>
+
+  <div id="study">
+    <div class="bar">
+      <span id="count">0 left</span>
+      <span class="track"><span class="fill" id="fill"></span></span>
+      <span id="score">0 learned</span>
+    </div>
+
+    <div class="card" id="card">
+      <div class="side" id="side">Term</div>
+      <div class="term" id="face">&nbsp;</div>
+      <div class="tap" id="tap">click the card, or press space, to flip</div>
+    </div>
+
+    <div class="acts">
+      <button class="again" id="again" disabled>Again</button>
+      <button class="got" id="got" disabled>Got it</button>
+    </div>
+
+    <p class="hintrow">space flips &middot; 1 = again &middot; 2 = got it</p>
+  </div>
+
+  <div id="done" class="done hidden">
+    <h2>Deck complete</h2>
+    <p id="donetext">Nice.</p>
+    <button class="restart" id="restart">Study again</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+
+var DECKS = [
+  {
+    id:"cell", name:"Cell Biology",
+    cards:[
+      ["Mitochondrion","Produces ATP through cellular respiration. Has its own DNA and a double membrane."],
+      ["Ribosome","Site of protein synthesis. Built from rRNA and proteins; free or bound to rough ER."],
+      ["Rough ER","Endoplasmic reticulum studded with ribosomes. Folds and modifies newly made proteins."],
+      ["Smooth ER","Endoplasmic reticulum without ribosomes. Makes lipids and detoxifies substances."],
+      ["Golgi apparatus","Modifies, packages and ships proteins and lipids to their destinations."],
+      ["Lysosome","Vesicle of digestive enzymes. Breaks down waste, debris and worn-out organelles."],
+      ["Chloroplast","Site of photosynthesis in plants and algae. Contains chlorophyll and its own DNA."],
+      ["Cell membrane","Phospholipid bilayer with embedded proteins. Controls what enters and leaves the cell."],
+      ["Nucleus","Houses the cell's DNA. Site of DNA replication and transcription."],
+      ["Cytoskeleton","Network of microtubules and microfilaments giving shape, support and internal transport."],
+      ["Central vacuole","Large fluid-filled sac in plant cells. Stores water and keeps the cell turgid."],
+      ["Prokaryote vs eukaryote","Prokaryotes have no nucleus or membrane-bound organelles; eukaryotes have both."]
+    ]
+  },
+  {
+    id:"gen", name:"Genetics",
+    cards:[
+      ["Gene","A sequence of DNA that codes for a product, usually a protein."],
+      ["Allele","One of two or more alternative versions of the same gene."],
+      ["Genotype vs phenotype","Genotype is the set of alleles an organism carries; phenotype is the observable traits."],
+      ["Homozygous","Carrying two identical alleles for a given gene."],
+      ["Heterozygous","Carrying two different alleles for a given gene."],
+      ["Dominant allele","An allele whose trait appears even when only one copy is present."],
+      ["Recessive allele","An allele whose trait appears only when two copies are present."],
+      ["Mitosis","Division producing two genetically identical diploid cells. Used for growth and repair."],
+      ["Meiosis","Division producing four genetically distinct haploid gametes. Includes crossing over."],
+      ["Crossing over","Exchange of segments between homologous chromosomes in prophase I, creating new combinations."],
+      ["Punnett square","A grid used to predict the genotype and phenotype ratios of offspring."],
+      ["Codominance","Both alleles are fully expressed in the heterozygote, as in AB blood type."],
+      ["Incomplete dominance","The heterozygote shows a blended intermediate phenotype, as in pink snapdragons."],
+      ["Mutation","A change in the DNA sequence. May be silent, missense, nonsense or a frameshift."]
+    ]
+  },
+  {
+    id:"body", name:"Human Body",
+    cards:[
+      ["Alveoli","Tiny air sacs in the lungs where oxygen and carbon dioxide are exchanged with the blood."],
+      ["Nephron","The functional filtering unit of the kidney. Filters blood and forms urine."],
+      ["Neuron","Cell that transmits electrical signals. Has dendrites, a cell body, an axon and synapses."],
+      ["Red blood cell","Carries oxygen bound to hemoglobin. Mature human ones have no nucleus."],
+      ["Villi","Finger-like projections lining the small intestine that increase surface area for absorption."],
+      ["Antibody","A protein made by B cells that binds one specific antigen and marks it for destruction."],
+      ["Homeostasis","Maintaining a stable internal environment despite changes outside the body."],
+      ["Insulin","Hormone released by the pancreas that lowers blood glucose by moving it into cells."],
+      ["Enzyme","A protein catalyst that speeds up a reaction by lowering its activation energy."],
+      ["Capillary","The smallest blood vessel. One cell thick, so gases and nutrients diffuse across easily."]
+    ]
+  },
+  {
+    id:"eco", name:"Energy & Ecology",
+    cards:[
+      ["Photosynthesis","6CO2 + 6H2O + light energy makes C6H12O6 + 6O2. Happens in chloroplasts."],
+      ["Cellular respiration","C6H12O6 + 6O2 makes 6CO2 + 6H2O + ATP. Mostly in mitochondria."],
+      ["ATP","Adenosine triphosphate. The cell's short-term energy currency; energy is stored in its bonds."],
+      ["Producer","An autotroph that makes its own food, usually by photosynthesis. Base of the food chain."],
+      ["Trophic level","A position in a food chain. Roughly 10 percent of energy passes to the next level."],
+      ["Decomposer","Organism that breaks down dead material, returning nutrients to the ecosystem."],
+      ["Niche","An organism's role in its environment: what it eats, where it lives, how it interacts."],
+      ["Carrying capacity","The largest population size an environment can sustain over time."],
+      ["Keystone species","A species whose effect on its ecosystem is far larger than its abundance suggests."],
+      ["Symbiosis","A close long-term relationship between species: mutualism, commensalism or parasitism."]
+    ]
+  }
+];
+
+var deck = DECKS[0];
+var queue = [];
+var learned = 0;
+var total = 0;
+var cur = null;
+var flipped = false;
+
+var elDecks = document.getElementById("decks");
+var elCard = document.getElementById("card");
+var elSide = document.getElementById("side");
+var elFace = document.getElementById("face");
+var elTap = document.getElementById("tap");
+var elAgain = document.getElementById("again");
+var elGot = document.getElementById("got");
+var elCount = document.getElementById("count");
+var elScore = document.getElementById("score");
+var elFill = document.getElementById("fill");
+var elStudy = document.getElementById("study");
+var elDone = document.getElementById("done");
+var elDoneText = document.getElementById("donetext");
+
+function shuffle(a){
+  for(var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function buildDecks(){
+  elDecks.innerHTML = "";
+  for(var i = 0; i < DECKS.length; i++){
+    (function(d){
+      var b = document.createElement("button");
+      b.className = "deck" + (d.id === deck.id ? " on" : "");
+      b.innerHTML = d.name + "<small>" + d.cards.length + " cards</small>";
+      b.addEventListener("click", function(){ deck = d; start(); });
+      elDecks.appendChild(b);
+    })(DECKS[i]);
+  }
+}
+
+function start(){
+  queue = shuffle(deck.cards.slice());
+  learned = 0;
+  total = deck.cards.length;
+  elDone.classList.add("hidden");
+  elStudy.classList.remove("hidden");
+  buildDecks();
+  next();
+}
+
+function next(){
+  if(queue.length === 0) return finish();
+  cur = queue.shift();
+  flipped = false;
+  render();
+}
+
+function render(){
+  elSide.textContent = flipped ? "Definition" : "Term";
+  elFace.textContent = flipped ? cur[1] : cur[0];
+  elFace.className = flipped ? "def" : "term";
+  elTap.textContent = flipped ? "1 = again  ·  2 = got it" : "click the card, or press space, to flip";
+  elAgain.disabled = !flipped;
+  elGot.disabled = !flipped;
+  elCount.textContent = (queue.length + 1) + " left";
+  elScore.textContent = learned + " learned";
+  elFill.style.width = total ? (learned / total * 100) + "%" : "0";
+}
+
+function finish(){
+  elStudy.classList.add("hidden");
+  elDone.classList.remove("hidden");
+  elDoneText.textContent = "You got through all " + total + " cards in " + deck.name + ".";
+}
+
+function flip(){
+  if(!cur) return;
+  flipped = !flipped;
+  render();
+}
+
+function answer(ok){
+  if(!flipped || !cur) return;
+  if(ok){ learned++; }
+  else { queue.push(cur); }
+  next();
+}
+
+elCard.addEventListener("click", flip);
+elAgain.addEventListener("click", function(){ answer(false); });
+elGot.addEventListener("click", function(){ answer(true); });
+document.getElementById("restart").addEventListener("click", start);
+
+document.addEventListener("keydown", function(e){
+  if(e.key === " "){ e.preventDefault(); flip(); }
+  else if(e.key === "1"){ answer(false); }
+  else if(e.key === "2"){ answer(true); }
+});
+
+start();
+})();
+</script>
+</body>
+</html>
