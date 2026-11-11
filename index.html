@@ -11,11 +11,12 @@ body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:c
 h1{font-size:clamp(2.2rem,7vw,3.6rem);margin:0 0 .4rem;letter-spacing:-.025em}
 .tag{color:#a3a3b8;margin:0 0 2.25rem;font-size:1.05rem}
 .links{display:grid;gap:.75rem}
-a.tile{display:flex;align-items:center;gap:.9rem;text-align:left;text-decoration:none;color:inherit;background:#16182e;border:1px solid #22243f;border-radius:14px;padding:1rem 1.1rem;transition:border-color .15s,transform .1s}
+a.tile{display:flex;align-items:center;gap:1rem;text-align:left;text-decoration:none;color:inherit;background:#16182e;border:1px solid #22243f;border-radius:14px;padding:1rem 1.1rem;transition:border-color .15s,transform .1s}
 a.tile:hover{border-color:#3b6ef5;transform:translateY(-1px)}
-.ico{font-size:1.7rem;flex:none;font-weight:800}
-.t{font-weight:650;font-size:1.02rem}
-.d{color:#8a8ca8;font-size:.85rem;margin-top:.12rem}
+.ico{font-size:1.6rem;font-weight:800;flex:none;width:2.6rem;text-align:center;color:#9ab6ff}
+.txt{flex:1;min-width:0}
+.t{display:block;font-weight:650;font-size:1.02rem}
+.d{display:block;color:#8a8ca8;font-size:.85rem;margin-top:.15rem}
 footer{color:#5c5e7a;font-size:.78rem;margin-top:2.25rem}
 </style>
 </head>
@@ -27,13 +28,17 @@ footer{color:#5c5e7a;font-size:.78rem;margin-top:2.25rem}
   <div class="links">
     <a class="tile" href="/67clicker/">
       <span class="ico">67</span>
-      <span><span class="t">67 Clicker</span>
-      <span class="d">Click the 67. Buy upgrades. Watch it get strange.</span></span>
+      <span class="txt">
+        <span class="t">67 Clicker</span>
+        <span class="d">Click the 67. Buy upgrades. Watch it get strange.</span>
+      </span>
     </a>
     <a class="tile" href="/calculator/">
       <span class="ico">=</span>
-      <span><span class="t">Calculator</span>
-      <span class="d">Adds, subtracts, multiplies, divides. That is all.</span></span>
+      <span class="txt">
+        <span class="t">Calculator</span>
+        <span class="d">Adds, subtracts, multiplies, divides. That is all.</span>
+      </span>
     </a>
   </div>
 
