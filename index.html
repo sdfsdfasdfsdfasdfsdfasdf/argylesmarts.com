@@ -18,7 +18,6 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .tile:hover{transform:translateY(-2px);border-color:#3b6ef5}
 .label{position:relative;z-index:2;font-size:clamp(1.5rem,3.4vw,2.05rem);font-weight:800;letter-spacing:-.03em;text-align:center;padding:0 1rem}
 .art{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-
 .t-goose{background:linear-gradient(135deg,#17301f 0%,#1d4430 55%,#2d6b47 100%)}
 .t-goose .label{color:#eafff2}
 .bird{position:absolute;font-size:5.5rem;opacity:.22;line-height:1}
@@ -27,7 +26,6 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .feather{position:absolute;border-radius:50%;background:rgba(255,255,255,.16)}
 .f1{width:12px;height:12px;left:26%;top:26%}
 .f2{width:8px;height:8px;right:28%;bottom:28%}
-
 .t-clicker{background:linear-gradient(135deg,#241d46 0%,#3b2a63 60%,#5c3580 100%)}
 .t-clicker .label{color:#fdf6e8}
 .ghost{position:absolute;font-weight:800;color:rgba(255,255,255,.075);letter-spacing:-.05em;line-height:.8}
@@ -37,19 +35,16 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .k1{width:26px;height:26px;left:16%;bottom:16%}
 .k2{width:16px;height:16px;left:27%;top:19%}
 .k3{width:11px;height:11px;right:22%;top:28%}
-
 .t-calc{background:linear-gradient(135deg,#141730 0%,#1d2142 100%)}
 .t-calc .label{color:#eaf0ff}
 .keys{position:absolute;right:1.1rem;top:50%;transform:translateY(-50%);display:grid;grid-template-columns:repeat(3,20px);gap:5px}
 .keys i{display:block;height:20px;border-radius:6px;background:#242848;border:1px solid #32376a}
 .keys i.hot{background:#3b6ef5;border-color:#3b6ef5}
 .keys2{left:1.1rem;right:auto}
-
 .t-locked{background:#141528;border-style:dashed;border-color:#2a2c4a;cursor:default}
 .t-locked:hover{transform:none;border-color:#2a2c4a}
 .t-locked .label{color:#4e5070;font-size:2.4rem;letter-spacing:.12em}
 .sub{position:absolute;bottom:.85rem;left:0;right:0;text-align:center;font-size:.72rem;color:#3f4160;letter-spacing:.06em;z-index:2}
-
 .foot{margin-top:2.5rem;text-align:center;color:#6f7190;font-size:.88rem;line-height:1.7}
 .foot a{color:#8ea6f0;text-decoration:none}
 .foot a:hover{text-decoration:underline}
@@ -98,9 +93,8 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 <script>
 (function(){
   "use strict";
-  var UKEY = "argyle.secret67";
   var on = false;
-  try{ on = localStorage.getItem(UKEY) === "1"; }catch(e){}
+  try{ on = localStorage.getItem("argyle.secret67") === "1"; }catch(e){}
   if(!on) return;
   var slot = document.getElementById("slot");
   if(!slot) return;
@@ -119,93 +113,5 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
   slot.parentNode.replaceChild(a, slot);
 })();
 </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Argyle Smarts</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;padding:3rem 1.25rem 4rem}
-.page{max-width:900px;margin:0 auto}
-.head{text-align:center;margin-bottom:2.25rem}
-.mark{font-size:clamp(2.4rem,8vw,3.6rem);font-weight:800;letter-spacing:-.035em;margin:0;line-height:1}
-.mark b{color:#3b6ef5}
-.tagline{color:#a3a3b8;font-size:1rem;margin:.6rem 0 0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 18px}
-@media(max-width:700px){.grid{grid-template-columns:1fr}}
-.tile{position:relative;overflow:hidden;border-radius:15px;aspect-ratio:306/115;display:flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid #22243f;transition:transform .12s ease,border-color .12s ease}
-.tile:hover{transform:translateY(-2px);border-color:#3b6ef5}
-.label{position:relative;z-index:2;font-size:clamp(1.5rem,3.4vw,2.05rem);font-weight:800;letter-spacing:-.03em;text-align:center;padding:0 1rem}
-.art{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-
-.t-clicker{background:linear-gradient(135deg,#241d46 0%,#3b2a63 60%,#5c3580 100%)}
-.t-clicker .label{color:#fdf6e8}
-.ghost{position:absolute;font-weight:800;color:rgba(255,255,255,.075);letter-spacing:-.05em;line-height:.8}
-.g1{font-size:9rem;left:-1.5rem;top:-.6rem}
-.g2{font-size:9rem;right:-1.5rem;bottom:-2.2rem}
-.coin{position:absolute;border-radius:50%;background:radial-gradient(circle at 34% 30%,#ffe9a8,#f5c344 62%,#d79a1d);box-shadow:0 2px 8px rgba(0,0,0,.35)}
-.k1{width:26px;height:26px;left:16%;bottom:16%}
-.k2{width:16px;height:16px;left:27%;top:19%}
-.k3{width:11px;height:11px;right:22%;top:28%}
-
-.t-calc{background:linear-gradient(135deg,#141730 0%,#1d2142 100%)}
-.t-calc .label{color:#eaf0ff}
-.keys{position:absolute;right:1.1rem;top:50%;transform:translateY(-50%);display:grid;grid-template-columns:repeat(3,20px);gap:5px}
-.keys i{display:block;height:20px;border-radius:6px;background:#242848;border:1px solid #32376a}
-.keys i.hot{background:#3b6ef5;border-color:#3b6ef5}
-.keys2{left:1.1rem;right:auto}
-
-.t-soon{background:#141528;border-style:dashed;border-color:#2a2c4a}
-.t-soon:hover{transform:none;border-color:#2a2c4a}
-.t-soon .label{color:#5c5e7a;font-weight:700;font-size:1.15rem;letter-spacing:-.01em}
-
-.foot{margin-top:2.5rem;text-align:center;color:#6f7190;font-size:.88rem;line-height:1.7}
-.foot a{color:#8ea6f0;text-decoration:none}
-.foot a:hover{text-decoration:underline}
-</style>
-</head>
-<body>
-<div class="page">
-
-  <div class="head">
-    <h1 class="mark">Argyle<b>Smarts</b></h1>
-    <p class="tagline">small games and little tools</p>
-  </div>
-
-  <div class="grid">
-
-    <a class="tile t-clicker" href="/67clicker/">
-      <div class="art">
-        <span class="ghost g1">67</span>
-        <span class="ghost g2">67</span>
-        <span class="coin k1"></span>
-        <span class="coin k2"></span>
-        <span class="coin k3"></span>
-      </div>
-      <span class="label">67 Clicker</span>
-    </a>
-
-    <a class="tile t-calc" href="/calculator/">
-      <div class="art">
-        <span class="keys"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="hot"></i></span>
-        <span class="keys keys2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-      </div>
-      <span class="label">Calculator</span>
-    </a>
-
-    <div class="tile t-soon">
-      <span class="label">More soon</span>
-    </div>
-
-  </div>
-
-  <p class="foot">Hi, I'm Hudson. Small games and tools I build for fun.<br>
-  Sister site to <a href="https://hudson.party">hudson.party</a>.</p>
-
-</div>
 </body>
 </html>
