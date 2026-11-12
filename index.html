@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Argyle Smarts</title>
 <style>
+.t-mem{background:linear-gradient(135deg,#132a3a 0%,#18405a 60%,#1f5a78 100%)}
+.t-mem .label{color:#e6f6ff}
+.mc{position:absolute;width:42px;height:56px;border-radius:8px;background:#1b1e36;border:1px solid rgba(255,255,255,.18);display:grid;place-items:center}
+.mc svg{width:60%;height:60%}
+.mc1{left:7%;top:50%;transform:translateY(-50%) rotate(-10deg)}
+.mc2{left:17%;top:50%;transform:translateY(-50%) rotate(6deg)}
+.mc3{right:9%;top:50%;transform:translateY(-50%) rotate(9deg);background:linear-gradient(145deg,#1d2142,#16182e)}
+
 *{box-sizing:border-box}
 body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;padding:3rem 1.25rem 4rem}
 .page{max-width:900px;margin:0 auto}
@@ -87,6 +95,15 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
   </div>
 
   <div class="grid">
+<a class="tile t-mem" href="/memory/">
+<div class="art">
+<span class="mc mc1"><svg viewBox="0 0 24 24"><path fill="#ffd45e" d="M12 2.2l2.95 5.98 6.6.96-4.78 4.66 1.13 6.57L12 17.27l-5.9 3.1 1.13-6.57-4.78-4.66 6.6-.96z"/></svg></span>
+<span class="mc mc2"><svg viewBox="0 0 24 24"><path fill="#ffd45e" d="M12 2.2l2.95 5.98 6.6.96-4.78 4.66 1.13 6.57L12 17.27l-5.9 3.1 1.13-6.57-4.78-4.66 6.6-.96z"/></svg></span>
+<span class="mc mc3"></span>
+</div>
+<span class="label">Memory Match</span>
+</a>
+
 
     <a class="tile t-goose" href="/goose/">
       <div class="art">
