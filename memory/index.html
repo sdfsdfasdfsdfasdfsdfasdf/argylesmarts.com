@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Match</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;min-height:100vh}
+a{color:#7aa2ff}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #22243f}
+header h1{font-size:1.1rem;margin:0}
+.wrap{max-width:720px;margin:1.5rem auto 3rem;padding:0 1.25rem}
+.ctrl{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.diff{flex:1;min-width:90px;padding:.6rem;border-radius:10px;border:1px solid #22243f;background:#16182e;color:#a3a3b8;font-family:inherit;font-weight:600;font-size:.88rem;cursor:pointer}
+.diff.on{background:#3b6ef5;border-color:#3b6ef5;color:#fff}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem}
+.stat{background:#16182e;border:1px solid #22243f;border-radius:12px;padding:.6rem;text-align:center}
+.stat b{display:block;font-size:1.25rem}
+.stat span{font-size:.68rem;text-transform:uppercase;letter-spacing:1.2px;color:#6f7190;font-weight:700}
+.board{display:grid;gap:.6rem}
+.card{aspect-ratio:3/4;perspective:700px;cursor:pointer;background:none;border:none;padding:0}
+.inner{position:relative;width:100%;height:100%;transition:transform .4s cubic-bezier(.3,.7,.4,1);transform-style:preserve-3d}
+.card.up .inner,.card.done .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center}
+.back{background:linear-gradient(145deg,#1d2142,#16182e);border:1px solid #2a2e55}
+.back i{width:30%;aspect-ratio:1;border:2px solid #34396b;border-radius:6px;transform:rotate(45deg)}
+.card:hover .back{border-color:#3b6ef5}
+.front{background:#1b1e36;border:1px solid #2f3358;transform:rotateY(180deg)}
+.front svg{width:58%;height:58%}
+.card.done .front{border-color:#5ee6a8;box-shadow:0 0 0 2px rgba(94,230,168,.25) inset;animation:pop .35s}
+.card.done{cursor:default}
+@keyframes pop{50%{transform:rotateY(180deg) scale(1.06)}}
+.card.bad .front{border-color:#e6705e}
+.restart{margin-top:1rem;width:100%;padding:.8rem;border-radius:12px;border:1px solid #22243f;background:#16182e;color:#a3a3b8;font-family:inherit;font-weight:600;cursor:pointer}
+.over{position:fixed;inset:0;background:rgba(10,11,25,.82);display:grid;place-items:center;z-index:9}
+.over[hidden]{display:none}
+.box{background:#16182e;border:1px solid #2f3358;border-radius:18px;padding:2rem;text-align:center;max-width:320px;width:90%}
+.box h2{margin:0 0 .4rem;font-size:1.6rem}
+.box p{color:#a3a3b8;margin:.2rem 0}
+.box .best{color:#5ee6a8;font-weight:700;margin-top:.6rem}
+.box button{margin-top:1.2rem;padding:.8rem 1.4rem;border-radius:12px;border:none;background:#3b6ef5;color:#fff;font-family:inherit;font-weight:600;font-size:.95rem;cursor:pointer}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+</style>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true">
+<symbol id="s0" viewBox="0 0 24 24"><path fill="#ffd45e" d="M12 2.2l2.95 5.98 6.6.96-4.78 4.66 1.13 6.57L12 17.27l-5.9 3.1 1.13-6.57-4.78-4.66 6.6-.96z"/></symbol>
+<symbol id="s1" viewBox="0 0 24 24"><path fill="#ff6b81" d="M12 21s-8-4.8-8-10.4A4.4 4.4 0 0 1 12 8a4.4 4.4 0 0 1 8 2.6C20 16.2 12 21 12 21z"/></symbol>
+<symbol id="s2" viewBox="0 0 24 24"><path fill="#5ea8ff" d="M12 2.5s6.5 7 6.5 11.2a6.5 6.5 0 0 1-13 0C5.5 9.5 12 2.5 12 2.5z"/><path d="M9 14a3 3 0 0 0 2.4 3" stroke="#bfe0ff" stroke-width="1.4" fill="none" stroke-linecap="round"/></symbol>
+<symbol id="s3" viewBox="0 0 24 24"><path fill="#5ee6a8" d="M5 19C4 11 9 5 19.5 4.5 19.5 15 13 20 5 19z"/><path d="M6.5 17.5C10 13 13.5 10 17 8" stroke="#2f8a5f" stroke-width="1.4" fill="none" stroke-linecap="round"/></symbol>
+<symbol id="s4" viewBox="0 0 24 24"><path fill="#ff8a3d" d="M12 22c4 0 6.5-2.7 6.5-6 0-4.3-3.8-5.8-3.2-10.2-2.8 1.1-4.3 3.7-4.3 6 0 1-.8 1.6-1.5 1.1-1-.7-1.3-2.2-1.3-2.2C7 12.2 5.5 13.9 5.5 16c0 3.3 2.5 6 6.5 6z"/><path fill="#ffd45e" d="M12 21c1.9 0 3-1.3 3-2.9 0-2-1.8-2.7-1.5-4.8-1.4.6-2.6 1.9-2.6 3.3-.5-.3-.8-1-.8-1-.6.6-1.1 1.4-1.1 2.5 0 1.6 1.1 2.9 3 2.9z"/></symbol>
+<symbol id="s5" viewBox="0 0 24 24"><path fill="#c0a8ff" d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8z"/></symbol>
+<symbol id="s6" viewBox="0 0 24 24"><path fill="#ffe14a" d="M13.5 2L5 13.8h6l-2 8.2 9-12.2h-6z"/></symbol>
+<symbol id="s7" viewBox="0 0 24 24"><path fill="#4ad6c6" d="M6 4h12l3.5 5L12 21 2.5 9z"/><path fill="#a6f0e6" d="M6 4l3 5h6l3-5zM2.5 9H9l3 12z" opacity=".55"/></symbol>
+<symbol id="s8" viewBox="0 0 24 24"><path fill="#9ec9ff" d="M7 18.5a4.2 4.2 0 0 1-.5-8.4A5.5 5.5 0 0 1 17 9.5a4.5 4.5 0 0 1 .3 9z"/></symbol>
+<symbol id="s9" viewBox="0 0 24 24"><g fill="#ff9ecb"><circle cx="12" cy="6.5" r="3.4"/><circle cx="12" cy="17.5" r="3.4"/><circle cx="6.5" cy="12" r="3.4"/><circle cx="17.5" cy="12" r="3.4"/></g><circle cx="12" cy="12" r="2.8" fill="#ffd45e"/></symbol>
+<symbol id="s10" viewBox="0 0 24 24"><path fill="#b48cff" d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><path fill="#dcc8ff" d="M12 2.5v9.5l8.2-4.75z" opacity=".6"/></symbol>
+<symbol id="s11" viewBox="0 0 24 24"><ellipse cx="10.5" cy="16" rx="6.5" ry="4.3" fill="#f2f2f7"/><path d="M9 12C7.6 8.5 8.2 5.4 10.8 4.3c1.3-.5 2.5.2 2.8 1.3" stroke="#f2f2f7" stroke-width="2.8" fill="none" stroke-linecap="round"/><circle cx="13.6" cy="5.4" r="2.2" fill="#f2f2f7"/><path d="M15.6 5l2.6.8-2.6.9z" fill="#f0a93b"/><circle cx="14" cy="5" r=".55" fill="#232033"/></symbol>
+</svg>
+
+<header>
+<h1>Memory Match</h1>
+<a href="/">&larr; all games</a>
+</header>
+
+<div class="wrap">
+  <div class="ctrl">
+    <button class="diff" data-d="easy">Easy &middot; 6 pairs</button>
+    <button class="diff on" data-d="medium">Medium &middot; 8 pairs</button>
+    <button class="diff" data-d="hard">Hard &middot; 12 pairs</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="moves">0</b><span>Moves</span></div>
+    <div class="stat"><b id="pairs">0/8</b><span>Pairs</span></div>
+    <div class="stat"><b id="time">0:00</b><span>Time</span></div>
+    <div class="stat"><b id="best">&mdash;</b><span>Best</span></div>
+  </div>
+  <div class="board" id="board"></div>
+  <button class="restart" id="restart">New game</button>
+</div>
+
+<div class="over" id="over" hidden>
+  <div class="box">
+    <h2>All matched</h2>
+    <p id="sum"></p>
+    <p class="best" id="newbest" hidden>New best!</p>
+    <button id="again">Play again</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+var LEVELS = {easy:{pairs:6,cols:4}, medium:{pairs:8,cols:4}, hard:{pairs:12,cols:6}};
+var level = "medium";
+var first = null, lock = false, moves = 0, found = 0, t0 = 0, timer = null;
+var board = document.getElementById("board");
+var BKEY = "memory.best";
+
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function getBest(){ try{ return JSON.parse(localStorage.getItem(BKEY)) || {}; }catch(e){ return {}; } }
+function setBest(b){ try{ localStorage.setItem(BKEY, JSON.stringify(b)); }catch(e){} }
+function fmtT(s){ var m=Math.floor(s/60), r=s%60; return m + ":" + (r<10?"0":"") + r; }
+function secs(){ return t0 ? Math.floor((Date.now()-t0)/1000) : 0; }
+
+function paint(){
+  var L = LEVELS[level];
+  document.getElementById("moves").textContent = moves;
+  document.getElementById("pairs").textContent = found + "/" + L.pairs;
+  document.getElementById("time").textContent = fmtT(secs());
+  var b = getBest()[level];
+  document.getElementById("best").textContent = b ? b.moves + " mv" : "—";
+}
+
+function start(){
+  var L = LEVELS[level];
+  first = null; lock = false; moves = 0; found = 0; t0 = 0;
+  clearInterval(timer); timer = null;
+  document.getElementById("over").hidden = true;
+  var ids = shuffle([0,1,2,3,4,5,6,7,8,9,10,11]).slice(0, L.pairs);
+  var deck = shuffle(ids.concat(ids));
+  board.style.gridTemplateColumns = "repeat(" + L.cols + ",1fr)";
+  board.innerHTML = "";
+  deck.forEach(function(id){
+    var c = document.createElement("button");
+    c.className = "card";
+    c.setAttribute("aria-label", "card");
+    c.dataset.id = id;
+    c.innerHTML = '<div class="inner"><div class="face back"><i></i></div><div class="face front"><svg><use href="#s' + id + '"></use></svg></div></div>';
+    c.addEventListener("click", function(){ pick(c); });
+    board.appendChild(c);
+  });
+  paint();
+}
+
+function pick(c){
+  if(lock || c.classList.contains("up") || c.classList.contains("done")) return;
+  if(!t0){ t0 = Date.now(); timer = setInterval(paint, 500); }
+  c.classList.add("up");
+  if(!first){ first = c; return; }
+  moves++;
+  var a = first; first = null;
+  if(a.dataset.id === c.dataset.id){
+    a.classList.add("done"); c.classList.add("done");
+    found++;
+    paint();
+    if(found === LEVELS[level].pairs) setTimeout(win, 450);
+  } else {
+    lock = true;
+    a.classList.add("bad"); c.classList.add("bad");
+    paint();
+    setTimeout(function(){
+      a.classList.remove("up","bad"); c.classList.remove("up","bad");
+      lock = false;
+    }, 800);
+  }
+}
+
+function win(){
+  clearInterval(timer);
+  var s = secs();
+  var all = getBest(), prev = all[level], better = !prev || moves < prev.moves || (moves === prev.moves && s < prev.time);
+  if(better){ all[level] = {moves:moves, time:s}; setBest(all); }
+  document.getElementById("sum").textContent = moves + " moves in " + fmtT(s);
+  document.getElementById("newbest").hidden = !better;
+  document.getElementById("over").hidden = false;
+  paint();
+}
+
+var diffs = document.querySelectorAll(".diff");
+for(var i=0;i<diffs.length;i++){
+  diffs[i].addEventListener("click", function(){
+    for(var k=0;k<diffs.length;k++) diffs[k].classList.remove("on");
+    this.classList.add("on");
+    level = this.getAttribute("data-d");
+    start();
+  });
+}
+document.getElementById("restart").addEventListener("click", start);
+document.getElementById("again").addEventListener("click", start);
+start();
+})();
+</script>
+</body>
+</html>
