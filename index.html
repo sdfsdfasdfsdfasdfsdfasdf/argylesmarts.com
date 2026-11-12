@@ -19,7 +19,6 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .label{position:relative;z-index:2;font-size:clamp(1.4rem,3.2vw,1.95rem);font-weight:800;letter-spacing:-.03em;text-align:center;padding:0 1rem}
 .art{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .art svg{position:absolute}
-
 .t-goose{background:linear-gradient(135deg,#17301f 0%,#1d4430 55%,#2d6b47 100%)}
 .t-goose .label{color:#eafff2}
 .gs1{width:150px;left:-10px;bottom:-26px;opacity:.3}
@@ -27,7 +26,6 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .ripple{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.14)}
 .r1{width:54px;height:16px;left:22%;bottom:16%}
 .r2{width:34px;height:10px;right:26%;bottom:26%}
-
 .t-flash{background:linear-gradient(135deg,#2a1636 0%,#43215a 60%,#5d2d74 100%)}
 .t-flash .label{color:#fbeeff}
 .fcard{position:absolute;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14)}
@@ -35,7 +33,6 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .fc2{width:64px;height:44px;left:12%;top:50%;transform:translateY(-50%) rotate(5deg);background:rgba(255,255,255,.14)}
 .fc3{width:64px;height:44px;right:9%;top:50%;transform:translateY(-50%) rotate(8deg)}
 .helix{right:16%;top:50%;transform:translateY(-50%);width:54px;opacity:.5}
-
 .t-clicker{background:linear-gradient(135deg,#241d46 0%,#3b2a63 60%,#5c3580 100%)}
 .t-clicker .label{color:#fdf6e8}
 .ghost{position:absolute;font-weight:800;color:rgba(255,255,255,.075);letter-spacing:-.05em;line-height:.8}
@@ -45,26 +42,44 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .k1{width:26px;height:26px;left:16%;bottom:16%}
 .k2{width:16px;height:16px;left:27%;top:19%}
 .k3{width:11px;height:11px;right:22%;top:28%}
-
 .t-calc{background:linear-gradient(135deg,#141730 0%,#1d2142 100%)}
 .t-calc .label{color:#eaf0ff}
 .keys{position:absolute;right:1.1rem;top:50%;transform:translateY(-50%);display:grid;grid-template-columns:repeat(3,20px);gap:5px}
 .keys i{display:block;height:20px;border-radius:6px;background:#242848;border:1px solid #32376a}
 .keys i.hot{background:#3b6ef5;border-color:#3b6ef5}
 .keys2{left:1.1rem;right:auto}
-
 .t-locked{background:#141528;border-style:dashed;border-color:#2a2c4a;cursor:default}
 .t-locked:hover{transform:none;border-color:#2a2c4a}
 .t-locked .label{color:#4e5070;font-size:2.2rem;letter-spacing:.12em}
 .sub{position:absolute;bottom:.85rem;left:0;right:0;text-align:center;font-size:.72rem;color:#3f4160;letter-spacing:.06em;z-index:2}
-
 .foot{margin-top:2.5rem;text-align:center;color:#6f7190;font-size:.88rem;line-height:1.7}
 .foot a{color:#8ea6f0;text-decoration:none}
 .foot a:hover{text-decoration:underline}
+
+#gate{position:fixed;inset:0;z-index:50;background:#0f1020;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+#gate .box{width:100%;max-width:300px;text-align:center}
+#gate .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:1.6px;font-weight:700;color:#6f7190;margin-bottom:1.1rem}
+#code{width:100%;padding:1rem;border-radius:14px;border:1px solid #22243f;background:#16182e;color:#f2f2f7;font-family:inherit;font-size:1.6rem;font-weight:700;text-align:center;letter-spacing:.45em;text-indent:.45em;outline:none}
+#code:focus{border-color:#3b6ef5}
+#go{width:100%;margin-top:.6rem;padding:.85rem;border-radius:14px;border:1px solid #3b6ef5;background:#3b6ef5;color:#fff;font-family:inherit;font-size:.95rem;font-weight:600;cursor:pointer}
+#err{min-height:1.2em;margin-top:.7rem;font-size:.82rem;color:#e6705e}
+.shake{animation:sh .3s}
+@keyframes sh{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.locked body{overflow:hidden}
 </style>
 </head>
 <body>
-<div class="page">
+
+<div id="gate">
+  <div class="box">
+    <div class="lbl">Enter passcode</div>
+    <input id="code" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Passcode">
+    <button id="go">Enter</button>
+    <div id="err"></div>
+  </div>
+</div>
+
+<div class="page" id="site" hidden>
 
   <div class="head">
     <h1 class="mark">Argyle<b>Smarts</b></h1>
@@ -116,24 +131,65 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 <script>
 (function(){
   "use strict";
-  var on = false;
-  try{ on = localStorage.getItem("argyle.secret67") === "1"; }catch(e){}
-  if(!on) return;
-  var slot = document.getElementById("slot");
-  if(!slot) return;
-  var a = document.createElement("a");
-  a.className = "tile t-clicker";
-  a.href = "/67clicker/";
-  a.innerHTML =
-    '<div class="art">' +
-      '<span class="ghost g1">67</span>' +
-      '<span class="ghost g2">67</span>' +
-      '<span class="coin k1"></span>' +
-      '<span class="coin k2"></span>' +
-      '<span class="coin k3"></span>' +
-    '</div>' +
-    '<span class="label">67 Clicker</span>';
-  slot.parentNode.replaceChild(a, slot);
+  var PASS = "6741";
+  var PKEY = "argyle.pass";
+  var gate = document.getElementById("gate");
+  var site = document.getElementById("site");
+  var code = document.getElementById("code");
+  var err = document.getElementById("err");
+
+  function open(){
+    gate.remove();
+    site.hidden = false;
+    reveal();
+  }
+  function reveal(){
+    var on = false;
+    try{ on = localStorage.getItem("argyle.secret67") === "1"; }catch(e){}
+    if(!on) return;
+    var slot = document.getElementById("slot");
+    if(!slot) return;
+    var a = document.createElement("a");
+    a.className = "tile t-clicker";
+    a.href = "/67clicker/";
+    a.innerHTML =
+      '<div class="art">' +
+        '<span class="ghost g1">67</span>' +
+        '<span class="ghost g2">67</span>' +
+        '<span class="coin k1"></span>' +
+        '<span class="coin k2"></span>' +
+        '<span class="coin k3"></span>' +
+      '</div>' +
+      '<span class="label">67 Clicker</span>';
+    slot.parentNode.replaceChild(a, slot);
+  }
+  function tryCode(){
+    if(code.value.trim() === PASS){
+      try{ localStorage.setItem(PKEY, "1"); }catch(e){}
+      open();
+    } else {
+      err.textContent = "Not that one.";
+      gate.querySelector(".box").classList.remove("shake");
+      void gate.offsetWidth;
+      gate.querySelector(".box").classList.add("shake");
+      code.value = "";
+      code.focus();
+    }
+  }
+
+  var already = false;
+  try{ already = localStorage.getItem(PKEY) === "1"; }catch(e){}
+  if(already){ open(); return; }
+
+  document.getElementById("go").addEventListener("click", tryCode);
+  code.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); tryCode(); }
+  });
+  code.addEventListener("input", function(){
+    err.textContent = "";
+    if(code.value.length === 4) tryCode();
+  });
+  code.focus();
 })();
 </script>
 </body>
