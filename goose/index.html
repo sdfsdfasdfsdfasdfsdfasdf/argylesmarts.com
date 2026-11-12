@@ -13,14 +13,16 @@ header h1{font-size:1.1rem;margin:0;letter-spacing:-.01em}
 .wrap{display:grid;grid-template-columns:1fr 340px;gap:1.25rem;padding:1.25rem;max-width:1100px;margin:0 auto}
 @media(max-width:820px){.wrap{grid-template-columns:1fr}}
 .panel{background:#16182e;border:1px solid #22243f;border-radius:14px;padding:1.25rem}
-.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:52vh;position:relative;overflow:hidden}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:54vh;position:relative;overflow:hidden}
 #bank{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;margin:0;text-align:center}
-#bank small{display:block;font-size:.85rem;font-weight:500;color:#a3a3b8;letter-spacing:0}
-#rate{color:#a3a3b8;margin:.35rem 0 1.5rem;font-size:.95rem}
-#goose{font-size:7rem;cursor:pointer;user-select:none;line-height:1;padding:1rem 1.75rem;border-radius:20px;transition:transform .06s ease;background:none;border:none}
-#goose:active{transform:scale(.92) rotate(-4deg)}
-.hint{color:#6f7190;font-size:.85rem;margin-top:1.25rem}
-.float{position:absolute;pointer-events:none;font-weight:700;animation:rise 1s ease-out forwards;color:#5ee6a8}
+#bank small{display:block;font-size:.72rem;font-weight:700;color:#8a8ca8;letter-spacing:1.4px;text-transform:uppercase;margin-top:.1rem}
+#rate{color:#a3a3b8;margin:.35rem 0 1.25rem;font-size:.9rem}
+#goose{cursor:pointer;user-select:none;background:none;border:none;padding:.5rem;line-height:0;transition:transform .07s ease}
+#goose svg{width:190px;height:auto;display:block}
+#goose:active{transform:scale(.93) rotate(-3deg)}
+.hint{color:#6f7190;font-size:.85rem;margin-top:1.25rem;text-align:center}
+.pond{position:absolute;bottom:8%;width:240px;height:34px;border-radius:50%;background:rgba(122,162,255,.07);border:1px solid rgba(122,162,255,.12)}
+.float{position:absolute;pointer-events:none;font-weight:700;animation:rise 1s ease-out forwards;color:#5ee6a8;font-size:.95rem}
 @keyframes rise{to{transform:translateY(-70px);opacity:0}}
 .tabs{display:flex;gap:.4rem;margin-bottom:1rem}
 .tab{flex:1;padding:.5rem;border-radius:9px;border:1px solid #22243f;background:#101227;color:#a3a3b8;cursor:pointer;font-size:.85rem;font-family:inherit}
@@ -28,7 +30,8 @@ header h1{font-size:1.1rem;margin:0;letter-spacing:-.01em}
 .item{width:100%;text-align:left;display:flex;gap:.75rem;align-items:center;background:#101227;border:1px solid #22243f;border-radius:11px;padding:.7rem .8rem;margin-bottom:.5rem;cursor:pointer;color:inherit;font-family:inherit}
 .item:disabled{opacity:.45;cursor:not-allowed}
 .item:not(:disabled):hover{border-color:#3b6ef5}
-.ico{font-size:1.4rem;width:2rem;text-align:center;flex:none}
+.ico{width:2rem;height:2rem;flex:none;display:grid;place-items:center;border-radius:9px;background:#181b33}
+.ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .meta{flex:1;min-width:0}
 .name{font-weight:600;font-size:.92rem}
 .desc{color:#8a8ca8;font-size:.78rem;margin-top:.1rem}
@@ -38,23 +41,57 @@ header h1{font-size:1.1rem;margin:0;letter-spacing:-.01em}
 .locked .name,.locked .desc{filter:blur(3px)}
 footer{text-align:center;color:#6f7190;font-size:.8rem;padding:1.5rem}
 .reset{background:none;border:1px solid #33364f;color:#8a8ca8;border-radius:8px;padding:.35rem .7rem;cursor:pointer;font-size:.78rem;font-family:inherit}
-.g-gold{filter:sepia(1) saturate(4) hue-rotate(-18deg) brightness(1.15) drop-shadow(0 0 22px rgba(255,212,94,.6))}
+.g-gold{filter:sepia(1) saturate(4) hue-rotate(-18deg) brightness(1.1) drop-shadow(0 0 22px rgba(255,212,94,.6))}
 .g-angry{filter:hue-rotate(-50deg) saturate(3) drop-shadow(0 0 18px rgba(255,70,70,.65))}
 .g-neon{filter:saturate(2.5) hue-rotate(80deg) drop-shadow(0 0 12px #5ee6a8) drop-shadow(0 0 30px rgba(94,230,168,.6))}
 .g-mirror{transform:scaleX(-1)}
-.g-ghost{opacity:.45;filter:grayscale(1) brightness(1.6) drop-shadow(0 0 18px rgba(200,220,255,.55))}
-.g-rainbow{animation:hue 4s linear infinite;filter:saturate(2)}
-@keyframes hue{to{filter:saturate(2) hue-rotate(360deg)}}
+.g-mirror:active{transform:scaleX(-1) scale(.93)}
+.g-ghost{opacity:.45;filter:grayscale(1) brightness(1.5) drop-shadow(0 0 18px rgba(200,220,255,.55))}
+.g-rainbow{animation:hue 4s linear infinite}
+@keyframes hue{to{filter:hue-rotate(360deg) saturate(2)}}
 .g-glitch{animation:gl .35s steps(2) infinite}
-@keyframes gl{50%{transform:skewX(9deg) translateX(3px);filter:hue-rotate(140deg) saturate(3)}}
-.g-fire{filter:saturate(2.2) hue-rotate(-28deg) drop-shadow(0 -6px 16px #ff4d2d) drop-shadow(0 -18px 30px rgba(255,150,40,.7));animation:fl .6s ease-in-out infinite alternate}
-@keyframes fl{to{filter:saturate(2.6) hue-rotate(-28deg) drop-shadow(0 -9px 22px #ff4d2d) drop-shadow(0 -26px 40px rgba(255,180,60,.8))}}
+@keyframes gl{50%{transform:skewX(8deg) translateX(3px);filter:hue-rotate(140deg) saturate(3)}}
+.g-fire{filter:saturate(2) hue-rotate(-28deg) drop-shadow(0 -6px 16px #ff4d2d) drop-shadow(0 -18px 30px rgba(255,150,40,.7));animation:fl .6s ease-in-out infinite alternate}
+@keyframes fl{to{filter:saturate(2.5) hue-rotate(-28deg) drop-shadow(0 -9px 22px #ff4d2d) drop-shadow(0 -26px 40px rgba(255,180,60,.8))}}
 .g-cosmic{animation:cos 6s linear infinite}
-@keyframes cos{to{filter:hue-rotate(360deg) saturate(2.4) drop-shadow(0 0 24px rgba(150,110,255,.7))}}
-.gb1{font-size:8.5rem}.gb2{font-size:10rem}.gb3{font-size:12rem}
+@keyframes cos{to{filter:hue-rotate(360deg) saturate(2.2) drop-shadow(0 0 24px rgba(150,110,255,.7))}}
+.gb1 svg{width:230px}
+.gb2 svg{width:272px}
+.gb3 svg{width:316px}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
 </style>
 </head>
 <body>
+
+<svg class="sprite" aria-hidden="true">
+<symbol id="i-goose" viewBox="0 0 24 24"><path d="M4 16.5c0-2.8 2.4-4.8 5.4-4.8s5.4 2 5.4 4.8-2.4 4-5.4 4-5.4-1.2-5.4-4z"/><path d="M13.6 12.6c-1.2-3-.8-6 1.3-7.1"/><circle cx="17.2" cy="4.6" r="2.2"/><path d="M19.4 4.8 22 5.6l-2.6 1"/></symbol>
+<symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 10.4A6 6 0 0 1 6 13.4C6 9.4 12 3 12 3z"/></symbol>
+<symbol id="i-loaf" viewBox="0 0 24 24"><path d="M4 14c0-4 3.6-6 8-6s8 2 8 6v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8.5 11v7M12 10.2v8M15.5 11v7"/></symbol>
+<symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 3l5.5 8h-3.5l4 6H6l4-6H6.5z"/><path d="M12 17v4"/></symbol>
+<symbol id="i-tower" viewBox="0 0 24 24"><path d="M12 10v11M7 21h10"/><path d="M8.8 7.2a4.6 4.6 0 0 1 6.4 0M6.3 4.6a8.2 8.2 0 0 1 11.4 0"/><circle cx="12" cy="10" r="1.5"/></symbol>
+<symbol id="i-egg" viewBox="0 0 24 24"><path d="M12 3c3.4 0 6 4.4 6 8.4S15.3 20 12 20s-6-4.2-6-8.6S8.6 3 12 3z"/></symbol>
+<symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></symbol>
+<symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 12h2.5l2-5.5 3 11 3-13.5 3 11.5 2-3.5H22"/></symbol>
+<symbol id="i-horn" viewBox="0 0 24 24"><path d="M4 10v4h3l7 4V6l-7 4z"/><path d="M17.5 9.2a4 4 0 0 1 0 5.6"/></symbol>
+<symbol id="i-arc" viewBox="0 0 24 24"><path d="M5 20C5 12 8.6 6 14.6 4.6"/><circle cx="17" cy="4.4" r="2.2"/></symbol>
+<symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 10v4h3.4L12 18V6L7.4 10z"/><path d="M15.6 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></symbol>
+<symbol id="i-burst" viewBox="0 0 24 24"><path d="M12 2v5M12 17v5M2 12h5M17 12h5M5.2 5.2l3.4 3.4M15.4 15.4l3.4 3.4M18.8 5.2l-3.4 3.4M8.6 15.4l-3.4 3.4"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2L5 13.6h6l-2 8.4 9-12h-6z"/></symbol>
+<symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></symbol>
+<symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="5.5"/><path d="M9 9.4L7 2.5h10L15 9.4"/></symbol>
+<symbol id="i-flip" viewBox="0 0 24 24"><path d="M20 9H4l3.4-3.4M4 15h16l-3.4 3.4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.5 18.5h5M10.5 21.5h3"/><path d="M12 2.5a6 6 0 0 0-3.4 10.9v2.1h6.8v-2.1A6 6 0 0 0 12 2.5z"/></symbol>
+<symbol id="i-ghost" viewBox="0 0 24 24"><path d="M5 21V10a7 7 0 0 1 14 0v11l-2.3-1.9-2.3 1.9-2.4-1.9-2.4 1.9z"/><path d="M9.6 10.2h.01M14.4 10.2h.01"/></symbol>
+<symbol id="i-ruler" viewBox="0 0 24 24"><rect x="2.5" y="8.5" width="19" height="7" rx="1.6"/><path d="M7 8.5v3M11 8.5v4.2M15 8.5v3M19 8.5v4.2"/></symbol>
+<symbol id="i-arcs" viewBox="0 0 24 24"><path d="M3 18a9 9 0 0 1 18 0"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M10.8 18a1.2 1.2 0 0 1 2.4 0"/></symbol>
+<symbol id="i-bug" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7"/><rect x="13.5" y="13.5" width="7" height="7"/><path d="M13.5 7h7M3.5 17h7"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c3.9 0 6-2.6 6-5.6 0-4-3.5-5.4-3-9.4-2.6 1-4 3.4-4 5.6 0 .9-.7 1.4-1.3 1-.9-.6-1.2-2-1.2-2C7 12 6 13.5 6 15.4 6 18.4 8.1 21 12 21z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.5 6 .9-4.3 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.4 9.4l6-.9z"/></symbol>
+<symbol id="i-q" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.3"/><path d="M12 17h.01"/></symbol>
+</svg>
+
 <header>
 <h1>Goose Clicker</h1>
 <a href="/">&larr; all games</a>
@@ -64,7 +101,18 @@ footer{text-align:center;color:#6f7190;font-size:.8rem;padding:1.5rem}
   <div class="panel stage">
     <p id="bank">0<small>honks</small></p>
     <div id="rate">0 / sec</div>
-    <button id="goose">&#129727;</button>
+    <span class="pond"></span>
+    <button id="goose" aria-label="Honk">
+      <svg viewBox="0 0 200 200" fill="none">
+        <ellipse cx="104" cy="134" rx="64" ry="43" fill="#f7f6f2"/>
+        <path d="M94 104C81 72 84 46 103 38c19-8 36 5 36 22" stroke="#f7f6f2" stroke-width="27" stroke-linecap="round"/>
+        <circle cx="139" cy="58" r="19" fill="#f7f6f2"/>
+        <path d="M154 55l24 7-24 8z" fill="#f0a93b"/>
+        <circle cx="144" cy="52" r="3.4" fill="#232033"/>
+        <path d="M80 130c24-14 48-9 68-4-26 28-55 19-68 4z" fill="#e2e0d8"/>
+        <path d="M92 174l-5 15M120 176l4 15" stroke="#f0a93b" stroke-width="8" stroke-linecap="round"/>
+      </svg>
+    </button>
     <div class="hint">Click the goose. It would like you to know it is honking.</div>
   </div>
 
@@ -85,38 +133,38 @@ footer{text-align:center;color:#6f7190;font-size:.8rem;padding:1.5rem}
 "use strict";
 
 var GENS = [
-  {id:"g2", ico:"🪿", name:"A Second Goose", desc:"Honks in harmony.", cost:15, cps:0.5},
-  {id:"pond", ico:"💧", name:"Pond", desc:"Geese gather here uninvited.", cost:120, cps:3},
-  {id:"bread", ico:"🍞", name:"Bread Truck", desc:"Payment in carbohydrates.", cost:900, cps:14},
-  {id:"park", ico:"🏞️", name:"Occupied Park", desc:"The benches are theirs now.", cost:7500, cps:85},
-  {id:"tower", ico:"📡", name:"Honk Tower", desc:"Broadcasts the honk regionally.", cost:62000, cps:520},
-  {id:"hatch", ico:"🥚", name:"Hatchery", desc:"More geese. Always more geese.", cost:500000, cps:3400},
-  {id:"migrate", ico:"🧭", name:"Migration Route", desc:"Honks arrive seasonally, forever.", cost:4200000, cps:22000},
-  {id:"moon", ico:"🌕", name:"Goose Moon", desc:"It honks at the tides.", cost:36000000, cps:160000}
+  {id:"g2", ico:"i-goose", col:"#cfe8d8", name:"A Second Goose", desc:"Honks in harmony.", cost:15, cps:0.5},
+  {id:"pond", ico:"i-drop", col:"#6fd0f5", name:"Pond", desc:"Geese gather here uninvited.", cost:120, cps:3},
+  {id:"bread", ico:"i-loaf", col:"#e3b877", name:"Bread Truck", desc:"Payment in carbohydrates.", cost:900, cps:14},
+  {id:"park", ico:"i-tree", col:"#7ad98f", name:"Occupied Park", desc:"The benches are theirs now.", cost:7500, cps:85},
+  {id:"tower", ico:"i-tower", col:"#9ab6ff", name:"Honk Tower", desc:"Broadcasts the honk regionally.", cost:62000, cps:520},
+  {id:"hatch", ico:"i-egg", col:"#f2dcc0", name:"Hatchery", desc:"More geese. Always more geese.", cost:500000, cps:3400},
+  {id:"migrate", ico:"i-compass", col:"#9fd4c0", name:"Migration Route", desc:"Honks arrive seasonally, forever.", cost:4200000, cps:22000},
+  {id:"moon", ico:"i-moon", col:"#cdbcf0", name:"Goose Moon", desc:"It honks at the tides.", cost:36000000, cps:160000}
 ];
 
 var CLICKS = [
-  {id:"c1", ico:"🫁", name:"Deeper Lungs", desc:"Honks are worth double.", cost:100, mult:2},
-  {id:"c2", ico:"📣", name:"Bigger Beak", desc:"Double again.", cost:1200, mult:2},
-  {id:"c3", ico:"🦢", name:"Neck Extension", desc:"Triple this time.", cost:18000, mult:3},
-  {id:"c4", ico:"🔊", name:"Megahonk", desc:"Triple again.", cost:260000, mult:3},
-  {id:"c5", ico:"💥", name:"Sonic Honk", desc:"Five times. Windows rattle.", cost:4000000, mult:5},
-  {id:"c6", ico:"⚡", name:"Honk of the Ancients", desc:"Ten times. Nobody is happy.", cost:70000000, mult:10}
+  {id:"c1", ico:"i-wave", col:"#8fd4ff", name:"Deeper Lungs", desc:"Honks are worth double.", cost:100, mult:2},
+  {id:"c2", ico:"i-horn", col:"#9ab6ff", name:"Bigger Beak", desc:"Double again.", cost:1200, mult:2},
+  {id:"c3", ico:"i-arc", col:"#a8c0ff", name:"Neck Extension", desc:"Triple this time.", cost:18000, mult:3},
+  {id:"c4", ico:"i-speaker", col:"#8fb4ff", name:"Megahonk", desc:"Triple again.", cost:260000, mult:3},
+  {id:"c5", ico:"i-burst", col:"#ffd45e", name:"Sonic Honk", desc:"Five times. Windows rattle.", cost:4000000, mult:5},
+  {id:"c6", ico:"i-bolt", col:"#ffb04a", name:"Honk of the Ancients", desc:"Ten times. Nobody is happy.", cost:70000000, mult:10}
 ];
 
 var SKINS = [
-  {id:"plain", ico:"⚪", name:"Plain Goose", desc:"Standard issue.", cost:0, cls:""},
-  {id:"gold", ico:"🥇", name:"Gold Goose", desc:"Suspiciously valuable.", cost:500, cls:"g-gold"},
-  {id:"mirror", ico:"🪞", name:"Backwards Goose", desc:"Faces the other way. That is it.", cost:2500, cls:"g-mirror"},
-  {id:"angry", ico:"😠", name:"Angry Goose", desc:"It has seen your bread.", cost:9000, cls:"g-angry"},
-  {id:"gb1", ico:"🔍", name:"Bigger Goose", desc:"Just larger.", cost:30000, cls:"gb1"},
-  {id:"neon", ico:"💡", name:"Neon Goose", desc:"Glows. Still honks.", cost:90000, cls:"g-neon"},
-  {id:"ghost", ico:"👻", name:"Ghost Goose", desc:"Honks from beyond.", cost:400000, cls:"g-ghost"},
-  {id:"gb2", ico:"📏", name:"Huge Goose", desc:"Even larger.", cost:1500000, cls:"gb2"},
-  {id:"rainbow", ico:"🌈", name:"Rainbow Goose", desc:"All the colors, cycling.", cost:6000000, cls:"g-rainbow"},
-  {id:"glitch", ico:"👾", name:"Corrupted Goose", desc:"Something is wrong with it.", cost:25000000, cls:"g-glitch"},
-  {id:"fire", ico:"🔥", name:"Flaming Goose", desc:"On fire. Unbothered.", cost:120000000, cls:"g-fire"},
-  {id:"cosmic", ico:"✨", name:"Cosmic Goose", desc:"Transcendent waterfowl.", cost:900000000, cls:"g-cosmic"}
+  {id:"plain", ico:"i-dot", col:"#c7c7d4", name:"Plain Goose", desc:"Standard issue.", cost:0, cls:""},
+  {id:"gold", ico:"i-medal", col:"#ffd45e", name:"Gold Goose", desc:"Suspiciously valuable.", cost:500, cls:"g-gold"},
+  {id:"mirror", ico:"i-flip", col:"#9ab6ff", name:"Backwards Goose", desc:"Faces the other way. That is it.", cost:2500, cls:"g-mirror"},
+  {id:"angry", ico:"i-burst", col:"#ff7a6b", name:"Angry Goose", desc:"It has seen your bread.", cost:9000, cls:"g-angry"},
+  {id:"gb1", ico:"i-plus", col:"#9fb0d4", name:"Bigger Goose", desc:"Just larger.", cost:30000, cls:"gb1"},
+  {id:"neon", ico:"i-bulb", col:"#5ee6a8", name:"Neon Goose", desc:"Glows. Still honks.", cost:90000, cls:"g-neon"},
+  {id:"ghost", ico:"i-ghost", col:"#cfd8ff", name:"Ghost Goose", desc:"Honks from beyond.", cost:400000, cls:"g-ghost"},
+  {id:"gb2", ico:"i-ruler", col:"#9fb0d4", name:"Huge Goose", desc:"Even larger.", cost:1500000, cls:"gb2"},
+  {id:"rainbow", ico:"i-arcs", col:"#ff9ecb", name:"Rainbow Goose", desc:"All the colors, cycling.", cost:6000000, cls:"g-rainbow"},
+  {id:"glitch", ico:"i-bug", col:"#b98cff", name:"Corrupted Goose", desc:"Something is wrong with it.", cost:25000000, cls:"g-glitch"},
+  {id:"fire", ico:"i-flame", col:"#ffb04a", name:"Flaming Goose", desc:"On fire. Unbothered.", cost:120000000, cls:"g-fire"},
+  {id:"cosmic", ico:"i-star", col:"#c0a8ff", name:"Cosmic Goose", desc:"Transcendent waterfowl.", cost:900000000, cls:"g-cosmic"}
 ];
 
 var KEY = "goose.save.v1";
@@ -179,19 +227,24 @@ function paintTop(){
   elRate.textContent = fmt(perSec()) + " / sec  ·  " + fmt(perClick()) + " per honk";
 }
 
+function icon(id, col){
+  return '<span class="ico" style="color:' + col + '"><svg><use href="#' + id + '"></use></svg></span>';
+}
+
 function row(opts){
   var b = document.createElement("button");
   b.className = "item" + (opts.locked ? " locked" : "");
   b.disabled = !!opts.disabled;
   var right = opts.ownedText ? '<span class="owned">' + opts.ownedText + '</span>' : "";
   b.innerHTML =
-    '<span class="ico">' + opts.ico + '</span>' +
+    icon(opts.ico, opts.col) +
     '<span class="meta"><span class="name">' + opts.name + '</span>' +
     '<span class="desc">' + opts.desc + '</span></span>' +
     '<span class="cost' + (opts.afford ? "" : " no") + '">' + opts.costText + '</span>' + right;
   if(opts.onclick) b.addEventListener("click", opts.onclick);
   return b;
 }
+
 function paintShop(){
   elShop.innerHTML = "";
   var i;
@@ -202,7 +255,8 @@ function paintShop(){
         var c = genCost(g);
         var seen = owned > 0 || S.total >= g.cost * 0.4;
         elShop.appendChild(row({
-          ico: seen ? g.ico : "❓",
+          ico: seen ? g.ico : "i-q",
+          col: seen ? g.col : "#4e5070",
           name: seen ? g.name : "???",
           desc: seen ? g.desc + " (+" + fmt(g.cps) + "/sec)" : "Keep honking.",
           costText: seen ? fmt(c) : "—",
@@ -226,7 +280,8 @@ function paintShop(){
         var have = !!S.clicks[u.id];
         var seen = have || S.total >= u.cost * 0.3;
         elShop.appendChild(row({
-          ico: seen ? u.ico : "❓",
+          ico: seen ? u.ico : "i-q",
+          col: seen ? u.col : "#4e5070",
           name: seen ? u.name : "???",
           desc: seen ? u.desc : "Keep honking.",
           costText: have ? "owned" : (seen ? fmt(u.cost) : "—"),
@@ -249,6 +304,7 @@ function paintShop(){
         var on = S.skin === sk.id;
         elShop.appendChild(row({
           ico: sk.ico,
+          col: sk.col,
           name: sk.name,
           desc: sk.desc,
           costText: on ? "equipped" : (have ? "equip" : fmt(sk.cost)),
@@ -276,7 +332,7 @@ elG.addEventListener("click", function(ev){
   f.className = "float";
   f.textContent = "+" + fmt(gain) + " HONK";
   var r = stage.getBoundingClientRect();
-  f.style.left = (ev.clientX - r.left - 24) + "px";
+  f.style.left = (ev.clientX - r.left - 28) + "px";
   f.style.top = (ev.clientY - r.top - 18) + "px";
   stage.appendChild(f);
   setTimeout(function(){ f.remove(); }, 1000);
