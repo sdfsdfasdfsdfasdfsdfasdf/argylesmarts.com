@@ -1,7 +1,7 @@
 // MEGS meta: save data, coins and XP, Elo, quests, packs, the Ladder, cups and the simulated league. No DOM in here.
 (function(){
 "use strict";
-var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null;
+var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1};
 function ls(k, v){
   try { if (v === undefined) return window.localStorage.getItem(k); window.localStorage.setItem(k, v); }
   catch (e) { if (v === undefined) return mem[k] == null ? null : mem[k]; mem[k] = v; }
@@ -143,7 +143,7 @@ MG.roll = function(pk, force){
   var r = Math.random() * 100, a = 0, q = 4, i, pool;
   for (i = 0; i < 5; i++) { a += pk.odds[i]; if (r < a) { q = i; break; } }
   if (force && q < 3) q = 3;
-  pool = MG.ITEMS.filter(function(it){ return it.r === q && !it.need; });
+  pool = MG.ITEMS.filter(function(it){ return it.r === q && !it.need && !FREE[it.id]; });
   return pool[Math.floor(Math.random() * pool.length)];
 };
 // three items a pack; a duplicate pays coins back; the pity counter guarantees a Legendary or better
@@ -160,7 +160,7 @@ MG.openPack = function(id){
   MG.save(); return out;
 };
 MG.featured = function(){
-  var r = MG.rng(MG.day() * 7919 + 13), pool = MG.ITEMS.filter(function(it){ return !it.need && it.r <= 3; }), out = [], i;
+  var r = MG.rng(MG.day() * 7919 + 13), pool = MG.ITEMS.filter(function(it){ return !it.need && it.r <= 3 && !FREE[it.id]; }), out = [], i;
   for (i = 0; i < 4; i++) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
   return out;
 };
