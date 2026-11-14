@@ -94,10 +94,10 @@ add("fx", "f_bolt", "Thunder", 3, {k: "bolt"});
 add("fx", "f_gold", "Coin Shower", 3, {k: "gold"});
 add("fx", "f_hole", "Implosion", 4, {k: "hole"});
 // cages
-add("court", "street", "Blacktop", 0, {});
-add("court", "turf", "Turf Cage", 1, {});
-add("court", "neon", "Neon Night", 2, {});
-add("court", "sunset", "Rooftop Sunset", 3, {});
+add("court", "c_street", "Blacktop", 0, {});
+add("court", "c_turf", "Turf Cage", 1, {});
+add("court", "c_neon", "Neon Night", 2, {});
+add("court", "c_sunset", "Rooftop Sunset", 3, {});
 
 // titles are earned, never bought
 MG.TITLES = [
