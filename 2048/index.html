@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2048</title>
+<script>try{if(sessionStorage.getItem("argyle.pass")!=="1")location.replace("/")}catch(e){}</script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;min-height:100vh}
+a{color:#7aa2ff}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #22243f}
+header h1{font-size:1.1rem;margin:0}
+.wrap{max-width:520px;margin:1.25rem auto 3rem;padding:0 1.25rem}
+.top{display:flex;gap:.5rem;align-items:stretch;margin-bottom:.6rem}
+.stat{flex:1;background:#16182e;border:1px solid #22243f;border-radius:12px;padding:.5rem .6rem;text-align:center}
+.stat b{display:block;font-size:1.3rem}
+.stat span{font-size:.66rem;text-transform:uppercase;letter-spacing:1.2px;color:#6f7190;font-weight:700}
+.btn{padding:.6rem .95rem;border-radius:12px;border:1px solid #22243f;background:#16182e;color:#d7d7e4;font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.hot{background:#3b6ef5;border-color:#3b6ef5;color:#fff}
+.sizes{display:flex;gap:.4rem;margin-bottom:.8rem}
+.sz{flex:1;padding:.5rem;border-radius:10px;border:1px solid #22243f;background:#101227;color:#a3a3b8;font-family:inherit;font-weight:600;font-size:.85rem;cursor:pointer}
+.sz.on{background:#3b6ef5;border-color:#3b6ef5;color:#fff}
+.board{--n:4;--gap:10px;position:relative;container-type:inline-size;background:#16182e;border:1px solid #22243f;border-radius:16px;padding:var(--gap);aspect-ratio:1;touch-action:none;user-select:none}
+.cells{display:grid;gap:var(--gap);width:100%;height:100%;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr)}
+.cells i{background:#1d2040;border-radius:10px}
+.tiles{position:absolute;inset:var(--gap)}
+.tile{position:absolute;left:0;top:0;width:calc((100% - (var(--n) - 1) * var(--gap)) / var(--n));aspect-ratio:1;transform:translate(calc(var(--c) * (100% + var(--gap))),calc(var(--r) * (100% + var(--gap))));transition:transform .11s ease-in-out}
+.face{width:100%;height:100%;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#16182e;letter-spacing:-.02em;font-size:calc(100cqw / var(--n) * .42);box-shadow:inset 0 -4px 0 rgba(0,0,0,.14)}
+.face[data-d="3"]{font-size:calc(100cqw / var(--n) * .34)}
+.face[data-d="4"]{font-size:calc(100cqw / var(--n) * .27)}
+.face[data-d="5"]{font-size:calc(100cqw / var(--n) * .22)}
+.face[data-d="6"]{font-size:calc(100cqw / var(--n) * .18)}
+.face.new{animation:appear .16s ease-out}
+.face.pop{animation:pop .17s ease-out}
+@keyframes appear{from{transform:scale(0)}}
+@keyframes pop{50%{transform:scale(1.15)}}
+.face[data-v="2"]{background:linear-gradient(145deg,#7fe3ff,#33bdf2)}
+.face[data-v="4"]{background:linear-gradient(145deg,#7df5c2,#22d39a)}
+.face[data-v="8"]{background:linear-gradient(145deg,#ffe866,#ffc928)}
+.face[data-v="16"]{background:linear-gradient(145deg,#ffbf6b,#ff9130)}
+.face[data-v="32"]{background:linear-gradient(145deg,#ff9a8a,#ff5c5c)}
+.face[data-v="64"]{background:linear-gradient(145deg,#ff7ac3,#f0339c);color:#fff}
+.face[data-v="128"]{background:linear-gradient(145deg,#cf8cff,#a24bfa);color:#fff}
+.face[data-v="256"]{background:linear-gradient(145deg,#8d9bff,#5b63f5);color:#fff}
+.face[data-v="512"]{background:linear-gradient(145deg,#5ff0e6,#11c5c9)}
+.face[data-v="1024"]{background:linear-gradient(145deg,#c6f35a,#8fd914)}
+.face[data-v="2048"]{background:linear-gradient(145deg,#fff3a0,#ffb300);box-shadow:inset 0 -4px 0 rgba(0,0,0,.14),0 0 24px rgba(255,190,40,.75)}
+.face[data-v="max"]{background:linear-gradient(145deg,#ff5c8a,#8b5cf6 55%,#22d3ee);color:#fff;box-shadow:inset 0 -4px 0 rgba(0,0,0,.14),0 0 24px rgba(139,92,246,.7)}
+.over{position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,16,32,.72);border-radius:16px;z-index:5}
+.over[hidden]{display:none}
+.card{text-align:center;padding:1.2rem;max-width:88%}
+.card h2{margin:0 0 .35rem;font-size:1.7rem}
+.card p{margin:0 0 1rem;color:#c3c3d4;font-size:.95rem}
+.row{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.help{color:#6f7190;font-size:.82rem;text-align:center;margin:.9rem 0 0;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+<h1>2048</h1>
+<a href="/">&larr; all games</a>
+</header>
+
+<div class="wrap">
+  <div class="top">
+    <div class="stat"><b id="score">0</b><span>Score</span></div>
+    <div class="stat"><b id="best">0</b><span>Best</span></div>
+    <button class="btn" id="undo">Undo</button>
+    <button class="btn hot" id="new">New</button>
+  </div>
+  <div class="sizes" id="sizes">
+    <button class="sz" data-n="3">3 &times; 3</button>
+    <button class="sz" data-n="4">4 &times; 4</button>
+    <button class="sz" data-n="5">5 &times; 5</button>
+  </div>
+  <div class="board" id="board">
+    <div class="cells" id="cells"></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="over" id="over" hidden>
+      <div class="card">
+        <h2 id="ttl"></h2>
+        <p id="msg"></p>
+        <div class="row"><button class="btn hot" id="go"></button><button class="btn" id="alt"></button></div>
+      </div>
+    </div>
+  </div>
+  <p class="help" id="help"></p>
+</div>
+<script>
+(function(){
+"use strict";
+var KEY = "t2048";
+var VEC = {up:[-1,0], right:[0,1], down:[1,0], left:[0,-1]};
+var GOAL = {3:256, 4:2048, 5:4096};
+var N = 4, grid = [], nextId = 1, score = 0, won = false, over = false, undoState = null, pending = null, timer = 0;
+
+var elBoard = document.getElementById("board"), elCells = document.getElementById("cells"), elTiles = document.getElementById("tiles");
+var elScore = document.getElementById("score"), elBest = document.getElementById("best"), elOver = document.getElementById("over");
+var elTtl = document.getElementById("ttl"), elMsg = document.getElementById("msg"), elGo = document.getElementById("go");
+var elAlt = document.getElementById("alt"), elUndo = document.getElementById("undo"), elHelp = document.getElementById("help");
+
+function load(k, d){ try{ var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+function paint(t){
+  t.face.textContent = t.v;
+  t.face.setAttribute("data-v", t.v > 2048 ? "max" : t.v);
+  t.face.setAttribute("data-d", String(t.v).length);
+}
+function place(t){ t.el.style.setProperty("--r", t.r); t.el.style.setProperty("--c", t.c); }
+function mk(v, r, c, fresh){
+  var t = {id:nextId++, v:v, r:r, c:c, locked:false};
+  t.el = document.createElement("div"); t.el.className = "tile";
+  t.face = document.createElement("div"); t.face.className = fresh ? "face new" : "face";
+  t.el.appendChild(t.face); place(t); paint(t);
+  elTiles.appendChild(t.el); grid[r][c] = t;
+  return t;
+}
+function spawn(){
+  var free = [], r, c;
+  for(r=0;r<N;r++) for(c=0;c<N;c++) if(!grid[r][c]) free.push([r,c]);
+  if(!free.length) return;
+  var p = free[Math.floor(Math.random()*free.length)];
+  mk(Math.random() < 0.9 ? 2 : 4, p[0], p[1], true);
+}
+function snapshot(){
+  var g = [], r, c;
+  for(r=0;r<N;r++){ g.push([]); for(c=0;c<N;c++) g[r].push(grid[r][c] ? grid[r][c].v : 0); }
+  return {g:g, s:score, w:won};
+}
+function restore(st){
+  var r, c;
+  elTiles.innerHTML = ""; grid = [];
+  for(r=0;r<N;r++){ grid.push([]); for(c=0;c<N;c++) grid[r].push(null); }
+  for(r=0;r<N;r++) for(c=0;c<N;c++) if(st.g[r][c]) mk(st.g[r][c], r, c, false);
+  score = st.s || 0; won = !!st.w; over = false;
+}
+function canMove(){
+  var r, c, t;
+  for(r=0;r<N;r++) for(c=0;c<N;c++){
+    t = grid[r][c];
+    if(!t) return true;
+    if(c+1 < N && grid[r][c+1] && grid[r][c+1].v === t.v) return true;
+    if(r+1 < N && grid[r+1][c] && grid[r+1][c].v === t.v) return true;
+  }
+  return false;
+}
+function hud(){
+  var b = load(KEY + ".best." + N, 0);
+  if(score > b){ b = score; save(KEY + ".best." + N, b); }
+  elScore.textContent = score; elBest.textContent = b;
+  elUndo.disabled = !undoState;
+}
+function show(kind){
+  if(kind === "win"){
+    elTtl.textContent = GOAL[N] + "!";
+    elMsg.textContent = "You made the " + GOAL[N] + " tile. Keep going for a bigger one?";
+    elGo.textContent = "Keep going"; elAlt.textContent = "New game";
+  } else {
+    elTtl.textContent = "No moves left";
+    elMsg.textContent = "Final score " + score + ".";
+    elGo.textContent = "New game"; elAlt.textContent = "Undo last move";
+  }
+  elAlt.disabled = kind === "over" && !undoState;
+  elOver.setAttribute("data-kind", kind); elOver.hidden = false;
+}
+function settle(){
+  var r, c, top = 0;
+  for(r=0;r<N;r++) for(c=0;c<N;c++) if(grid[r][c] && grid[r][c].v > top) top = grid[r][c].v;
+  if(top >= GOAL[N] && !won){ won = true; save(KEY + ".state." + N, snapshot()); hud(); show("win"); return; }
+  save(KEY + ".state." + N, snapshot()); hud();
+  if(!canMove()){ over = true; show("over"); }
+}
+function flush(){
+  if(!pending) return;
+  clearTimeout(timer);
+  var p = pending; pending = null; p();
+}
+function move(name){
+  if(over) return;
+  flush();
+  var v = VEC[name], rows = [], cols = [], i, a, b, r, c, t, nr, nc, tr, tc, hit;
+  var moved = false, gain = 0, dead = [], grown = [], snap = snapshot();
+  for(i=0;i<N;i++){ rows.push(i); cols.push(i); }
+  if(v[0] === 1) rows.reverse();
+  if(v[1] === 1) cols.reverse();
+  for(a=0;a<N;a++) for(b=0;b<N;b++){
+    r = rows[a]; c = cols[b]; t = grid[r][c];
+    if(!t) continue;
+    nr = r; nc = c; hit = null;
+    while(true){
+      tr = nr + v[0]; tc = nc + v[1];
+      if(tr < 0 || tc < 0 || tr >= N || tc >= N) break;
+      if(grid[tr][tc]){ hit = grid[tr][tc]; break; }
+      nr = tr; nc = tc;
+    }
+    if(hit && hit.v === t.v && !hit.locked){
+      grid[r][c] = null; t.r = hit.r; t.c = hit.c; place(t);
+      hit.v *= 2; hit.locked = true; gain += hit.v;
+      dead.push(t); grown.push(hit); moved = true;
+    } else if(nr !== r || nc !== c){
+      grid[r][c] = null; grid[nr][nc] = t; t.r = nr; t.c = nc; place(t); moved = true;
+    }
+  }
+  if(!moved) return;
+  for(i=0;i<grown.length;i++) grown[i].locked = false;
+  undoState = snap; score += gain; hud();
+  pending = function(){
+    var k;
+    for(k=0;k<dead.length;k++) dead[k].el.remove();
+    for(k=0;k<grown.length;k++){
+      paint(grown[k]);
+      grown[k].face.classList.remove("new"); grown[k].face.classList.remove("pop");
+      void grown[k].face.offsetWidth;
+      grown[k].face.classList.add("pop");
+    }
+    spawn(); settle();
+  };
+  timer = setTimeout(flush, 115);
+}
+function newGame(){
+  flush();
+  var g = [], r, c;
+  for(r=0;r<N;r++){ g.push([]); for(c=0;c<N;c++) g[r].push(0); }
+  restore({g:g, s:0, w:false}); undoState = null;
+  spawn(); spawn();
+  elOver.hidden = true;
+  save(KEY + ".state." + N, snapshot()); hud();
+}
+function undo(){
+  flush();
+  if(!undoState) return;
+  restore(undoState); undoState = null;
+  elOver.hidden = true;
+  save(KEY + ".state." + N, snapshot()); hud();
+}
+function setSize(n){
+  flush();
+  N = n;
+  elBoard.style.setProperty("--n", N);
+  elBoard.style.setProperty("--gap", N === 5 ? "8px" : "10px");
+  var h = "", i, bs = document.querySelectorAll(".sz");
+  for(i=0;i<N*N;i++) h += "<i></i>";
+  elCells.innerHTML = h;
+  for(i=0;i<bs.length;i++) bs[i].classList.toggle("on", +bs[i].getAttribute("data-n") === N);
+  elHelp.textContent = "Arrow keys, WASD or swipe. Matching tiles merge when they touch. Reach " + GOAL[N] + " to win. U undoes one move.";
+  undoState = null; elOver.hidden = true;
+  save(KEY + ".size", N);
+  var st = load(KEY + ".state." + N, null), ok = st && st.g && st.g.length === N && st.g[0].length === N, any = false, r, c;
+  if(ok) for(r=0;r<N;r++) for(c=0;c<N;c++) if(st.g[r][c]) any = true;
+  if(ok && any){
+    restore(st); hud();
+    if(!canMove()){ over = true; show("over"); }
+  } else newGame();
+}
+
+var KEYS = {arrowup:"up", w:"up", arrowright:"right", d:"right", arrowdown:"down", s:"down", arrowleft:"left", a:"left"};
+document.addEventListener("keydown", function(e){
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  var k = (e.key || "").toLowerCase(), m = KEYS[k];
+  if(m){ e.preventDefault(); if(elOver.hidden) move(m); }
+  else if(k === "u" || k === "z"){ undo(); }
+});
+var sx = 0, sy = 0;
+elBoard.addEventListener("touchstart", function(e){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+elBoard.addEventListener("touchend", function(e){
+  var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  if(Math.max(Math.abs(dx), Math.abs(dy)) < 24 || !elOver.hidden) return;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+});
+elGo.addEventListener("click", function(){
+  if(elOver.getAttribute("data-kind") === "win"){
+    elOver.hidden = true;
+    if(!canMove()){ over = true; show("over"); }
+  } else newGame();
+});
+elAlt.addEventListener("click", function(){
+  if(elOver.getAttribute("data-kind") === "win") newGame(); else undo();
+});
+elUndo.addEventListener("click", function(){ this.blur(); undo(); });
+document.getElementById("new").addEventListener("click", function(){ this.blur(); newGame(); });
+var szs = document.querySelectorAll(".sz");
+for(var q=0;q<szs.length;q++) szs[q].addEventListener("click", function(){ this.blur(); setSize(+this.getAttribute("data-n")); });
+
+var first = load(KEY + ".size", 4);
+setSize(first === 3 || first === 5 ? first : 4);
+})();
+</script>
+</body>
+</html>
