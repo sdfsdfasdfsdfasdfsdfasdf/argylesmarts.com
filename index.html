@@ -37,13 +37,13 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 .ripple{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.14)}
 .r1{width:54px;height:16px;left:22%;bottom:16%}
 .r2{width:34px;height:10px;right:26%;bottom:26%}
-.t-flash{background:linear-gradient(135deg,#2a1636 0%,#43215a 60%,#5d2d74 100%)}
-.t-flash .label{color:#fbeeff}
-.fcard{position:absolute;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14)}
-.fc1{width:64px;height:44px;left:7%;top:50%;transform:translateY(-50%) rotate(-9deg)}
-.fc2{width:64px;height:44px;left:12%;top:50%;transform:translateY(-50%) rotate(5deg);background:rgba(255,255,255,.14)}
-.fc3{width:64px;height:44px;right:9%;top:50%;transform:translateY(-50%) rotate(8deg)}
-.helix{right:16%;top:50%;transform:translateY(-50%);width:54px;opacity:.5}
+.t-2048{background:linear-gradient(135deg,#33200f 0%,#553212 60%,#7a4712 100%)}
+.t-2048 .label{color:#fff3d6}
+.nt{position:absolute;width:44px;height:44px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:1.15rem;color:#16182e;box-shadow:0 3px 0 rgba(0,0,0,.28)}
+.n1{left:6%;top:13%;background:linear-gradient(160deg,#8be9ff,#38bdf8);transform:rotate(-8deg)}
+.n2{left:15%;bottom:11%;background:linear-gradient(160deg,#86f0c0,#34d399);transform:rotate(6deg)}
+.n3{right:14%;top:11%;background:linear-gradient(160deg,#ffe066,#fbbf24);transform:rotate(7deg)}
+.n4{right:5%;bottom:13%;background:linear-gradient(160deg,#d08cff,#a855f7);color:#fff;font-size:.95rem;transform:rotate(-6deg)}
 .t-clicker{background:linear-gradient(135deg,#241d46 0%,#3b2a63 60%,#5c3580 100%)}
 .t-clicker .label{color:#fdf6e8}
 .ghost{position:absolute;font-weight:800;color:rgba(255,255,255,.075);letter-spacing:-.05em;line-height:.8}
@@ -112,6 +112,10 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 </div>
 <span class="label">Snake</span>
 </a>
+<a class="tile t-2048" href="/2048/">
+<div class="art"><span class="nt n1">2</span><span class="nt n2">4</span><span class="nt n3">8</span><span class="nt n4">128</span></div>
+<span class="label">2048</span>
+</a>
 
 
     <a class="tile t-goose" href="/goose/">
@@ -122,16 +126,6 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
         <span class="ripple r2"></span>
       </div>
       <span class="label">Goose Clicker</span>
-    </a>
-
-    <a class="tile t-flash" href="/flashcards/">
-      <div class="art">
-        <span class="fcard fc1"></span>
-        <span class="fcard fc2"></span>
-        <span class="fcard fc3"></span>
-        <svg class="helix" viewBox="0 0 60 120" fill="none" stroke="#f0d4ff" stroke-width="4" stroke-linecap="round"><path d="M16 8c28 18 28 38 0 56s-28 38 0 48"/><path d="M44 8C16 26 16 46 44 64s28 38 0 48"/><path d="M20 24h20M18 44h24M18 76h24M20 96h20" stroke-width="3"/></svg>
-      </div>
-      <span class="label">Biology Flashcards</span>
     </a>
 
     <a class="tile t-calc" href="/calculator/">
