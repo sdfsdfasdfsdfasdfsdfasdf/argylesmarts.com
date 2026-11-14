@@ -33,14 +33,15 @@ function top(){
   var s = S();
   $("top").innerHTML = '<button class="me" data-a="go" data-v="profile"><canvas id="mep" width="96" height="124"></canvas><span><span class="nm">' + esc(s.name || "You") + '</span><span class="tt">' + esc(s.title) + ' &middot; Level ' + s.lvl + '</span><span class="xp"><i style="width:' + Math.round(s.xp / MG.xpNeed(s.lvl) * 100) + '%"></i></span></span></button>' +
     '<span class="pill">' + tier(s.elo) + '<b>' + s.elo + '</b></span><span class="pill">' + coin(s.coins) + '</span>';
-  R.portrait($("mep"), MG.me(), 1.3);
+  R.portrait($("mep"), MG.me(), 1.3, {bust: 1});
 }
 function go(v, a){
+  var same = v === cur;
   cur = v; arg = a == null ? null : a; tick = []; REG = [];
   $("view").innerHTML = VIEW[v](arg); top();
   [].forEach.call(document.querySelectorAll("#nav [data-v]"), function(b){ b.classList.toggle("on", b.getAttribute("data-v") === (NAVOF[v] || v)); });
   if (AFTER[v]) AFTER[v](arg);
-  paint(); window.scrollTo(0, 0);
+  paint(); if (!same) window.scrollTo(0, 0);
 }
 function loop(now){
   var t = (now - T0) / 1000, i;
@@ -155,7 +156,7 @@ ACT.rival = function(d){ var i = +d.i, t = i > 14 ? 5 : 3; start(MG.rival(i), {n
 // ---- cups ----
 function mrow(f, a, b, sa, sb){
   var d = sa != null;
-  return '<div class="m"><div class="' + (f[a].me ? "me " : "") + (d && sa > sb ? "w" : "") + '"><span>' + esc(MG.cupName(f, a)) + '</span><b>' + (d ? sa : "") + '</b></div><div class="' + (f[b].me ? "me " : "") + (d && sb > sa ? "w" : "") + '"><span>' + esc(MG.cupName(f, b)) + '</span><b>' + (d ? sb : "") + '</b></div></div>';
+  return '<div class="m"><div class="' + (f[a].me ? "mine " : "") + (d && sa > sb ? "w" : "") + '"><span>' + esc(MG.cupName(f, a)) + '</span><b>' + (d ? sa : "") + '</b></div><div class="' + (f[b].me ? "mine " : "") + (d && sb > sa ? "w" : "") + '"><span>' + esc(MG.cupName(f, b)) + '</span><b>' + (d ? sb : "") + '</b></div></div>';
 }
 function bracket(f, log, alive, round){
   var h = '<div class="br">', names = ["Quarter-finals", "Semi-finals", "Final"], r, i;
@@ -325,7 +326,7 @@ VIEW.ranks = function(key){
   for (i = 0; i < b.length; i++) {
     x = b[i];
     if (i >= 25 && Math.abs(i - me) > 2) { if (i === 25 || i === me + 3) rows += '<tr class="gap"><td colspan="4">&middot; &middot; &middot;</td></tr>'; continue; }
-    rows += '<tr class="' + (x.me ? "me" : "") + '"' + (x.me ? "" : ' data-a="peek" data-id="' + x.p.id + '"') + '><td>' + (i + 1) + '</td><td><b>' + (x.clan ? '<i class="clan">' + x.clan + '</i>' : "") + esc(x.n) + '</b><small>' + esc(x.title) + '</small></td><td>' + tier(x.elo) + '</td><td class="num">' + x[k] + '</td></tr>';
+    rows += '<tr class="' + (x.me ? "mine" : "") + '"' + (x.me ? "" : ' data-a="peek" data-id="' + x.p.id + '"') + '><td>' + (i + 1) + '</td><td><b>' + (x.clan ? '<i class="clan">' + x.clan + '</i>' : "") + esc(x.n) + '</b><small>' + esc(x.title) + '</small></td><td>' + tier(x.elo) + '</td><td class="num">' + x[k] + '</td></tr>';
   }
   return chips(tabs, k, "rtab") + '<p class="mute">This is a simulated league. The other 160 players are CPU rivals, and their ratings drift a little every day. Win ranked matches to climb.</p><table class="tbl">' + rows + '</table>';
 };
