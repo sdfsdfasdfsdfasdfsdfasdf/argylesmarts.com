@@ -19,7 +19,7 @@ header h1{font-size:1.1rem;margin:0}
 .bar span:last-child{justify-content:flex-end}
 #pause{border:none;background:rgba(0,0,0,.22);color:#fff;font-family:inherit;font-weight:800;font-size:.8rem;border-radius:8px;padding:.35rem .7rem;cursor:pointer;letter-spacing:.1em}
 canvas{display:block;width:100%;height:auto;border-radius:0 0 14px 14px;background:#aad751;touch-action:none}
-.over{position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,16,32,.5);border-radius:14px}
+.over{position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,16,32,.32);border-radius:14px}
 .over[hidden]{display:none}
 .card{background:#16182e;border:1px solid #2f3358;border-radius:18px;padding:1.5rem 1.8rem;text-align:center;min-width:240px;max-width:86%}
 .card h2{margin:0 0 .3rem;font-size:1.6rem}
@@ -339,7 +339,7 @@ function fruit(f, now){
   ctx.beginPath(); ctx.ellipse(c.x, c.y+cell*0.37, r*0.8, r*0.24, 0, 0, TAU); ctx.fill();
   if(f.pair){
     ctx.save();
-    ctx.strokeStyle = "hsl(" + (f.pair*97 % 360) + ",95%,60%)"; ctx.lineWidth = Math.max(2, cell*0.08);
+    ctx.strokeStyle = "hsl(" + (f.pair*137 % 360) + ",95%,60%)"; ctx.lineWidth = Math.max(2, cell*0.08);
     ctx.setLineDash([cell*0.22, cell*0.16]); ctx.lineDashOffset = -now/45;
     ctx.beginPath(); ctx.arc(c.x, c.y, cell*0.46, 0, TAU); ctx.stroke();
     ctx.restore();
@@ -415,7 +415,7 @@ document.addEventListener("keydown", function(e){
   var k = (e.key || "").toLowerCase(), m = MAP[k];
   if(m){
     e.preventDefault();
-    if(!alive){ if(performance.now() - deadAt > 600){ start(); turn(m[0], m[1]); } return; }
+    if(!alive){ if(performance.now() - deadAt > 1200){ start(); turn(m[0], m[1]); } return; }
     if(paused) setPaused(false);
     turn(m[0], m[1]);
   } else if(k === " " || k === "p"){
