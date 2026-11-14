@@ -187,6 +187,7 @@ function stop(){
   $("stage").hidden = true; $("pause").hidden = true; document.body.classList.remove("playing");
 }
 MG.stop = stop;
+MG.now = function(){ return run; };
 function onEvent(r, e){
   var m = r.m, k = e.k, st = MG.S.set;
   r.view.event(m, e);
