@@ -12,6 +12,9 @@
 .mc1{left:7%;top:50%;transform:translateY(-50%) rotate(-10deg)}
 .mc2{left:17%;top:50%;transform:translateY(-50%) rotate(6deg)}
 .mc3{right:9%;top:50%;transform:translateY(-50%) rotate(9deg);background:linear-gradient(145deg,#1d2142,#16182e)}
+.t-snake{background:repeating-conic-gradient(#aad751 0% 25%,#a2d149 0% 50%) 0 0/46px 46px;border-color:#7fae3a}
+.t-snake .label{color:#1f3d12}
+.t-snake .art svg{inset:0;width:100%;height:100%}
 
 *{box-sizing:border-box}
 body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;padding:3rem 1.25rem 4rem}
@@ -103,6 +106,12 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
 </div>
 <span class="label">Memory Match</span>
 </a>
+<a class="tile t-snake" href="/snake/">
+<div class="art">
+<svg viewBox="0 0 306 115" preserveAspectRatio="xMidYMid slice" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M-14 86H56V38H92" stroke="#2a55d4" stroke-width="23"/><path d="M-14 86H56V38H92" stroke="#4e7cf6" stroke-width="16"/><circle cx="94" cy="31" r="4.6" fill="#fff"/><circle cx="94" cy="45" r="4.6" fill="#fff"/><circle cx="95.6" cy="31" r="2.3" fill="#16182e"/><circle cx="95.6" cy="45" r="2.3" fill="#16182e"/><ellipse cx="252" cy="78" rx="11" ry="3.2" fill="#000" opacity=".13"/><circle cx="252" cy="60" r="14" fill="#e8312f"/><circle cx="247" cy="55" r="3.4" fill="#fff" opacity=".5"/><path d="M252 48c0-4 2-6 4-7" stroke="#5b3a1a" stroke-width="3"/><ellipse cx="260" cy="43" rx="5.5" ry="3" fill="#3fb950" transform="rotate(-25 260 43)"/></svg>
+</div>
+<span class="label">Snake</span>
+</a>
 
 
     <a class="tile t-goose" href="/goose/">
@@ -182,7 +191,7 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
   }
   function tryCode(){
     if(code.value.trim() === PASS){
-      try{ localStorage.setItem(PKEY, "1"); }catch(e){}
+      try{ sessionStorage.setItem(PKEY, "1"); }catch(e){}
       open();
     } else {
       err.textContent = "Not that one.";
@@ -195,7 +204,8 @@ body{margin:0;background:#0f1020;color:#f2f2f7;font-family:system-ui,sans-serif;
   }
 
   var already = false;
-  try{ already = localStorage.getItem(PKEY) === "1"; }catch(e){}
+  try{ localStorage.removeItem(PKEY); }catch(e){}
+  try{ already = sessionStorage.getItem(PKEY) === "1"; }catch(e){}
   if(already){ open(); return; }
 
   document.getElementById("go").addEventListener("click", tryCode);
