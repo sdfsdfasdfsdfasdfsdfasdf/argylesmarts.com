@@ -121,19 +121,19 @@ function drawBall(g, x, y, r, it, pts, t, sn, cs){
 // ---- footballer: a jointed figure that can be seen from any side ----
 function pose0(){ return {lean: 0.06, roll: 0, aL: 0, bL: 0.12, sL: 0.07, aR: 0, bR: 0.12, sR: 0.07, uL: 0.08, eL: 0.3, oL: 0.16, uR: -0.08, eR: 0.3, oR: 0.16, nod: 0, z: 0}; }
 function legJ(side, a, b, s){
-  var cs = Math.cos(s), sn = Math.sin(s), a2 = a - b, kf = Math.sin(a) * cs * 0.44, ku = -Math.cos(a) * cs * 0.44;
-  return [kf, side * (0.1 + sn * 0.44), ku, kf + Math.sin(a2) * cs * 0.46, side * (0.1 + sn * 0.9), ku - Math.cos(a2) * cs * 0.46];
+  var cs = Math.cos(s), sn = Math.sin(s), a2 = a - b, kf = Math.sin(a) * cs * 0.4, ku = -Math.cos(a) * cs * 0.4;
+  return [kf, side * (0.115 + sn * 0.4), ku, kf + Math.sin(a2) * cs * 0.42, side * (0.115 + sn * 0.82), ku - Math.cos(a2) * cs * 0.42];
 }
 function armJ(side, u, e, o){
   var cs = Math.cos(o), sn = Math.sin(o), u2 = u + e, ef = Math.sin(u) * cs * 0.26, eu = -Math.cos(u) * cs * 0.26;
-  return [ef, side * (0.2 + sn * 0.26), eu, ef + Math.sin(u2) * cs * 0.25, side * (0.2 + sn * 0.5), eu - Math.cos(u2) * cs * 0.25];
+  return [ef, side * (0.25 + sn * 0.26), eu, ef + Math.sin(u2) * cs * 0.25, side * (0.25 + sn * 0.5), eu - Math.cos(u2) * cs * 0.25];
 }
 function limb(g, a, b, w, col){ g.lineWidth = w + 2.2; g.strokeStyle = OUT; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); g.lineWidth = w; g.strokeStyle = col; g.stroke(); }
 function blob(g, x, y, rx, ry, col){ g.fillStyle = OUT; g.beginPath(); g.ellipse(x, y, rx + 1.2, ry + 1.2, 0, 0, TAU); g.fill(); g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); g.fill(); }
 function cap(g, x, y, r, c){ var e = lerp(0.6, -0.22, (c + 1) / 2); g.beginPath(); g.arc(x, y, r * 1.04, PI - e, TAU + e); g.closePath(); g.fill(); }
 function head(g, H, N, s, c, sg, q, sd){
-  var r = 0.168 * s, x = H.x, y = H.y, hc = MG.HAIR[sd.hc] || "#1b1b1f", st = sd.hair, sw = Math.sqrt(Math.max(0, 1 - c * c)) * (sg < 0 ? -1 : 1), bx = x - sw * r * 0.16, ex, w, i;
-  limb(g, N, H, 0.08 * s, sd.skin);
+  var r = 0.205 * s, x = H.x, y = H.y, hc = MG.HAIR[sd.hc] || "#1b1b1f", st = sd.hair, sw = Math.sqrt(Math.max(0, 1 - c * c)) * (sg < 0 ? -1 : 1), bx = x - sw * r * 0.16, ex, w, i;
+  limb(g, N, H, 0.1 * s, sd.skin);
   if (c > 0 && (st === 1 || st === 2)) blob(g, bx, y + (st === 1 ? -r * 0.25 : r * 0.42), r * (st === 1 ? 1.3 : 1.14), r * (st === 1 ? 1.3 : 1.5), hc);
   blob(g, x, y, r, r, sd.skin);
   if (c > -0.3) {
@@ -165,18 +165,18 @@ function figure(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
     hip = Math.max(0.16, -Math.min(Lg[0][5], Lg[1][5])) + 0.05 + q.z + z0, cl = Math.cos(q.roll), tf = Math.sin(q.lean) * cl, tr = Math.sin(q.roll), tu = Math.cos(q.lean) * cl,
     nf = tf * 0.5, nr = tr * 0.5, nu = hip + tu * 0.5, sh = nu - 0.04, col = sd.col, skin = sd.skin, J = [], parts, i, k, j, s, a, b, HC, NK, HD;
   function P(f, r, u){ return prj(x + fx * f + rx * r, y + fy * f + ry * r, u); }
-  HC = P(0, 0, hip); NK = P(nf, nr, nu); HD = P(nf + tf * 0.21 + 0.05 * q.nod, nr + tr * 0.21, nu + tu * 0.21 - 0.03 * q.nod); s = HC.s;
+  HC = P(0, 0, hip); NK = P(nf, nr, nu); HD = P(nf + tf * 0.25 + 0.05 * q.nod, nr + tr * 0.25, nu + tu * 0.25 - 0.03 * q.nod); s = HC.s;
   for (i = 0; i < 2; i++) {
     k = i ? 1 : -1; a = Lg[i]; b = A[i];
-    J.push({h: P(0, k * 0.1, hip), k: P(a[0], a[1], hip + a[2]), f: P(a[3], a[4], hip + a[5]), t: P(a[3] + 0.17, a[4], hip + a[5] + 0.015),
-      s: P(nf, nr + k * 0.2, sh), e: P(nf + b[0], nr + b[1], sh + b[2]), w: P(nf + b[3], nr + b[4], sh + b[5])});
+    J.push({h: P(0, k * 0.115, hip), k: P(a[0], a[1], hip + a[2]), f: P(a[3], a[4], hip + a[5]), t: P(a[3] + 0.19, a[4], hip + a[5] + 0.015),
+      s: P(nf, nr + k * 0.25, sh), e: P(nf + b[0], nr + b[1], sh + b[2]), w: P(nf + b[3], nr + b[4], sh + b[5])});
   }
   parts = [[J[0].k.d, 0], [J[1].k.d, 1], [J[0].e.d, 2], [J[1].e.d, 3], [(HC.d + NK.d) / 2, 4], [HD.d - 0.03, 5]].sort(function(m, n){ return n[0] - m[0]; });
   for (i = 0; i < 6; i++) {
     k = parts[i][1];
-    if (k < 2) { j = J[k]; limb(g, j.h, j.k, 0.13 * s, skin); limb(g, j.k, j.f, 0.1 * s, col[1]); limb(g, j.f, j.t, 0.1 * s, sd.boot); limb(g, j.h, mid(j.h, j.k, 0.6), 0.155 * s, col[2]); }
-    else if (k < 4) { j = J[k - 2]; limb(g, j.s, j.e, 0.085 * s, skin); limb(g, j.e, j.w, 0.075 * s, skin); limb(g, j.s, mid(j.s, j.e, 0.55), 0.105 * s, col[0]); }
-    else if (k === 4) { limb(g, J[0].h, J[1].h, 0.17 * s, col[2]); torso(g, NK, P(0, 0, hip - 0.04), s * lerp(0.135, 0.215, ac), s * lerp(0.12, 0.17, ac), sd, c < 0, t); }
+    if (k < 2) { j = J[k]; limb(g, j.h, j.k, 0.16 * s, skin); limb(g, j.k, j.f, 0.125 * s, col[1]); limb(g, j.f, j.t, 0.13 * s, sd.boot); limb(g, j.h, mid(j.h, j.k, 0.64), 0.2 * s, col[2]); }
+    else if (k < 4) { j = J[k - 2]; limb(g, j.s, j.e, 0.105 * s, skin); limb(g, j.e, j.w, 0.09 * s, skin); limb(g, j.s, mid(j.s, j.e, 0.55), 0.13 * s, col[0]); }
+    else if (k === 4) { limb(g, J[0].h, J[1].h, 0.21 * s, col[2]); torso(g, NK, P(0, 0, hip - 0.05), s * lerp(0.17, 0.265, ac), s * lerp(0.15, 0.215, ac), sd, c < 0, t); }
     else head(g, HD, NK, s, c, sg, q, sd);
   }
 }
@@ -218,7 +218,7 @@ function side(s){
 function View(cv){
   var v = this;
   v.cv = cv; v.g = cv.getContext("2d"); v.w = 960; v.h = 540; v.dpr = 1; v.t = 0; v.tick = 0;
-  v.cam = {x: 0, y: 22, z: 6.4, f: 640, cx: 480, cy: 270, sn: Math.sin(0.33), cs: Math.cos(0.33), sx: 0, sy: 0};
+  v.cam = {x: 0, y: 20, z: 7.4, f: 800, cx: 480, cy: 270, sn: Math.sin(0.5), cs: Math.cos(0.5), sx: 0, sy: 0, back: 9.2, k: 0.833};
   // options the settings screen can change
   v.o = {shake: 1, flash: 1, fx: 1, names: 1, rings: 1, meter: 1, aim: 1, pops: 1, zoom: 0, pan: 1, cb: 0, net: 1, trail: 1, aura: 1};
   v.parts = []; v.pops = []; v.nets = []; v.later = []; v.bolts = []; v.hist = []; v.pts = ico(); v.shake = 0; v.flash = 0; v.bg = null;
@@ -233,19 +233,32 @@ V.resize = function(){
 };
 V.set = function(o){
   var v = this;
-  v.th = COURTS[o.court] || COURTS.street; v.ball = MG.ITEM[o.ball] || MG.ITEM.classic; v.sides = o.sides.map(function(s){ return side(s); }); v.bg = null;
-  v.parts.length = v.pops.length = v.nets.length = v.later.length = v.bolts.length = v.hist.length = 0; v.shake = v.flash = 0; v.cam.x = 0; v.cam.y = 22;
+  v.th = COURTS[String(o.court).replace("c_", "")] || COURTS.street; v.ball = MG.ITEM[o.ball] || MG.ITEM.classic; v.sides = o.sides.map(function(s){ return side(s); }); v.bg = null;
+  v.parts.length = v.pops.length = v.nets.length = v.later.length = v.bolts.length = v.hist.length = 0; v.shake = v.flash = 0; v.cam.x = 0; v.cam.y = 19.5;
 };
 // world (x across, y away from the goal, z up) to screen; s is pixels per metre there, d the depth
 V.pr = function(x, y, z){
   var c = this.cam, ry = y - c.y, rz = z - c.z, d = -ry * c.cs - rz * c.sn, s = c.f / d;
   return {x: c.cx + c.sx + (x - c.x) * s, y: c.cy + c.sy - (rz * c.cs - ry * c.sn) * s, s: s, d: d};
 };
-V.poly = function(a, col){ var g = this.g, i, p; g.fillStyle = col; g.beginPath(); for (i = 0; i < a.length; i += 3) { p = this.pr(a[i], a[i + 1], a[i + 2]); g.lineTo(p.x, p.y); } g.closePath(); g.fill(); };
+// project a run of xyz points, cutting it where it passes behind the camera
+V.run = function(a, closed){
+  var v = this, c = v.cam, n = a.length / 3, out = [], near = 0.8, i, j, d0, d1, t;
+  function dep(k){ return -(a[k * 3 + 1] - c.y) * c.cs - (a[k * 3 + 2] - c.z) * c.sn; }
+  for (i = 0; i < (closed ? n : n - 1); i++) {
+    j = (i + 1) % n; d0 = dep(i); d1 = dep(j);
+    if (d0 >= near) out.push(v.pr(a[i * 3], a[i * 3 + 1], a[i * 3 + 2]));
+    if ((d0 >= near) !== (d1 >= near)) { t = (near - d0) / (d1 - d0); out.push(v.pr(lerp(a[i * 3], a[j * 3], t), lerp(a[i * 3 + 1], a[j * 3 + 1], t), lerp(a[i * 3 + 2], a[j * 3 + 2], t))); }
+  }
+  if (!closed && dep(n - 1) >= near) out.push(v.pr(a[n * 3 - 3], a[n * 3 - 2], a[n * 3 - 1]));
+  return out;
+};
+V.poly = function(a, col){ var g = this.g, q = this.run(a, true), i; if (q.length < 3) return; g.fillStyle = col; g.beginPath(); for (i = 0; i < q.length; i++) g.lineTo(q[i].x, q[i].y); g.closePath(); g.fill(); };
 V.line = function(a, wm, col, al){
-  var g = this.g, i, p, s = 0;
-  g.beginPath(); for (i = 0; i < a.length; i += 3) { p = this.pr(a[i], a[i + 1], a[i + 2]); g.lineTo(p.x, p.y); s += p.s; }
-  g.strokeStyle = col; g.globalAlpha = al == null ? 1 : al; g.lineWidth = Math.max(1.1, wm * s / (a.length / 3)); g.stroke(); g.globalAlpha = 1;
+  var g = this.g, q = this.run(a, false), s = 0, i;
+  if (q.length < 2) return;
+  g.beginPath(); for (i = 0; i < q.length; i++) { g.lineTo(q[i].x, q[i].y); s += Math.min(q[i].s, 160); }
+  g.strokeStyle = col; g.globalAlpha = al == null ? 1 : al; g.lineWidth = Math.max(1.1, wm * s / q.length); g.stroke(); g.globalAlpha = 1;
 };
 
 // ---- backdrop, floor and cage ----
@@ -420,7 +433,7 @@ V.fxDraw = function(dt){
   g.textAlign = "center"; g.textBaseline = "middle";
   for (i = v.pops.length - 1; i >= 0; i--) {
     p = v.pops[i]; p.l -= dt; if (p.l <= 0) { v.pops.splice(i, 1); continue; }
-    a = v.pr(p.x, p.y, p.z); k = 1 - p.l / p.m; r = (p.big ? 25 : 15) * sc * (k < 0.12 ? 0.6 + k * 3.4 : 1);
+    a = v.pr(p.x, p.y, p.z); if (a.d < 1) continue; k = 1 - p.l / p.m; r = (p.big ? 25 : 15) * sc * (k < 0.12 ? 0.6 + k * 3.4 : 1);
     g.globalAlpha = Math.min(1, p.l * 3); g.font = "italic 900 " + Math.round(r) + "px " + FONT; g.lineWidth = Math.max(3, r * 0.22); g.strokeStyle = "rgba(8,9,22,.85)";
     g.strokeText(p.txt, a.x, a.y - k * 34); g.fillStyle = p.col; g.fillText(p.txt, a.x, a.y - k * 34);
   }
@@ -451,7 +464,7 @@ V.trail = function(m){
 V.under = function(m){
   var v = this, g = v.g, b = m.b, i, p, a, r;
   for (i = 0; i < 2; i++) {
-    p = m.p[i]; a = v.pr(p.x, p.y, 0); r = a.s * 0.42;
+    p = m.p[i]; a = v.pr(p.x, p.y, 0); r = a.s * 0.42; if (a.d < 1.6) continue;
     g.fillStyle = "rgba(0,0,10,.3)"; g.beginPath(); g.ellipse(a.x, a.y, r, r * 0.36, 0, 0, TAU); g.fill();
     if (v.o.rings) {
       g.lineWidth = Math.max(2, a.s * 0.05); g.strokeStyle = v.sides[i].ring; g.globalAlpha = 0.28; g.beginPath(); g.ellipse(a.x, a.y, r * 1.35, r * 0.5, 0, 0, TAU); g.stroke();
@@ -462,8 +475,8 @@ V.under = function(m){
 };
 V.man = function(m, i){
   var v = this, g = v.g, p = m.p[i], sd = v.sides[i], c = v.cam, dx = c.x - p.x, dy = c.y - p.y, l = hyp(dx, dy) || 1, q = poseOf(p, m, v.t), A = v.o.aura ? AURA[sd.aura] : null, a, k, j;
+  a = v.pr(p.x, p.y, 2.12 + q.z); if (a.d < 1.6) return;
   figure(g, v.P, p.x, p.y, 0, p.fa, q, sd, dx / l, dy / l, v.t);
-  a = v.pr(p.x, p.y, 2.12 + q.z);
   if (p.act === "stumble" || p.act === "megged") { g.fillStyle = "#ffd23b"; for (j = 0; j < 3; j++) { k = v.t * 7 + j * 2.1; star(g, a.x + Math.cos(k) * a.s * 0.3, a.y + Math.sin(k) * a.s * 0.09, a.s * 0.075, 5, k); } }
   else if (sd.name && v.o.names) {
     g.font = "700 " + Math.round(clamp(a.s * 0.2, 10, 15)) + "px " + FONT; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.lineWidth = 3; g.strokeStyle = "rgba(8,9,22,.8)";
@@ -479,9 +492,9 @@ V.ent = function(m, k){
 };
 // shot meter beside the shooter, and where the shot is aimed
 V.meter = function(m, i){
-  var v = this, g = v.g, p = m.p[i], q = m.meter(p), rl = p.rel, H = 62, wd = 9, T = 1.25, cb = v.o.cb, mm, gw, a, x, y, tx;
+  var v = this, g = v.g, p = m.p[i], q = m.meter(p), rl = p.rel, H = 86, wd = 11, T = 1.25, cb = v.o.cb, mm, gw, a, x, y, tx;
   if (!q && !(rl && m.t - rl.t < 0.75)) return;
-  mm = q ? q.m : rl.m; gw = q ? q.gw : rl.gw; a = v.pr(p.x, p.y, 1.05); x = a.x + Math.max(26, a.s * 0.6); y = a.y + H / 2;
+  mm = q ? q.m : rl.m; gw = q ? q.gw : rl.gw; a = v.pr(p.x, p.y, 1.05); if (a.d < 1.6) return; x = a.x + Math.max(26, a.s * 0.6); y = a.y + H / 2;
   function Y(u){ return y - H * clamp(u, 0, T) / T; }
   g.fillStyle = "rgba(8,9,22,.82)"; g.fillRect(x - 2, y - H - 2, wd + 4, H + 4); g.fillStyle = "#2a2f52"; g.fillRect(x, y - H, wd, H);
   g.fillStyle = cb ? "#2f7fe0" : "#27b36f"; g.fillRect(x, Y(K.GC + gw), wd, Y(K.GC - gw) - Y(K.GC + gw));
@@ -495,10 +508,11 @@ V.meter = function(m, i){
 };
 // advance the effects by dt seconds and paint one frame
 V.draw = function(m, dt){
-  var v = this, g = v.g, c = v.cam, b = m.b, o = v.o, f0 = Math.max(v.w * 0.667, 430), k = Math.min(1, dt * 3), i, list;
+  var v = this, g = v.g, c = v.cam, b = m.b, o = v.o, f0 = Math.max(v.w * c.k, 520), k = Math.min(1, dt * 3), ty = Math.max(b.y, m.p[0].y, m.p[1].y), tx = (b.x * 2 + m.p[0].x + m.p[1].x) / 4, i, list;
   v.t += dt; v.tick++;
-  c.f = f0 * (1 + 0.14 * o.zoom); c.cx = v.w / 2; c.cy = Math.min(v.h * 0.5, f0 * 0.4219);
-  c.y += (lerp(18.6, 22.6, clamp(b.y / 12, 0, 1)) - c.y) * k; c.x += (clamp(b.x, -W, W) * (v.w < 640 ? 0.72 : 0.2) * o.pan - c.x) * k;
+  c.f = f0 * (1 + 0.14 * o.zoom); c.cx = v.w / 2; c.cy = Math.min(v.h * 0.5, f0 * 0.28125 / c.k);
+  // stay behind whoever is furthest from goal so both players and the ball are always in shot
+  c.y += (clamp(ty + c.back, c.back + 1, D + c.back) - c.y) * k; c.x += (clamp(tx, -W, W) * (v.w < 640 ? 0.8 : 0.55) * o.pan - c.x) * k;
   v.shake = Math.max(0, v.shake - dt * 2.4); c.sx = (Math.random() - 0.5) * v.shake * 16 * o.shake; c.sy = (Math.random() - 0.5) * v.shake * 12 * o.shake;
   spin(v.pts, -b.vy * 2.2, b.vx * 2.2, b.spin * 1.6, dt);
   g.setTransform(v.dpr, 0, 0, v.dpr, 0, 0); g.globalAlpha = 1; g.lineCap = g.lineJoin = "round";
@@ -514,15 +528,15 @@ V.draw = function(m, dt){
 };
 
 // ---- previews for the menus ----
-// o: {spin, turn, pose: "win", zoom}
+// o: {spin, turn, pose: "win", zoom, bust}
 R.portrait = function(cv, s, t, o){
   o = o || {};
-  var g = cv.getContext("2d"), w = cv.width, h = cv.height, S = h / (o.zoom || 2.3), q = pose0(), sd = s.tex ? s : side(s), wv = Math.sin(t * 2.2), fa = PI / 2 + (o.spin ? t * 0.9 : o.turn || 0);
-  function prj(x, y, z){ return {x: w / 2 + x * S, y: h * 0.94 - z * S - y * S * 0.14, s: S, d: 10 - y}; }
+  var g = cv.getContext("2d"), w = cv.width, h = cv.height, S = h / (o.bust ? 1.02 : o.zoom || 2.3), by = h * (o.bust ? 1.82 : 0.94), q = pose0(), sd = s.tex ? s : side(s), wv = Math.sin(t * 2.2), fa = PI / 2 + (o.spin ? t * 0.9 : o.turn || 0);
+  function prj(x, y, z){ return {x: w / 2 + x * S, y: by - z * S - y * S * 0.14, s: S, d: 10 - y}; }
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); g.lineCap = g.lineJoin = "round";
   q.lean = 0.04 + 0.012 * wv; q.eL = q.eR = 0.32 + 0.04 * wv;
   if (o.pose === "win") { q.uL = q.uR = 2.85; q.oL = q.oR = 0.5 + 0.12 * wv; q.eL = q.eR = 0.2; q.z = 0.1 * Math.abs(Math.sin(t * 5)); }
-  g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(w / 2, h * 0.94, S * 0.36, S * 0.09, 0, 0, TAU); g.fill();
+  g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(w / 2, by, S * 0.36, S * 0.09, 0, 0, TAU); g.fill();
   figure(g, prj, 0, 0, 0, fa, q, sd, 0, 1, t);
 };
 R.ballIcon = function(cv, id, t){
