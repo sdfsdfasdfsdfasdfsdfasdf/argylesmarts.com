@@ -2,6 +2,7 @@
 (function(){
 "use strict";
 var MG = window.MG, R = MG.R, K = MG.K, DT = K.DT, run = null, demo = null, stageView = null, keys = {}, AC = null, out = null, nz = null, amb = null;
+var TAP = {};
 var TOUCH = {x: 0, y: 0, sh: 0, a: 0, b: 0, c: 0, d: 0, sp: 0, id: null, on: false};
 function $(id){ return document.getElementById(id); }
 function set(el, v){ if (el && el._v !== v) { el._v = v; el.textContent = v; } }
@@ -42,6 +43,8 @@ MG.sfx = function(k, v){
   else if (k === "megs") { tone(620, 930, 0.09, "square", 0.12 * g); tone(930, 1400, 0.12, "square", 0.12 * g, 0.1); }
   else if (k === "ankles") tone(520, 180, 0.28, "sawtooth", 0.13 * g);
   else if (k === "turn") tone(300, 200, 0.12, "triangle", 0.2 * g);
+  else if (k === "steal") { tone(240, 480, 0.07, "triangle", 0.26 * g); tone(480, 720, 0.09, "triangle", 0.22 * g, 0.07); hiss(0.05, 0.2 * g, 900, 1, "lowpass"); }
+  else if (k === "trick") { tone(700, 1050, 0.08, "sine", 0.16 * g); tone(1050, 1570, 0.1, "sine", 0.14 * g, 0.08); }
   else if (k === "whistle") { tone(2350, 2350, 0.22, "square", 0.07 * g); tone(2480, 2480, 0.22, "square", 0.05 * g); }
   else if (k === "goal") { hiss(1.8, 0.5 * c, 1100, 0.6, "bandpass", 0, 0.25); hiss(1.5, 0.3 * c, 2400, 0.8, "bandpass", 0.05, 0.3); tone(2350, 2350, 0.5, "square", 0.06 * g, 0.15); }
   else if (k === "final") [0, 0.3, 0.6].forEach(function(t, i){ tone(2350, 2350, i === 2 ? 0.7 : 0.2, "square", 0.07 * g, t); });
@@ -86,7 +89,9 @@ function read(src, inp){
     x += TOUCH.x; y += TOUCH.y; if (TOUCH.sh) inp.sh = 1; if (TOUCH.a) inp.a = 1; if (TOUCH.b) inp.b = 1; if (TOUCH.c) inp.c = 1; if (TOUCH.d) inp.d = 1;
     if (TOUCH.sp || (st.auto && Math.sqrt(TOUCH.x * TOUCH.x + TOUCH.y * TOUCH.y) > 0.93)) inp.sp = 1;
   }
-  l = Math.sqrt(x * x + y * y); if (l > 1) { x /= l; y /= l; }
+  l = Math.sqrt(x * x + y * y); if (l > 1) { x /= l; y /= l; l = 1; }
+  // sprint lock (double-tap a direction): stays on until you stop moving or touch the sprint key
+  if (src.lock) { if (inp.sp) src.lock = 0; else if (l < 0.15) { src.idle = (src.idle || 0) + DT; if (src.idle > 0.3) src.lock = 0; } else { src.idle = 0; inp.sp = 1; } }
   inp.mx = x; inp.my = y;
 }
 function wire(){
@@ -109,7 +114,16 @@ function wire(){
   window.addEventListener("touchstart", function(){ $("stage").classList.add("touch"); }, {passive: true});
   if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) $("stage").classList.add("touch");
   window.addEventListener("keydown", function(e){
+    var st = MG.S.set, now = performance.now(), c = e.code;
     if (!run) return;
+    if (!e.repeat && st.dtap && !run.paused) {
+      run.src.forEach(function(s){
+        var kk = s && s.k ? st[s.k] : null;
+        if (!kk || !(c === kk.up || c === kk.down || c === kk.left || c === kk.right || (s.arrows && /^Arrow/.test(c)))) return;
+        if (TAP[c] && now - TAP[c] < 290) { s.lock = s.lock ? 0 : 1; s.idle = 0; TAP[c] = 0; run.chip = s.lock ? "Sprint locked on" : "Sprint lock off"; run.chipT = 1.1; }
+        else TAP[c] = now;
+      });
+    }
     keys[e.code] = 1;
     if ((e.code === "Escape" || e.code === "KeyP") && !e.repeat && !run.over) pause(!run.paused);
     if (/^Arrow|^Space$|^Slash$|^Quote$/.test(e.code)) e.preventDefault();
@@ -138,7 +152,7 @@ function banner(a, b){
 }
 function fmt(s){ s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + s % 60; }
 function hintRow(r, has){
-  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go in the green"], ["a", "Cut"], ["b", "Drag back"], ["c", "Burst"], ["d", "Megs"], ["sp", "Sprint"]] : [["sh", "Block"], ["a", "Tackle"], ["b", "Jockey"], ["c", "Slide"], ["sp", "Sprint"]], lab = has ? ["Cut", "Drag", "Burst", "Megs"] : ["Tackle", "Jockey", "Slide", ""];
+  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go when the marker is in the green"], ["a", "Cut"], ["b", "Drag back"], ["c", "Burst"], ["d", "Megs"]] : [["sh", "Block"], ["a", "Tackle"], ["b", "Jockey"], ["c", "Slide"], ["d", "Press"]], lab = has ? ["Cut", "Drag", "Burst", "Megs"] : ["Tackle", "Jockey", "Slide", "Press"];
   $("hint").innerHTML = kk ? list.map(function(x){ return "<span><kbd>" + n(kk[x[0]]) + "</kbd>" + x[1] + "</span>"; }).join("") : "";
   ["a", "b", "c", "d"].forEach(function(k, i){ $("t" + k).textContent = lab[i]; $("t" + k).style.visibility = lab[i] ? "" : "hidden"; });
   $("tsh").textContent = has ? "SHOOT" : "BLOCK";
@@ -146,12 +160,14 @@ function hintRow(r, has){
 function hud(r, dt){
   var m = r.m, c = m.cfg, b = m.b, chip = "", has, sc = $("sc");
   set($("s0"), m.score[0]); set($("s1"), m.score[1]);
-  set($("rule"), c.clock ? fmt(m.left) : c.golden ? "GOLDEN GOAL" : c.target ? "FIRST TO " + c.target : "FREE PLAY");
+  set($("rule"), c.clock ? fmt(m.left) : c.golden ? "GOLDEN GOAL" : c.target ? (c.field ? "FULL FIELD: " : "") + "FIRST TO " + c.target : "FREE PLAY");
   set(sc, c.sc ? String(Math.max(0, Math.ceil(m.sc))) : ""); sc.className = c.sc && m.sc < 4 ? "low" : "";
   if (r.chipT > 0) { r.chipT -= dt; chip = r.chip; }
   else if (m.phase === "live" && m.need >= 0) chip = r.src[m.need] ? "Take it out past the arc" : "Rival has to clear the arc";
   else if (m.phase === "live" && c.two && b.own >= 0 && MG.hyp(b.x, b.y) > K.ARC) chip = "Long range: counts double";
   else if (m.phase === "live" && c.far && b.own >= 0 && MG.hyp(b.x, b.y) <= K.ARC) chip = "Too close: shoot from outside the arc";
+  else if (m.phase === "live" && r.one && b.own === 1 - r.oneI && m.p[b.own].act === "wind") chip = "Shot coming: get on the line and block";
+  else if (m.phase === "live" && r.one && b.own === 1 - r.oneI && (MG.S.n.tackles || 0) < 6) chip = "Take it off them: put your feet on the ball, or tackle";
   set($("chip"), chip);
   has = r.one ? (b.own === r.oneI ? 1 : 0) : -1;
   if (has !== r.has) { r.has = has; hintRow(r, has === 1); }
@@ -197,6 +213,10 @@ function onEvent(r, e){
   else if (k === "wall") MG.sfx("wall", e.v);
   else if (k === "net") MG.sfx("net", e.v);
   else if (k === "megs") { MG.sfx("megs"); buzz(60); if (m.cfg.panna) banner("PANNA!", "A nutmeg ends it"); }
+  else if (k === "megpt") banner("MEGS!", "Worth a goal in Meg Mania");
+  else if (k === "steal") { MG.sfx("steal"); buzz(45); }
+  else if (k === "rainbow") { MG.sfx("trick"); buzz(60); }
+  else if (k === "move" && (e.s === "elastico" || e.s === "wallpass")) MG.sfx("trick");
   else if (k === "ankles") MG.sfx("ankles");
   else if (k === "tackle" || k === "block" || k === "save" || k === "thud") MG.sfx("thud");
   else if (k === "turn") MG.sfx("turn");
@@ -251,7 +271,8 @@ MG.play = function(o){
   o.src.forEach(function(s, i){ if (s) { n++; r.one = s; r.oneI = i; } });
   if (n !== 1) { r.one = null; r.oneI = -1; }
   set($("n0"), o.sides[0].name); set($("n1"), o.sides[1].name);
-  TOUCH.x = TOUCH.y = TOUCH.sh = TOUCH.a = TOUCH.b = TOUCH.c = TOUCH.d = TOUCH.sp = 0;
+  TOUCH.x = TOUCH.y = TOUCH.sh = TOUCH.a = TOUCH.b = TOUCH.c = TOUCH.d = TOUCH.sp = 0; TAP = {};
+  o.src.forEach(function(s){ if (s) s.lock = 0; });
   MG.applySet(); ambOn(); banner(o.name, o.sub || "");
   r.raf = requestAnimationFrame(frame);
 };
