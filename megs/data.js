@@ -2,23 +2,27 @@
 (function(){
 "use strict";
 var MG = window.MG = window.MG || {};
-MG.RAR = [{n: "Common", c: "#9aa0b8"}, {n: "Rare", c: "#4f8dff"}, {n: "Epic", c: "#b266ff"}, {n: "Legendary", c: "#ffb938"}, {n: "Mythic", c: "#ff4f7a"}, {n: "Secret", c: "#5ee6a8"}];
-MG.PRICE = [150, 400, 900, 2200];
-MG.DUPE = [25, 70, 160, 400, 900, 0];
+MG.RAR = [{n: "Common", c: "#9aa0b8"}, {n: "Uncommon", c: "#3fcf8e"}, {n: "Rare", c: "#4f8dff"}, {n: "Epic", c: "#b266ff"}, {n: "Legendary", c: "#ffb938"}, {n: "Mythic", c: "#ff4f7a"}, {n: "Exotic", c: "#38e1ff"}, {n: "Celestial", c: "#f4f6ff"}, {n: "Secret", c: "#d6ff3b"}];
+MG.LEG = 4;   // Legendary: the shop sells up to here, and pack pity guarantees at least this
+MG.PRICE = [150, 250, 400, 900, 2200];
+MG.DUPE = [25, 45, 70, 160, 400, 900, 2000, 5000, 0];
 MG.PACKS = [
-  {id: "street", n: "Street Pack", cost: 300, odds: [58, 28, 10, 3.5, 0.5], pity: 30},
-  {id: "pro", n: "Pro Pack", cost: 800, odds: [0, 52, 32, 13, 3], pity: 10}
+  {id: "street", n: "Street Pack", cost: 300, odds: [44, 27, 17, 8, 3.2, 0.6, 0.17, 0.03], pity: 30},
+  {id: "pro", n: "Pro Pack", cost: 800, odds: [0, 28, 36, 22, 10.5, 2.8, 0.6, 0.1], pity: 10},
+  {id: "elite", n: "Elite Pack", cost: 2000, odds: [0, 0, 18, 42, 28, 9, 2.5, 0.5], pity: 4}
 ];
 MG.TIERS = [{n: "Bronze", c: "#c98f62", min: 0}, {n: "Silver", c: "#c9d2e6", min: 1000}, {n: "Gold", c: "#ffd23b", min: 1200}, {n: "Platinum", c: "#5ee6d6", min: 1400}, {n: "Diamond", c: "#7fb0ff", min: 1600}, {n: "Master", c: "#b266ff", min: 1800}, {n: "Legend", c: "#ff4f7a", min: 2000}];
 MG.tier = function(elo){ var i = MG.TIERS.length - 1; while (i > 0 && elo < MG.TIERS[i].min) i--; return i; };
-MG.lvlFor = function(elo){ return MG.clamp((elo - 700) / 170, 0, 10); };
+MG.lvlFor = function(elo){ return MG.clamp((elo - 930) / 160, 0, 10); };   // rivals near the 1000 start are the gentlest
 MG.xpNeed = function(l){ return 200 + 60 * l; };
 MG.SKIN = ["#f6d3b3", "#e8b98f", "#c98f62", "#a5673f", "#6f4226"];
 MG.HAIR = ["#1b1b1f", "#4a2f1b", "#c98f2e", "#d9d9e0", "#b83a2e", "#3b6ef5", "#ff7ab8"];
 
 // ---- cosmetics. t: kit / ball / trail / fx / court, r: rarity, how + need: earned, never found in packs or the shop ----
-var I = MG.ITEMS = [], BY = MG.ITEM = {};
-function add(t, id, n, r, o){ o = o || {}; o.t = t; o.id = id; o.n = n; o.r = r; I.push(o); BY[id] = o; }
+var I = MG.ITEMS = [], BY = MG.ITEM = {}, OLD = [0, 2, 3, 4, 5, 8];
+function nw(t, id, n, r, o){ o = o || {}; o.t = t; o.id = id; o.n = n; o.r = r; I.push(o); BY[id] = o; }
+// the first set was written when there were six rarities: Common, Rare, Epic, Legendary, Mythic, Secret
+function add(t, id, n, r, o){ nw(t, id, n, OLD[r], o); }
 // kits. p: pattern, c: [main, second, shorts], f: aura effect
 add("kit", "home", "Home Blue", 0, {p: "solid", c: ["#3b6ef5", "#f2f2f7", "#1f2a55"]});
 add("kit", "away", "Away White", 0, {p: "solid", c: ["#f2f2f7", "#3b6ef5", "#22243f"]});
@@ -99,11 +103,101 @@ add("court", "c_turf", "Turf Cage", 1, {});
 add("court", "c_neon", "Neon Night", 2, {});
 add("court", "c_sunset", "Rooftop Sunset", 3, {});
 
+// ---- the second set, on the full scale: 1 Uncommon, 2 Rare, 3 Epic, 4 Legendary, 5 Mythic, 6 Exotic, 7 Celestial ----
+nw("kit", "pin", "Pinstripe", 1, {p: "pinstripe", c: ["#1b2a52", "#e9ecf7", "#101a36"]});
+nw("kit", "dots", "Polka", 1, {p: "dots", c: ["#e6394a", "#ffffff", "#5a1420"]});
+nw("kit", "quart", "Quarters", 1, {p: "quarters", c: ["#7fd0ff", "#7a1f3d", "#3d0f1f"]});
+nw("kit", "zig", "Zigzag", 1, {p: "zigzag", c: ["#17171c", "#d6ff3b", "#17171c"]});
+nw("kit", "tidal", "Tidal", 1, {p: "wave", c: ["#0e5a8a", "#7fe0ff", "#0a2c47"]});
+nw("kit", "leo", "Leopard", 2, {p: "leopard", c: ["#e0a94a", "#2a1a0a", "#2a1a0a"]});
+nw("kit", "brush", "Brushwork", 2, {p: "brush", c: ["#f2f2f7", "#ff4f7a", "#22243f"]});
+nw("kit", "plaid", "Plaid", 2, {p: "plaid", c: ["#8a1f2e", "#ffd23b", "#2a0a10"]});
+nw("kit", "rod", "Hot Rod", 3, {p: "flames", c: ["#17171c", "#ff8a1f", "#17171c"]});
+nw("kit", "circ", "Circuit", 3, {p: "circuit", c: ["#062a1c", "#5ee6a8", "#031710"]});
+nw("kit", "thun", "Thunderhead", 4, {p: "lava", c: ["#141b33", "#9fd0ff", "#0c1122"], f: "bolt"});
+nw("kit", "aur", "Aurora", 4, {p: "wave", c: ["#0d1f3d", "#5ee6a8", "#b266ff"], f: "star"});
+nw("kit", "royal", "Royal Velvet", 4, {p: "scales", c: ["#4a0d57", "#ffd766", "#2a0633"], f: "spark"});
+nw("kit", "prism", "Prism", 5, {p: "prism", c: ["#ffffff", "#ff4f7a", "#22243f"], f: "star"});
+nw("kit", "drag", "Dragon Scale", 5, {p: "scales", c: ["#0f3d2a", "#ff5a1f", "#06170f"], f: "ember"});
+nw("kit", "merc", "Quicksilver", 6, {p: "chrome", c: ["#dfe6f2", "#7a8499", "#2a2f3d"], f: "chrome"});
+nw("kit", "bio", "Biohazard", 6, {p: "toxic", c: ["#0c1408", "#a6ff3b", "#0c1408"], f: "toxic"});
+nw("kit", "saku", "Sakura", 6, {p: "sakura", c: ["#ffd6e6", "#ff7ab8", "#5a1f3d"], f: "petal"});
+nw("kit", "ecl", "Eclipse", 7, {p: "void", c: ["#050308", "#ffd98a", "#050308"], f: "corona"});
+nw("kit", "cons", "Constellation", 7, {p: "galaxy", c: ["#0a1238", "#7fb0ff", "#060a22"], f: "star"});
+nw("kit", "flare", "Solar Flare", 7, {p: "nova", c: ["#fff1a8", "#ff5a1f", "#3d0a05"], f: "corona"});
+nw("kit", "pick", "Pickpocket", 3, {p: "pinstripe", c: ["#17171c", "#5ee6ff", "#17171c"], how: "Win the ball back 60 times", need: ["tackles", 60]});
+nw("kit", "surv", "Survivor", 4, {p: "flames", c: ["#2a0a05", "#ffd23b", "#1a0603"], f: "ember", how: "Clear 8 rounds of the Gauntlet in one run", need: ["gaunt", 8]});
+nw("ball", "b_melon", "Watermelon", 1, {c: ["#2f9e4f", "#ff4f6a", "#17331f", "#ff8aa0"], s: 1});
+nw("ball", "b_ocean", "Deep Blue", 1, {c: ["#1f5ad9", "#bfe0ff"], s: 0});
+nw("ball", "b_bee", "Bumble", 2, {c: ["#ffd23b", "#17171c"], s: 5});
+nw("ball", "b_candy", "Starburst", 2, {c: ["#ff7ab8", "#ffffff"], s: 2});
+nw("ball", "b_magma", "Magma Core", 3, {c: ["#3d0a05", "#ff7a1f"], s: 4, g: "#ff5a1f"});
+nw("ball", "b_emer", "Emerald", 3, {c: ["#0f5a3d", "#7fffd4"], s: 3, g: "#5ee6a8"});
+nw("ball", "b_comet", "Comet", 4, {c: ["#eaf6ff", "#5aa9e6"], s: 4, g: "#9fd0ff"});
+nw("ball", "b_proto", "Prototype", 5, {c: ["#101425", "#5ee6ff"], s: 6, g: "#5ee6ff"});
+nw("ball", "b_merc", "Mercury", 6, {c: ["#f4f6ff", "#8a93a8"], s: 4, g: "#dfe6f2"});
+nw("ball", "b_sun", "Little Sun", 7, {c: ["#fff6c2", "#ffb938"], s: 4, g: "#ffd23b"});
+nw("ball", "b_match", "Matchday", 3, {c: ["#ffffff", "#15803d"], s: 2, g: "#5ee6a8", how: "Win 5 Full Field matches", need: ["fieldw", 5]});
+nw("trail", "t_bub", "Bubbles", 1, {k: "bubble"});
+nw("trail", "t_leaf", "Autumn", 2, {k: "leaf"});
+nw("trail", "t_tox", "Toxic", 3, {k: "toxic"});
+nw("trail", "t_gold", "Gold Rush", 4, {k: "gold"});
+nw("trail", "t_comet", "Comet Tail", 5, {k: "comet"});
+nw("trail", "t_prism", "Prism", 6, {k: "prism"});
+nw("trail", "t_neb", "Nebula", 7, {k: "nebula"});
+nw("fx", "f_rip", "Ripple", 1, {k: "ripple"});
+nw("fx", "f_snow", "Snowfall", 2, {k: "snow"});
+nw("fx", "f_laser", "Laser Show", 3, {k: "laser"});
+nw("fx", "f_volc", "Eruption", 4, {k: "volcano"});
+nw("fx", "f_stars", "Starfall", 5, {k: "starfall"});
+nw("fx", "f_aur", "Aurora Burst", 6, {k: "aurora"});
+nw("fx", "f_nova", "Supernova", 7, {k: "nova"});
+nw("court", "c_gym", "School Gym", 1, {});
+nw("court", "c_beach", "Beach Cage", 2, {});
+nw("court", "c_snow", "Snow Dome", 3, {});
+nw("court", "c_lava", "Volcano", 4, {});
+nw("court", "c_space", "Moon Base", 5, {});
+nw("court", "c_gold", "Golden Arena", 6, {});
+nw("court", "c_cloud", "Cloud Nine", 7, {});
+
+// ---- character skins: the whole body changes, not only the shirt. hd picks the head and body parts, sk the body colour, gl the glow ----
+nw("kit", "k_fire", "Inferno", 5, {p: "flames", c: ["#3d0a05", "#ff7a1f", "#1a0603"], hd: "fire", sk: "#c2410c", gl: "#ff5a1f", f: "ember"});
+nw("kit", "k_void", "Voidwalker", 6, {p: "void", c: ["#0a0612", "#8a3dff", "#07040d"], hd: "void", sk: "#120a1f", gl: "#8a3dff", f: "void"});
+nw("kit", "k_zeus", "Thunder King", 6, {p: "bolt", c: ["#f4f6ff", "#ffd23b", "#f4f6ff"], hd: "zeus", sk: "#e6b48a", gl: "#9fd0ff", f: "bolt"});
+nw("kit", "k_robot", "Unit 67", 5, {p: "plate", c: ["#8a93a8", "#38e1ff", "#4a5266"], hd: "robot", sk: "#aab3c6", gl: "#38e1ff", num: 67});
+nw("kit", "k_shark", "Great White", 4, {p: "shark", c: ["#7d8ea3", "#eef2fa", "#56657a"], hd: "shark", sk: "#7d8ea3"});
+nw("kit", "k_frost", "Frostbite", 5, {p: "frost", c: ["#dff6ff", "#5aa9e6", "#27507a"], hd: "void", sk: "#bfe9ff", gl: "#7fd0ff", f: "frost"});
+nw("kit", "k_magma", "Magma Golem", 7, {p: "lava", c: ["#1a0d0a", "#ff5a1f", "#0c0605"], hd: "fire", sk: "#2b1a14", gl: "#ff3d1f", f: "corona"});
+// ---- star kits: made-up players, each in the style of a kind of superstar. No real names, clubs or badges ----
+nw("kit", "s_maestro", "The Maestro", 4, {p: "sash", c: ["#0e7490", "#ffd766", "#06303d"], num: 10, f: "spark"});
+nw("kit", "s_rocket", "The Rocket", 4, {p: "chevron", c: ["#17171c", "#ff4f7a", "#17171c"], num: 7, f: "ember"});
+nw("kit", "s_flash", "The Flash Heel", 5, {p: "bolt", c: ["#1f2a8a", "#fff6a8", "#101a52"], num: 9, f: "bolt"});
+nw("kit", "s_wall", "The Wall", 3, {p: "plaid", c: ["#2f3d2f", "#c9d2c9", "#161f16"], num: 4});
+nw("kit", "s_magic", "The Magician", 5, {p: "galaxy", c: ["#3d1f6b", "#ffb938", "#1f0f3d"], num: 11, f: "star"});
+nw("kit", "s_capt", "El Capitan", 3, {p: "halves", c: ["#b3202e", "#f2f2f7", "#5a0f16"], num: 8});
+// ---- emotes: what your player does when you win ----
+nw("emote", "e_wave", "Arms Up", 0, {k: "wave"});
+nw("emote", "e_flex", "Flex", 1, {k: "flex"});
+nw("emote", "e_salute", "Salute", 1, {k: "salute"});
+nw("emote", "e_knee", "Knee Slide", 2, {k: "knee"});
+nw("emote", "e_plane", "Aeroplane", 2, {k: "plane"});
+nw("emote", "e_robot", "The Robot", 3, {k: "robot"});
+nw("emote", "e_bow", "Take a Bow", 3, {k: "bow"});
+nw("emote", "e_sky", "Sky Turn", 4, {k: "sky"});
+nw("emote", "e_whirl", "Whirlwind", 5, {k: "whirl"});
+nw("court", "c_roof", "Rooftop", 1, {});
+nw("court", "c_jungle", "Jungle Clearing", 2, {});
+nw("court", "c_desert", "Dune Court", 3, {});
+nw("court", "c_storm", "Storm Front", 4, {});
+nw("court", "c_candy", "Candy Land", 5, {});
+nw("court", "c_abyss", "The Abyss", 6, {});
+
 // titles are earned, never bought
 MG.TITLES = [
   ["Rookie", "Everyone starts here", "w", 0], ["Cage Rat", "Win 10 matches", "w", 10], ["Meg Merchant", "Land 25 megs", "megs", 25], ["Top Bins", "Score 20 in the top corners", "top", 20],
   ["Sniper", "Score 40 from long range", "twos", 40], ["Ankle Taker", "Break ankles 25 times", "ankles", 25], ["Brick Wall", "Block or save 60 shots", "blocks", 60], ["Green Machine", "Hit 100 perfect releases", "perfect", 100],
-  ["Untouchable", "Win 8 in a row", "best", 8], ["Cup Collector", "Win 5 cups", "cups", 5], ["Ladder Legend", "Beat all 20 rivals", "ladder", 20], ["Apex", "Reach Legend rank", "peak", 2000]
+  ["Untouchable", "Win 8 in a row", "best", 8], ["Cup Collector", "Win 5 cups", "cups", 5], ["Ladder Legend", "Beat all 20 rivals", "ladder", 20], ["Apex", "Reach Legend rank", "peak", 2000],
+  ["Pickpocket", "Win the ball back 50 times", "tackles", 50], ["Gatekeeper", "Clear 6 Gauntlet rounds in one run", "gaunt", 6], ["Full Timer", "Win 10 Full Field matches", "fieldw", 10]
 ];
 
 // ---- the Ladder: twenty rivals. [name, level, [pace, shot, ctrl, power, tackle, block], kit, ball, line] ----
@@ -146,13 +240,21 @@ MG.MODES = {
   far: {n: "Long Shots", d: "Only goals from outside the arc count, and they count double. First to 6.", cfg: {target: 6, far: true}, arc: 1},
   moon: {n: "Moon Ball", d: "Low gravity and big bounces. First to 5.", cfg: {grav: 0.38, boun: 1.3}, arc: 1},
   blitz: {n: "Blitz 90", d: "Ninety seconds. Most goals wins.", cfg: {target: 0, clock: 90, sc: 8}, arc: 1},
+  field: {n: "Full Field", d: "A whole pitch with a goal at each end. You attack the far one. First to 5.", cfg: {field: true, two: false, sc: 0}, arc: 1},
+  megmania: {n: "Meg Mania", d: "Every nutmeg is worth a goal. First to 5.", cfg: {megpt: true}, arc: 1},
+  turbo: {n: "Turbo", d: "Everyone is faster and nobody gets tired. First to 5.", cfg: {pace: 1.28, tire: 0, pw: 1.1}, arc: 1},
+  ice: {n: "Ice Cage", d: "The floor is ice. Good luck stopping. First to 3.", cfg: {grip: 0.3, roll: 0.25, target: 3}, arc: 1},
+  pinball: {n: "Pinball", d: "The boards fire the ball back and it never stops bouncing. First to 5.", cfg: {wall: 1.32, boun: 1.3, roll: 0.4}, arc: 1},
+  heavy: {n: "Lead Ball", d: "A heavy ball that barely bounces. Get close before you shoot. First to 3.", cfg: {grav: 1.9, boun: 0.4, pw: 0.78, roll: 2.2, target: 3}, arc: 1},
+  hot: {n: "Hot Potato", d: "Six seconds on the ball, then it changes hands. First to 3.", cfg: {sc: 6, target: 3}, arc: 1},
+  comeback: {n: "Comeback", d: "You start 0-3 down. First to 5.", cfg: {start: [0, 3]}, arc: 1, solo: 1},
   practice: {n: "Free Kickabout", d: "No clock, no score. A training dummy shadows you.", cfg: {target: 0, sc: 0}}
 };
 // daily quests: [id, text, counter, target, coins]
 MG.QUESTS = [
   ["g5", "Score 5 goals", "goals", 5, 60], ["two3", "Score 3 from long range", "twos", 3, 80], ["megs2", "Land 2 megs", "megs", 2, 80], ["perf4", "Hit 4 perfect releases", "perfect", 4, 70],
   ["win2", "Win 2 matches", "wins", 2, 90], ["rank1", "Win a ranked match", "rwins", 1, 70], ["blk3", "Block or save 3 shots", "blocks", 3, 60], ["tk3", "Win the ball back 3 times", "tackles", 3, 60],
-  ["ank1", "Break some ankles", "ankles", 1, 70], ["arc1", "Win an arcade game", "awins", 1, 60]
+  ["ank1", "Break some ankles", "ankles", 1, 70], ["arc1", "Win an arcade game", "awins", 1, 60], ["fld1", "Win a Full Field match", "fwins", 1, 80]
 ];
 MG.CHAT = ["gg", "one more?", "that was filthy", "megs incoming", "no way that went in", "top bins only", "who has next", "run it back", "close one", "nice shot", "the post hates me", "I call next", "warming up", "let's go", "back in 2, water", "that crossbar though", "first to 5?", "wow", "unlucky", "clean"];
 
@@ -165,15 +267,15 @@ var CLAN = ["CAGE", "MEG", "TEK", "BINS", "FC67", "PNA", "TOP", "SZN", "NXT", "A
 MG.world = function(day){
   var r = MG.rng(6741), out = [], pool = {}, seen = {}, i, e, f, n, g, wr;
   function one(a){ return a[Math.floor(r() * a.length)]; }
-  function pick(t, elo){ var q = Math.min(4, Math.floor(Math.pow(r(), 2.3 - (elo - 800) / 1000) * 5)); while (!pool[t + q]) q--; return one(pool[t + q]); }
-  I.forEach(function(it){ var k = it.t + Math.min(it.r, 4); if (it.id !== "custom" && it.id !== "s67" && it.id !== "one") (pool[k] = pool[k] || []).push(it.id); });
+  function pick(t, elo){ var q = Math.min(7, Math.floor(Math.pow(r(), 2.6 - (elo - 800) / 1000) * 8)); while (!pool[t + q]) q--; return one(pool[t + q]); }
+  I.forEach(function(it){ var k = it.t + Math.min(it.r, 7); if (it.id !== "custom" && it.id !== "s67" && it.id !== "one") (pool[k] = pool[k] || []).push(it.id); });
   for (i = 0; i < 160; i++) {
     e = i < 3 ? 2380 - i * 45 : MG.clamp(1130 + (r() + r() + r() + r() - 2) * 485, 720, 2280);
     f = r(); n = f < 0.4 ? one(FIRST) + one(CORE) : f < 0.75 ? one(PRE) + one(CORE) : (one(FIRST) + "_" + one(CORE)).toLowerCase();
     n += one(SUF); while (seen[n]) n += Math.floor(r() * 10); seen[n] = 1;
     g = Math.floor(40 + r() * 620); wr = MG.clamp(0.5 + (e - 1150) / 2600, 0.2, 0.86);
     out.push({id: i, n: n, clan: r() < 0.55 ? one(CLAN) : "", elo: Math.round(e + 55 * Math.sin(day * 0.9 + i * 1.7) + 30 * Math.sin(day * 0.23 + i)), w: Math.round(g * wr), l: Math.round(g * (1 - wr)),
-      megs: Math.floor(g * (0.1 + r() * 0.5) * e / 1500), cups: Math.floor(r() * r() * g / 45 * e / 1400), strk: 2 + Math.floor(r() * r() * 9 + Math.max(0, e - 1000) / 160),
+      gaunt: MG.clamp(Math.round((e - 760) / 120 + i * 7 % 5 - 1), 0, 14), megs: Math.floor(g * (0.1 + r() * 0.5) * e / 1500), cups: Math.floor(r() * r() * g / 45 * e / 1400), strk: 2 + Math.floor(r() * r() * 9 + Math.max(0, e - 1000) / 160),
       kit: pick("kit", e), ball: pick("ball", e), trail: pick("trail", e), fx: pick("fx", e), skin: Math.floor(r() * 5), hair: Math.floor(r() * 4), hc: Math.floor(r() * 7), num: 1 + Math.floor(r() * 99),
       title: MG.TITLES[Math.floor(r() * Math.min(MG.TITLES.length, 2 + Math.max(0, e - 800) / 130))][0]});
   }
