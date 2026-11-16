@@ -1,7 +1,7 @@
 // MEGS meta: save data, coins and XP, Elo, quests, packs, the Ladder, cups and the simulated league. No DOM in here.
 (function(){
 "use strict";
-var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1};
+var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1};
 function ls(k, v){
   try { if (v === undefined) return window.localStorage.getItem(k); window.localStorage.setItem(k, v); }
   catch (e) { if (v === undefined) return mem[k] == null ? null : mem[k]; mem[k] = v; }
@@ -12,14 +12,17 @@ function merge(a, b){ var o = {}, k; b = b || {}; for (k in a) o[k] = a[k] && ty
 
 // every setting, with its default
 MG.SET0 = {vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 1, fx: 1, names: 1, rings: 1, meter: 1, aim: 1, pops: 1, zoom: 0, pan: 1, cb: 0, net: 1, trail: 1, aura: 1, slow: 1, banner: 1, hints: 1, hud: 1, fps: 0,
-  auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 3,
-  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "Space", sp: "ShiftLeft", a: "KeyJ", b: "KeyK", c: "KeyL", d: "KeyI"},
-  k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "Enter", sp: "ShiftRight", a: "Comma", b: "Period", c: "Slash", d: "KeyM"}};
+  auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 1, dtap: 0,
+  kv: 2,
+  // k1: you against the computer. kp and k2: the two players in a party game on one keyboard
+  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO"},
+  kp: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyR", a: "KeyT", b: "KeyY", c: "KeyF", d: "KeyG"},
+  k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO"}};
 MG.LEVELS = ["Beginner", "Rookie", "Easy", "Casual", "Decent", "Solid", "Tough", "Hard", "Elite", "Brutal", "Unfair"];
 
 function fresh(){
   return {v: 1, name: "", look: {skin: 0, hair: 0, hc: 0, num: 10}, arch: 5, al: {}, xp: 0, lvl: 1, coins: 500, elo: 1000, peak: 1000, games: 0, streak: 0, ladder: 0,
-    inv: {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1}, eq: {kit: "home", ball: "classic", trail: "t_none", fx: "f_conf", court: "c_street"},
+    inv: {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1}, eq: {kit: "home", ball: "classic", trail: "t_none", fx: "f_conf", court: "c_street", emote: "e_wave"},
     cus: {p: "stripes", c: ["#3b6ef5", "#f2f2f7", "#1f2a55"]}, title: "Rookie", n: {}, pity: {street: 0, pro: 0}, q: {day: -1, list: [], bonus: 0}, hist: [], eh: [1000], cup: null, win1: -1, last: -1, set: {}};
 }
 MG.load = function(){
@@ -27,6 +30,8 @@ MG.load = function(){
   try { o = JSON.parse(ls(KEY) || "null"); } catch (e) { o = null; }
   if (o && o.v === 1) for (k in o) d[k] = o[k];
   S = MG.S = d; S.set = merge(MG.SET0, S.set);
+  if (!S.eq.emote) { S.eq.emote = "e_wave"; S.inv.e_wave = 1; }
+  if (S.set.kv !== 2 || !S.set.kp) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 2; }   // the key layout changed: start everyone on the new one
   MG.quests(); MG.unlocks();
   return S;
 };
@@ -48,7 +53,7 @@ MG.myStats = function(){ var b = MG.ARCH[S.arch][2], o = {}; MG.STATS.forEach(fu
 MG.points = function(){ var u = 0, k; for (k in S.al) u += S.al[k]; return S.lvl - 1 - u; };
 MG.spend = function(k){ if (MG.points() < 1 || MG.myStats()[k] >= 10) return false; S.al[k] = (S.al[k] || 0) + 1; MG.save(); return true; };
 MG.respec = function(a){ if (a != null) S.arch = a; S.al = {}; MG.save(); };
-MG.me = function(){ return {kit: S.eq.kit, cus: S.cus, look: S.look, trail: S.eq.trail, fx: S.eq.fx, name: S.name || "You", ring: "#3b6ef5", human: true}; };
+MG.me = function(){ return {kit: S.eq.kit, cus: S.cus, look: S.look, trail: S.eq.trail, fx: S.eq.fx, emote: S.eq.emote, name: S.name || "You", ring: "#3b6ef5", human: true}; };
 MG.equip = function(id){ var it = MG.ITEM[id]; if (!it || !S.inv[id]) return false; S.eq[it.t] = id; MG.save(); return true; };
 MG.addXp = function(x){ var up = 0; S.xp += x; while (S.xp >= MG.xpNeed(S.lvl)) { S.xp -= MG.xpNeed(S.lvl); S.lvl++; up++; S.coins += 50; } return up; };
 // hand out anything that has just been earned; returns the new items
@@ -74,7 +79,7 @@ MG.foe = function(p){
 MG.rival = function(i){
   var v = MG.RIVALS[i], r = MG.rng(hash(v[0])), st = {};
   MG.STATS.forEach(function(s, k){ st[s[0]] = v[2][k]; });
-  return {id: -1 - i, name: v[0], elo: 0, lv: v[1], st: st, ball: v[4], line: v[5],
+  return {id: -1 - i, name: v[0], elo: 0, lv: v[1] * 0.85, st: st, ball: v[4], line: v[5],
     side: {kit: v[3], look: {skin: Math.floor(r() * 5), hair: Math.floor(r() * 4), hc: Math.floor(r() * 7), num: 1 + Math.floor(r() * 99)}, trail: i > 11 ? "t_flame" : i > 5 ? "t_line" : "t_none", fx: i > 14 ? "f_bolt" : i > 7 ? "f_shock" : "f_conf", name: v[0], ring: "#ff5d5d"}};
 };
 // a CPU at a chosen level, for quick matches and party seats
@@ -84,8 +89,8 @@ MG.bot = function(lv, seed){
 };
 // the ranked board: 160 simulated players plus me
 MG.board = function(key){
-  var a = MG.league().map(function(p){ return {n: p.n, clan: p.clan, elo: p.elo, w: p.w, megs: p.megs, cups: p.cups, strk: p.strk, title: p.title, p: p}; });
-  a.push({n: S.name || "You", clan: "", elo: S.elo, w: S.n.w || 0, megs: S.n.megs || 0, cups: S.n.cups || 0, strk: S.n.best || 0, title: S.title, me: 1});
+  var a = MG.league().map(function(p){ return {n: p.n, clan: p.clan, elo: p.elo, w: p.w, megs: p.megs, cups: p.cups, strk: p.strk, gaunt: p.gaunt, title: p.title, p: p}; });
+  a.push({n: S.name || "You", clan: "", elo: S.elo, w: S.n.w || 0, megs: S.n.megs || 0, cups: S.n.cups || 0, strk: S.n.best || 0, gaunt: S.n.gaunt || 0, title: S.title, me: 1});
   a.sort(function(x, y){ return y[key] - x[key] || (x.me ? -1 : 1); });
   return a;
 };
@@ -115,9 +120,10 @@ MG.finish = function(res){
     S.last = res.opp.id; if (MG.rank() === 1) n.first = 1;
   }
   if (res.win && res.mode === "moon") add("moon", 1);
+  if (res.win && res.mode === "field") add("fieldw", 1);
   if (res.win && res.ladder != null && res.ladder === S.ladder) { S.ladder++; out.ladder = 1; out.coins += 80 + 20 * res.ladder; out.xp += 100 + 10 * res.ladder; }
   if (res.win && S.win1 !== MG.day()) { S.win1 = MG.day(); out.first = 1; out.coins += 100; }
-  cnt = {goals: st.goals, twos: st.twos, megs: st.megs, perfect: st.perfect, wins: res.win ? 1 : 0, rwins: res.win && res.ranked ? 1 : 0, blocks: st.blocks, tackles: st.tackles, ankles: st.ankles, awins: res.win && res.arcade ? 1 : 0};
+  cnt = {goals: st.goals, twos: st.twos, megs: st.megs, perfect: st.perfect, wins: res.win ? 1 : 0, rwins: res.win && res.ranked ? 1 : 0, blocks: st.blocks, tackles: st.tackles, ankles: st.ankles, awins: res.win && res.arcade ? 1 : 0, fwins: res.win && res.mode === "field" ? 1 : 0};
   MG.quests().forEach(function(x){ if (!x.done) { x.q.p = Math.min(x.need, x.q.p + (cnt[x.key] || 0)); if (x.q.p >= x.need) out.quests.push(x.text); } });
   S.coins += out.coins; out.lv = MG.addXp(out.xp);
   S.hist.unshift({m: res.mode, w: res.win ? 1 : 0, s: res.sc.join("-"), o: res.opp.name, d: out.elo}); if (S.hist.length > 14) S.hist.pop();
@@ -139,20 +145,24 @@ MG.claim = function(id){
 };
 
 // ---- packs and the shop ----
-MG.roll = function(pk, force){
-  var r = Math.random() * 100, a = 0, q = 4, i, pool;
-  for (i = 0; i < 5; i++) { a += pk.odds[i]; if (r < a) { q = i; break; } }
-  if (force && q < 3) q = 3;
-  pool = MG.ITEMS.filter(function(it){ return it.r === q && !it.need && !FREE[it.id]; });
+MG.KINDS = [["", "Mixed"], ["kit", "Kits"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["court", "Cages"]];
+MG.packCost = function(pk, kind){ return Math.round(pk.cost * (kind ? 1.25 : 1) / 10) * 10; };   // choosing what is inside costs a little more
+MG.roll = function(pk, force, kind){
+  var r = Math.random() * 100, a = 0, q = 7, i, pool = [];
+  for (i = 0; i < 8; i++) { a += pk.odds[i]; if (r < a) { q = i; break; } }
+  if (force && q < MG.LEG) q = MG.LEG;
+  function of(k){ return MG.ITEMS.filter(function(it){ return it.r === k && !it.need && !FREE[it.id] && (!kind || it.t === kind); }); }
+  while (!(pool = of(q)).length && q > 0) q--;
+  while (!pool.length && q < 8) pool = of(++q);
   return pool[Math.floor(Math.random() * pool.length)];
 };
 // three items a pack; a duplicate pays coins back; the pity counter guarantees a Legendary or better
-MG.openPack = function(id){
+MG.openPack = function(id, kind){
   var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], out = [], hit = false, i, it, d;
-  if (!pk || S.coins < pk.cost) return null;
-  S.coins -= pk.cost; S.pity[id] = (S.pity[id] || 0) + 1; S.n.packs = (S.n.packs || 0) + 1;
+  if (!pk || S.coins < MG.packCost(pk, kind)) return null;
+  S.coins -= MG.packCost(pk, kind); S.pity[id] = (S.pity[id] || 0) + 1; S.n.packs = (S.n.packs || 0) + 1;
   for (i = 0; i < 3; i++) {
-    it = MG.roll(pk, i === 2 && !hit && S.pity[id] >= pk.pity); if (it.r >= 3) hit = true;
+    it = MG.roll(pk, i === 2 && !hit && S.pity[id] >= pk.pity, kind); if (it.r >= MG.LEG) hit = true;
     d = !!S.inv[it.id]; if (d) S.coins += MG.DUPE[it.r]; else S.inv[it.id] = 1;
     out.push({it: it, dupe: d, back: d ? MG.DUPE[it.r] : 0});
   }
@@ -160,11 +170,30 @@ MG.openPack = function(id){
   MG.save(); return out;
 };
 MG.featured = function(){
-  var r = MG.rng(MG.day() * 7919 + 13), pool = MG.ITEMS.filter(function(it){ return !it.need && it.r <= 3 && !FREE[it.id]; }), out = [], i;
+  var r = MG.rng(MG.day() * 7919 + 13), pool = MG.ITEMS.filter(function(it){ return !it.need && it.r <= MG.LEG && !FREE[it.id]; }), out = [], i;
   for (i = 0; i < 4; i++) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
   return out;
 };
-MG.buy = function(id){ var it = MG.ITEM[id], p = it ? MG.PRICE[it.r] : 0; if (!it || it.need || it.r > 3 || S.inv[id] || S.coins < p) return false; S.coins -= p; S.inv[id] = 1; MG.save(); return true; };
+MG.buy = function(id){ var it = MG.ITEM[id], p = it ? MG.PRICE[it.r] : 0; if (!it || it.need || it.r > MG.LEG || S.inv[id] || S.coins < p) return false; S.coins -= p; S.inv[id] = 1; MG.save(); return true; };
+// one free item and a few coins, once a day
+MG.freeReady = function(){ return S.free !== MG.day(); };
+MG.freePack = function(){
+  var it, d;
+  if (!MG.freeReady()) return null;
+  S.free = MG.day(); it = MG.roll(MG.PACKS[0]); d = !!S.inv[it.id];
+  if (d) S.coins += MG.DUPE[it.r]; else S.inv[it.id] = 1;
+  S.coins += 40; MG.save(); return [{it: it, dupe: d, back: d ? MG.DUPE[it.r] : 0}];
+};
+
+// ---- the Gauntlet: rivals one after another, each tougher, until you lose ----
+MG.gauntLv = function(k){ return Math.min(10, 0.5 + k * 0.75); };
+MG.gauntFoe = function(k){ return MG.bot(MG.gauntLv(k), 7001 + k * 131 + (S.n.gruns || 0) * 17); };
+MG.gauntDone = function(win){
+  var k = S.run ? S.run.k : 0, out = {k: k, coins: 0, end: !win};
+  if (win) { out.coins = 30 + 12 * k; S.coins += out.coins; S.run = {k: k + 1}; S.n.gaunt = Math.max(S.n.gaunt || 0, k + 1); }
+  else { S.run = null; S.n.gruns = (S.n.gruns || 0) + 1; }
+  out.items = MG.unlocks(); MG.save(); return out;
+};
 
 // ---- cups: eight players, three rounds ----
 MG.cupStart = function(kind){
