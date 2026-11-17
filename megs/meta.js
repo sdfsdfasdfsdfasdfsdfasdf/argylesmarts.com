@@ -13,7 +13,7 @@ function merge(a, b){ var o = {}, k; b = b || {}; for (k in a) o[k] = a[k] && ty
 // every setting, with its default
 MG.SET0 = {vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 1, fx: 1, names: 1, rings: 1, meter: 1, aim: 1, pops: 1, zoom: 0, pan: 1, cb: 0, net: 1, trail: 1, aura: 1, slow: 1, banner: 1, hints: 1, hud: 1, fps: 0,
   auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 1, dtap: 0,
-  kv: 2,
+  kv: 3,
   // k1: you against the computer. kp and k2: the two players in a party game on one keyboard
   k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO"},
   kp: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyR", a: "KeyT", b: "KeyY", c: "KeyF", d: "KeyG"},
@@ -31,7 +31,7 @@ MG.load = function(){
   if (o && o.v === 1) for (k in o) d[k] = o[k];
   S = MG.S = d; S.set = merge(MG.SET0, S.set);
   if (!S.eq.emote) { S.eq.emote = "e_wave"; S.inv.e_wave = 1; }
-  if (S.set.kv !== 2 || !S.set.kp) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 2; }   // the key layout changed: start everyone on the new one
+  if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
   MG.quests(); MG.unlocks();
   return S;
 };
