@@ -3,6 +3,13 @@
 "use strict";
 var MG = window.MG, R = MG.R, K = MG.K, DT = K.DT, run = null, demo = null, stageView = null, keys = {}, AC = null, out = null, nz = null, amb = null;
 var TAP = {};
+// which key an event is. Some browsers and embedded pages leave e.code empty, so fall back to the character
+MG.code = function(e){
+  var k = e.key || "";
+  if (e.code) return e.code;
+  if (k.length === 1) return /[a-z]/i.test(k) ? "Key" + k.toUpperCase() : /[0-9]/.test(k) ? "Digit" + k : k === " " ? "Space" : k === "," ? "Comma" : k === "." ? "Period" : k === "/" ? "Slash" : "";
+  return k === "Shift" ? "ShiftLeft" : k === "Esc" ? "Escape" : k;
+};
 var TOUCH = {x: 0, y: 0, sh: 0, a: 0, b: 0, c: 0, d: 0, sp: 0, id: null, on: false};
 function $(id){ return document.getElementById(id); }
 function set(el, v){ if (el && el._v !== v) { el._v = v; el.textContent = v; } }
@@ -114,7 +121,7 @@ function wire(){
   window.addEventListener("touchstart", function(){ $("stage").classList.add("touch"); }, {passive: true});
   if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) $("stage").classList.add("touch");
   window.addEventListener("keydown", function(e){
-    var st = MG.S.set, now = performance.now(), c = e.code;
+    var st = MG.S.set, now = performance.now(), c = MG.code(e);
     if (!run) return;
     if (!e.repeat && st.dtap && !run.paused) {
       run.src.forEach(function(s){
@@ -124,11 +131,12 @@ function wire(){
         else TAP[c] = now;
       });
     }
-    keys[e.code] = 1;
-    if ((e.code === "Escape" || e.code === "KeyP") && !e.repeat && !run.over) pause(!run.paused);
-    if (/^Arrow|^Space$|^Slash$|^Quote$/.test(e.code)) e.preventDefault();
+    keys[c] = 1;
+    if ((c === "Escape" || c === "KeyP") && !e.repeat && !run.over) pause(!run.paused);
+    if (/^Arrow|^Space$|^Slash$|^Quote$/.test(c)) e.preventDefault();
   });
-  window.addEventListener("keyup", function(e){ keys[e.code] = 0; });
+  window.addEventListener("keyup", function(e){ keys[MG.code(e)] = 0; });
+  window.addEventListener("blur", function(){ keys = {}; });
   window.addEventListener("blur", function(){ keys = {}; });
   document.addEventListener("visibilitychange", function(){ if (document.hidden && run && !run.over && !run.paused) pause(true); });
   $("bpause").addEventListener("click", function(){ if (run && !run.over) pause(!run.paused); });
