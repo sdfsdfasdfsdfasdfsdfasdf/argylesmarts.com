@@ -428,7 +428,7 @@ VIEW.settings = function(){
 };
 ACT.bind = function(d, b){
   b.textContent = "Press a key"; b.classList.add("on");
-  function on(e){ e.preventDefault(); e.stopPropagation(); window.removeEventListener("keydown", on, true); if (e.code !== "Escape") { S().set[d.p][d.k] = e.code; MG.save(); } go("settings"); }
+  function on(e){ e.preventDefault(); e.stopPropagation(); window.removeEventListener("keydown", on, true); if (MG.code(e) && MG.code(e) !== "Escape") { S().set[d.p][d.k] = MG.code(e); MG.save(); } go("settings"); }   // a key the browser cannot name is ignored, never saved as blank
   window.addEventListener("keydown", on, true);
 };
 ACT.keysReset = function(){ var st = S().set; st.k1 = JSON.parse(JSON.stringify(MG.SET0.k1)); st.kp = JSON.parse(JSON.stringify(MG.SET0.kp)); st.k2 = JSON.parse(JSON.stringify(MG.SET0.k2)); MG.save(); go("settings"); };
