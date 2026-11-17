@@ -32,6 +32,8 @@ MG.load = function(){
   S = MG.S = d; S.set = merge(MG.SET0, S.set);
   if (!S.eq.emote) { S.eq.emote = "e_wave"; S.inv.e_wave = 1; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
+  // a blank or missing key would leave the player unable to move: put the default back
+  ["k1", "kp", "k2"].forEach(function(m){ var d0 = MG.SET0[m], kk = S.set[m] = S.set[m] || {}, k; for (k in d0) if (typeof kk[k] !== "string" || !kk[k]) kk[k] = d0[k]; });
   MG.quests(); MG.unlocks();
   return S;
 };
