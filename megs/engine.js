@@ -2,8 +2,8 @@
 (function(){
 "use strict";
 var MG = window.MG = window.MG || {};
-var W = 9, D = 15, GW = 1.5, GH = 2, GD = 1.3, ARC = 8, BR = 0.11, PR = 0.36, DT = 1 / 60, PI = Math.PI, TF = 0.62, GC = 0.72;
-MG.K = {W: W, D: D, GW: GW, GH: GH, GD: GD, ARC: ARC, BR: BR, PR: PR, DT: DT, TF: TF, GC: GC};
+var W = 9, D = 15, GW = 1.5, GH = 2, GD = 1.3, ARC = 8, BR = 0.11, PR = 0.36, DT = 1 / 60, PI = Math.PI, TF = 0.62, GC = 0.72, FL = 26;
+MG.K = {W: W, D: D, GW: GW, GH: GH, GD: GD, ARC: ARC, BR: BR, PR: PR, DT: DT, TF: TF, GC: GC, FL: FL};
 
 function clamp(v, a, b){ return v < a ? a : v > b ? b : v; }
 function hyp(x, y){ return Math.sqrt(x * x + y * y); }
@@ -68,52 +68,65 @@ function inp0(){ return {mx: 0, my: 0, sp: 0, sh: 0, a: 0, b: 0, c: 0, d: 0}; }
 // rival brain settings for a level from 0 (beginner) to 10 (unfair); below 0 is a passive training dummy
 function aiP(lv){
   var t = clamp(lv / 10, 0, 1);
-  return {lv: lv, t: t, pass: lv < 0, react: lerp(0.42, 0.12, t), err: lerp(0.15, 0.02, t), bite: lerp(0.85, 0.1, t), tack: lerp(0.3, 1.6, t), skill: lerp(0.05, 1, t), range: lerp(6.5, 10.5, t), spd: lerp(0.86, 1.02, t),
-    hist: [], dec: 0, side: 1, moveT: 0, fk: 0, rel: 0, aimX: 0, aimH: 0, w: 0, wt: 0, guess: false, ph: 0, disc: 0, sv: 0};
+  return {lv: lv, t: t, pass: lv < 0, react: lerp(0.52, 0.15, t), err: lerp(0.2, 0.03, t), bite: lerp(0.9, 0.12, t), tack: lerp(0.1, 0.95, t), skill: lerp(0.03, 0.95, t), range: lerp(6.5, 10.5, t), spd: lerp(0.74, 0.98, t),
+    hist: [], dec: 0, side: 1, moveT: 0, fk: 0, rel: 0, aimX: 0, aimH: 0, w: 0, wt: 0, guess: false, ph: 0, disc: 0, sv: 0, step: 0, dz: 0, ev: 0};
 }
 function mkP(i, o){
   o = o || {};
   var s = o.st || {}, st = {};
   ["pace", "shot", "ctrl", "power", "tackle", "block"].forEach(function(k){ st[k] = s[k] == null ? 5 : s[k]; });
   return {i: i, name: o.name || "P" + (i + 1), x: 0, y: 0, vx: 0, vy: 0, fa: 0, z: 0, vz: 0, st: st, stam: 1, tired: 0, act: "", at: 0, ad: 0, ax: 0, ay: 0, hit: 0, sd: 1, sa: 0,
-    wind: -1, w0: 0, pull: false, aimX: 0, aimH: 0, prot: 0, legs: 0, jock: 0, lastCut: -9, lastBurst: -9, lastFake: -9, lastDrag: -9, lastMeg: -9, buf: "", bufT: -9, stride: 0, heat: 0, rel: null,
+    wind: -1, w0: 0, pull: false, aimX: 0, aimH: 0, prot: 0, legs: 0, jock: 0, lastCut: -9, lastBurst: -9, lastFake: -9, lastDrag: -9, lastMeg: -9, lastPress: -9, lastAnk: -9, lastEl: -9, lastRb: -9, cs: 1, cb: 1, rb: 0, grab: 0, buf: "", bufT: -9, stride: 0, heat: 0, rel: null,
     mx0: 0, my0: 0, mx1: 0, my1: 0, inp: inp0(), prev: inp0(), ai: o.ai == null ? null : aiP(o.ai),
     stats: {shots: 0, goals: 0, twos: 0, perfect: 0, green: 0, megs: 0, ankles: 0, tackles: 0, blocks: 0, poss: 0}};
 }
 function act(p, name, dur, ax, ay){ p.act = name; p.at = 0; p.ad = dur; p.ax = ax || 0; p.ay = ay || 0; p.hit = 0; }
-function ctl(p){ return p.act === "" || p.act === "tackle" || p.act === "burst" || p.act === "cut"; }
+function ctl(p){ return p.act === "" || p.act === "tackle" || p.act === "burst" || p.act === "cut" || p.act === "press"; }
 function maxSpd(m, p, sprint){
-  var v = sprint ? 6.5 + 0.16 * (p.st.pace - 5) : 4.5 + 0.09 * (p.st.pace - 5);
+  var v = 5.7 + 0.13 * (p.st.pace - 5);   // one speed: there is no sprint
   if (m.b.own === p.i) v *= 0.93;
   if (p.ai) v *= p.ai.spd;
-  return v * (0.88 + 0.12 * p.stam);
+  return v * (0.88 + 0.12 * p.stam) * m.cfg.pace;
 }
 
 // ---- match ----
 // cfg: target (first to), two (long range counts double), take (make it, take it), clock (seconds, 0 = none), sc (possession clock),
-// panna (a nutmeg wins), golden (next goal wins), far (only long range counts), grav and boun (ball feel), p0 / p1 (name, st, ai level)
+// panna (a nutmeg wins), golden (next goal wins), far (only long range counts), grav and boun (ball feel), p0 / p1 (name, st, ai level),
+// field (full pitch: a goal at each end, player 0 attacks the one at y = 0), megpt (a nutmeg scores), pace and tire (speed, stamina drain), grip (footing), wall and roll (rebounds, rolling), pw (shot power), start ([a, b] opening score)
 function Match(cfg){
-  var c = this.cfg = {target: 5, two: true, take: true, clock: 0, sc: 12, panna: false, golden: false, far: false, grav: 1, boun: 1}, k;
+  var c = this.cfg = {target: 5, two: true, take: true, clock: 0, sc: 12, panna: false, golden: false, far: false, grav: 1, boun: 1, megpt: false, pace: 1, tire: 1, grip: 1, wall: 1, roll: 1, pw: 1, field: false}, k;
   cfg = cfg || {};
   for (k in c) if (cfg[k] != null) c[k] = cfg[k];
+  this.L = c.field ? FL : 0;
   this.r = rng(cfg.seed == null ? (Math.random() * 1e9) | 0 : cfg.seed);
   this.p = [mkP(0, cfg.p0), mkP(1, cfg.p1)];
   this.b = {x: 0, y: 0, z: BR, vx: 0, vy: 0, vz: 0, spin: 0, own: -1, last: -1, nop: [0, 0], shot: null, net: 0, inGoal: false};
-  this.score = [0, 0]; this.t = 0; this.pt = 0; this.phase = ""; this.off = 0; this.poss = 0; this.need = -1; this.next = 0; this.win = -1; this.ko = 0; this.sc = c.sc; this.left = c.clock; this.ev = [];
+  this.score = cfg.start ? [cfg.start[0] || 0, cfg.start[1] || 0] : [0, 0]; this.t = 0; this.pt = 0; this.phase = ""; this.off = 0; this.poss = 0; this.need = -1; this.next = 0; this.win = -1; this.ko = 0; this.sc = c.sc; this.left = c.clock; this.ev = [];
   this.check(cfg.first || 0);
 }
 var M = Match.prototype;
 M.emit = function(k, o){ o = o || {}; o.k = k; this.ev.push(o); };
+// full pitch only: turn the world half a turn about the centre spot, so the goal under attack sits at the origin like it does in the cage
+M.bf = function(){ var b = this.b; b.x = -b.x; b.y = this.L - b.y; b.vx = -b.vx; b.vy = -b.vy; };
+M.flip = function(){
+  var m = this, L = m.L, i, p;
+  for (i = 0; i < 2; i++) { p = m.p[i]; p.x = -p.x; p.y = L - p.y; p.vx = -p.vx; p.vy = -p.vy; p.fa = wrap(p.fa + PI); p.ax = -p.ax; p.ay = -p.ay; p.sa = wrap(p.sa + PI); p.mx0 = -p.mx0; p.my0 = L - p.my0; p.mx1 = -p.mx1; p.my1 = L - p.my1; p.inp.mx = -p.inp.mx; p.inp.my = -p.inp.my; }
+  m.bf();
+};
+// run f with the attacked goal at the origin
+M.af = function(f){ var m = this, fl = m.L && m.off === 1, r; if (fl) m.flip(); r = f(); if (fl) m.flip(); return r; };
+// where a wound-up shot is aimed, in pitch coordinates
+M.target = function(p){ var m = this, fl = m.L && m.off === 1, x = m.af(function(){ return clamp(m.sweep(p) * m.range(), -W + 0.3, W - 0.3); }); return {x: fl ? -x : x, y: fl ? m.L : 0, z: p.aimH > 0 ? 1.45 : p.aimH < 0 ? 0.22 : 0.9}; };
 // check ball: attacker at the top with the ball, defender between it and the goal
 M.check = function(att){
   var m = this, b = m.b, a = m.p[att], d = m.p[1 - att], i, p;
   for (i = 0; i < 2; i++) {
     p = m.p[i]; p.vx = p.vy = p.z = p.vz = 0; p.act = ""; p.wind = -1; p.prot = 0; p.legs = 0; p.buf = ""; p.rel = null;
-    if (p.ai) { p.ai.hist.length = 0; p.ai.w = 0; p.ai.fk = 0; p.ai.sv = 0; p.ai.moveT = m.t + 1.4 + m.r() * 0.6; p.ai.ph = m.r() * 6.3; p.ai.disc = m.r(); }
+    if (p.ai) { p.ai.hist.length = 0; p.ai.w = 0; p.ai.fk = 0; p.ai.sv = 0; p.ai.step = 0; p.ai.dz = 0; p.ai.ev = 0; p.ai.moveT = m.t + 1.4 + m.r() * 0.6; p.ai.ph = m.r() * 6.3; p.ai.disc = m.r(); }
   }
-  a.x = 0; a.y = 11; a.fa = -PI / 2; d.x = 0; d.y = 8.3; d.fa = PI / 2;
-  b.own = att; b.last = att; b.x = 0; b.y = 10.5; b.z = BR; b.vx = b.vy = b.vz = b.spin = 0; b.shot = null; b.net = 0; b.inGoal = false; b.nop[0] = b.nop[1] = 0;
-  m.off = att; m.poss = att; m.need = -1; m.sc = m.cfg.sc; m.phase = "check"; m.pt = 0; m.emit("check", {by: att});
+  a.x = 0; a.y = m.L ? m.L / 2 + 0.6 : 11; a.fa = -PI / 2; d.x = 0; d.y = m.L ? m.L / 2 - 3.4 : 8.3; d.fa = PI / 2;
+  b.own = att; b.last = att; b.x = 0; b.y = a.y - 0.5; b.z = BR; b.vx = b.vy = b.vz = b.spin = 0; b.shot = null; b.net = 0; b.inGoal = false; b.nop[0] = b.nop[1] = 0;
+  m.off = att; m.poss = att; m.need = -1; m.sc = m.cfg.sc; m.phase = "check"; m.pt = 0; if (m.L && att === 1) m.flip(); m.emit("check", {by: att});
 };
 // how hard the shooter is being closed down, 0..1
 M.pressure = function(p){
@@ -125,13 +138,12 @@ M.pressure = function(p){
   return pr;
 };
 // half width of the green zone on the shot meter
-M.green = function(p){
-  var b = this.b, d = hyp(b.x, b.y), g = 0.085 * (1 + 0.07 * (p.st.shot - 5)) * (1 - 0.6 * this.pressure(p)) * (d > ARC ? 0.78 : d < 4.5 ? 1.15 : 1) * (1 - 0.25 * p.w0) * (0.75 + 0.25 * p.stam);
-  if (p.pull) g *= 1.15;
-  if (p.heat >= 2) g *= 1.2;
-  return clamp(g, 0.018, 0.16);
-};
-M.meter = function(p){ return p.act === "wind" ? {m: Math.min(p.wind / TF, 1.25), gw: this.green(p)} : null; };
+// the aim bar. While shoot is held a marker sweeps left and right; where it stops is where the ball goes.
+// The bar covers a fixed angle, so the goal (the green part) fills less of it the further out you are.
+M.range = function(){ var b = this.b; return Math.max(1.9, hyp(b.x, b.y) * 0.45); };   // metres either side of the middle of the goal
+M.green = function(p){ return clamp((GW - 0.22) / this.range(), 0.06, 0.8); };
+M.sweep = function(p){ var u = p.wind / (0.66 * (1 + 0.035 * (p.st.shot - 5))) % 2; if (p.ai && p.ai.shotX != null) return p.ai.shotX; return u < 1 ? -1 + 2 * u : 3 - 2 * u; };
+M.meter = function(p){ var m = this, fl = m.L && m.off === 1; return p.act === "wind" ? m.af(function(){ return {m: (fl ? -1 : 1) * m.sweep(p), gw: m.green(p)}; }) : null; };
 // where a shot goes: the corner you hold, otherwise the side the defender leaves open
 M.aim = function(p, ax){
   var b = this.b, o = this.p[1 - p.i], half = GW - 0.36, xh;
@@ -140,11 +152,10 @@ M.aim = function(p, ax){
   return clamp(-b.x * 0.1, -0.6, 0.6);
 };
 M.shoot = function(p, w){
-  var m = this, b = m.b, r = m.r, c = m.cfg, mm = Math.min(w / TF, 1.25), gw = m.green(p), e = mm - GC, ae = Math.abs(e), q = ae <= gw * 0.35 ? 2 : ae <= gw ? 1 : 0;
-  var sig = q === 2 ? 0 : q === 1 ? 0.004 + 0.014 * ae / gw : Math.min(0.3, 0.035 + 0.6 * (ae - gw));
-  var h = p.aimH, tx = m.aim(p, p.aimX), pw = (0.9 + 0.02 * p.st.power) * (q === 2 ? 1.07 : 1) * (mm < GC ? 0.6 + 0.4 * mm / GC : 1);
-  var spd = (h < 0 ? 22 : 19.5) * pw, tz = h > 0 ? 1.45 : h < 0 ? 0.22 : 0.85 + r() * 0.2, spin = p.aimX && h >= 0 ? -p.aimX * (h > 0 ? 3 : 8) : 0;
-  var v = solve(b.x, b.y, BR, tx, tz, spd, h > 0, spin, 9.8 * c.grav), yaw = gauss(r) * sig, el = gauss(r) * sig * 0.7 + (e > gw ? (e - gw) * 0.9 : 0), ke = h > 0 ? 1 + gauss(r) * sig : 1;
+  var m = this, b = m.b, r = m.r, c = m.cfg, x = m.sweep(p), gw = m.green(p), ae = Math.abs(x), q = ae <= gw * 0.35 ? 2 : ae <= gw ? 1 : 0, mm = (m.L && m.off === 1 ? -1 : 1) * x;
+  var sig = 0.004 + 0.02 * m.pressure(p), h = p.aimH, tx = clamp(x * m.range(), -W + 0.3, W - 0.3), pw = (0.9 + 0.02 * p.st.power) * (q === 2 ? 1.07 : 1);
+  var spd = (h < 0 ? 22 : 19.5) * pw * c.pw, tz = h > 0 ? 1.45 : h < 0 ? 0.22 : 0.85 + r() * 0.2, spin = 0;
+  var v = solve(b.x, b.y, BR, tx, tz, spd, h > 0, spin, 9.8 * c.grav), yaw = gauss(r) * sig, el = gauss(r) * sig * 0.7, ke = 1;
   var cs = Math.cos(yaw), sn = Math.sin(yaw), vx = v.vx * cs - v.vy * sn, vy = v.vx * sn + v.vy * cs, vh = hyp(vx, vy) || 1, nh = (vh * Math.cos(el) - v.vz * Math.sin(el)) * ke / vh;
   b.own = -1; b.last = p.i; b.nop[p.i] = 0.3; b.z = BR + 0.02; b.vx = vx * nh; b.vy = vy * nh; b.vz = (vh * Math.sin(el) + v.vz * Math.cos(el)) * ke; b.spin = spin;
   b.shot = {by: p.i, two: c.two && hyp(b.x, b.y) > ARC, q: q, megs: 0, hit: "", blk: 0};
@@ -155,15 +166,15 @@ M.shoot = function(p, w){
 // first-time finish on a loose ball
 M.volley = function(p){
   var m = this, b = m.b, r = m.r, c = m.cfg, sig = 0.03 + 0.006 * hyp(b.vx, b.vy) + (b.z > 0.6 ? 0.03 : 0), tx = m.aim(p, p.inp.mx > 0.4 ? 1 : p.inp.mx < -0.4 ? -1 : 0);
-  var v = solve(b.x, b.y, b.z, tx, 0.8, 18 * (0.9 + 0.02 * p.st.power), false, 0, 9.8 * c.grav), yaw = gauss(r) * sig, cs = Math.cos(yaw), sn = Math.sin(yaw);
+  var v = solve(b.x, b.y, b.z, tx, 0.8, 18 * c.pw * (0.9 + 0.02 * p.st.power), false, 0, 9.8 * c.grav), yaw = gauss(r) * sig, cs = Math.cos(yaw), sn = Math.sin(yaw);
   b.vx = v.vx * cs - v.vy * sn; b.vy = v.vx * sn + v.vy * cs; b.vz = v.vz + gauss(r) * sig * 8; b.spin = 0; b.last = p.i; b.nop[p.i] = 0.3;
   b.shot = {by: p.i, two: c.two && hyp(b.x, b.y) > ARC, q: 0, megs: 0, hit: "", blk: 0, vol: 1};
   act(p, "kick", 0.24); p.stats.shots++; m.emit("kick", {by: p.i, q: 0, pw: 18, h: 0, vol: 1});
 };
 
 // ---- actions ----
-M.ankles = function(p, o, dur){ act(o, "stumble", dur); o.wind = -1; p.stats.ankles++; this.emit("ankles", {by: p.i}); };
-// turn button presses into moves. On the ball: a cut, b drag back, c burst, d megs. Off it: a tackle, b jockey (held), c slide.
+M.ankles = function(p, o, dur){ if (this.t - o.lastAnk < (o.ai ? 9 : 18) || (!o.ai && p.ai && this.r() < 0.55)) return; o.lastAnk = this.t; act(o, "stumble", dur); o.wind = -1; p.stats.ankles++; this.emit("ankles", {by: p.i}); };
+// turn button presses into moves. On the ball: a cut, b drag back, c burst, d megs. Off it: a tackle, b jockey (held), c slide, d press.
 M.press = function(p){
   var m = this, b = m.b, inp = p.inp, pv = p.prev, t = m.t, has = b.own === p.i, o = m.p[1 - p.i], mx = inp.mx, my = inp.my, l = hyp(mx, my), ks = ["a", "b", "c", "d"], i, k, dx, dy, d, fx, fy, px, py, s, cx, cy, n, fresh, dur;
   for (i = 0; i < 4; i++) if (inp[ks[i]] && !pv[ks[i]]) { p.buf = ks[i]; p.bufT = t; }
@@ -179,6 +190,7 @@ M.press = function(p){
       else { act(p, "wind", 9); p.wind = 0; p.w0 = Math.min(1, hyp(p.vx, p.vy) / 6.5); p.pull = t - p.lastDrag < 0.6; p.rel = null; }
     }
     else if (b.own < 0 && d < 1.05 && b.z < 1.7 && m.off === p.i && m.need < 0 && !b.inGoal) m.volley(p);
+    else if (inp.b) act(p, "wall", 0.62);   // jockey + block: stand tall and wide
     else if (l > 0.3) { act(p, "lunge", 0.66, mx / l, my / l); p.legs = 0.4; }
     else { act(p, "jump", 0.5); p.legs = 0.45; }
     return;
@@ -190,6 +202,7 @@ M.press = function(p){
     if (p.act !== "") return;
     if (k === "a") { act(p, "tackle", 0.52, dx / d, dy / d); p.legs = 0.34; }
     else if (k === "c" && p.stam > 0.1) { if (l > 0.3) act(p, "slide", 1.05, mx / l, my / l); else act(p, "slide", 1.05, dx / d, dy / d); p.stam -= 0.12; }
+    else if (k === "d" && b.own === o.i && t - p.lastPress > 1.3 && p.stam > 0.12 && d < 5) { act(p, "press", 0.3, dx / d, dy / d); p.lastPress = t; p.stam -= 0.1; m.emit("move", {by: p.i, s: "press"}); }
     return;
   }
   fx = Math.cos(p.fa); fy = Math.sin(p.fa);
@@ -197,19 +210,26 @@ M.press = function(p){
     if (t - p.lastBurst < 0.5 && p.stam > 0.12) {   // burst, then cut: roulette
       act(p, "spin", 0.44); p.sa = Math.atan2(p.vy, p.vx); p.sd = (o.x - p.x) * -fy + (o.y - p.y) * fx > 0 ? -1 : 1; p.prot = 0.46; p.stam -= 0.14; p.lastBurst = -9;
       dx = o.x - p.x; dy = o.y - p.y; d = hyp(dx, dy);
-      if (d < 1.7 && dx * fx + dy * fy > 0 && o.act !== "stumble" && (o.act === "tackle" || o.jock || hyp(o.vx, o.vy) < 1.6)) m.ankles(p, o, 0.5);
+      if (d < 1.5 && dx * fx + dy * fy > 0 && o.act !== "stumble" && (o.act === "tackle" || o.act === "press")) m.ankles(p, o, 0.45);
       m.emit("move", {by: p.i, s: "spin"});
       return;
     }
-    if (p.act !== "" || t - p.lastCut < 0.3) return;
+    if (p.act !== "" || t - p.lastCut < 0.24) return;
     px = -fy; py = fx;
+    if (t - p.lastCut < 0.62 && t - p.lastEl > 1.6 && p.stam > 0.1) {   // a second cut straight back the other way: elastico
+      s = -p.cs; cx = px * s + fx * 0.25; cy = py * s + fy * 0.25; n = hyp(cx, cy); dx = o.x - p.x; dy = o.y - p.y; d = hyp(dx, dy);
+      act(p, "cut", 0.3, cx / n, cy / n); p.cb = 1.2; p.cs = s; p.prot = 0.3; p.lastCut = p.lastEl = t; p.stam -= 0.08;
+      if (d < 1.9 && o.act === "" && !o.jock && (o.vx * px + o.vy * py) * s < -2.4) m.ankles(p, o, 0.55);   // he went with the first one
+      m.emit("move", {by: p.i, s: "elastico"});
+      return;
+    }
     s = l > 0.3 ? (mx * px + my * py >= 0 ? 1 : -1) : ((o.x - p.x) * px + (o.y - p.y) * py > 0 ? -1 : 1);
     cx = px * s * 0.92 + fx * 0.4; cy = py * s * 0.92 + fy * 0.4; n = hyp(cx, cy);
     fresh = t - p.lastCut > 0.9;
-    act(p, "cut", 0.26, cx / n, cy / n); p.prot = fresh ? 0.2 + 0.012 * (p.st.ctrl - 5) : 0.08; p.lastCut = t; p.stam -= 0.05;
+    act(p, "cut", 0.26, cx / n, cy / n); p.cb = 1; p.cs = s; p.prot = fresh ? 0.2 + 0.012 * (p.st.ctrl - 5) : 0.08; p.lastCut = t; p.stam -= 0.05;
     dx = o.x - p.x; dy = o.y - p.y; d = hyp(dx, dy);
     // ankle breaker: the defender is reaching, or leaning the wrong way
-    if (fresh && d < 2.3 && o.act !== "stumble" && ((o.act === "tackle" && o.at < 0.3) || (o.act === "lunge" && o.at < 0.3) || (!o.jock && o.vx * p.ax + o.vy * p.ay < -2.6))) m.ankles(p, o, 0.78);
+    if (fresh && d < 1.7 && o.act !== "stumble" && ((o.act === "tackle" && o.at < 0.2) || (o.act === "lunge" && o.at < 0.2) || o.act === "press" || (!o.jock && o.act === "" && o.vx * p.ax + o.vy * p.ay < -4.6))) m.ankles(p, o, 0.55);
     m.emit("move", {by: p.i, s: "cut"});
     return;
   }
@@ -226,14 +246,35 @@ M.press = function(p){
 };
 // nutmeg: only works on a defender who has committed (reaching, lunging, jumping) or is running flat out
 M.megs = function(p){
-  var m = this, b = m.b, o = m.p[1 - p.i], dx = o.x - p.x, dy = o.y - p.y, d = hyp(dx, dy) || 1, t = m.t;
-  if (d > 2.1 || (dx * Math.cos(p.fa) + dy * Math.sin(p.fa)) / d < 0.55 || t - p.lastMeg < 1 || o.act === "stumble" || o.act === "megged") return;
-  p.lastMeg = t; dx /= d; dy /= d;
+  var m = this, b = m.b, o = m.p[1 - p.i], dx = o.x - p.x, dy = o.y - p.y, d = hyp(dx, dy) || 1, t = m.t, front = (dx * Math.cos(p.fa) + dy * Math.sin(p.fa)) / d >= 0.55, s;
+  if (t - p.lastMeg < 1) return;
+  if (d > 2.1 || !front) {   // nobody to beat that way: play a one-two off the boards if they are close
+    s = p.x < 0 ? -1 : 1;
+    if (W - Math.abs(p.x) > 3.4) return;
+    p.lastMeg = t; b.own = -1; b.last = p.i; b.nop[p.i] = 0.22; b.shot = null; b.z = BR + 0.01; b.vz = 0; b.spin = 0;
+    b.vx = s * 10.5; b.vy = (Math.sin(p.fa) < 0 ? -1 : 1) * Math.max(4.5, Math.abs(Math.sin(p.fa)) * 7.2);
+    act(p, "kick", 0.16); m.emit("move", {by: p.i, s: "wallpass"});
+    return;
+  }
+  if (o.act === "stumble" || o.act === "megged") return;
+  p.lastMeg = t; dx /= d; dy /= d; p.rb = 0;
+  if (t - p.lastDrag < 0.65 && d < 1.9 && t - p.lastRb > 3 && p.stam > 0.25) {   // drag back, then megs: flick it over his head
+    p.lastRb = t; p.stam -= 0.22;
+    if (o.act === "jump" || o.act === "wall") { b.own = -1; b.last = p.i; b.nop[p.i] = 0.5; b.vx = dx * 3; b.vy = dy * 3; b.vz = 4; b.z = 0.6; b.shot = null; act(p, "kick", 0.3); m.emit("read", {by: o.i}); return; }
+    act(p, "megs", 0.5, dx, dy); p.rb = 1; p.sd = m.r() < 0.5 ? 1 : -1; p.prot = 0.6;
+    p.mx0 = b.x; p.my0 = b.y; p.mx1 = clamp(o.x + dx * 1.7, -W + 0.4, W - 0.4); p.my1 = clamp(o.y + dy * 1.7, 0.5, (m.L || D) - 0.4);
+    act(o, "megged", 0.55); o.wind = -1; m.emit("rainbow", {by: p.i});
+    return;
+  }
   if (megOpen(o)) {
     act(p, "megs", 0.5, dx, dy); p.sd = m.r() < 0.5 ? 1 : -1; p.prot = 0.6; p.stam -= 0.06;
-    p.mx0 = b.x; p.my0 = b.y; p.mx1 = clamp(o.x + dx * 1.9, -W + 0.4, W - 0.4); p.my1 = clamp(o.y + dy * 1.9, 0.5, D - 0.4);
+    p.mx0 = b.x; p.my0 = b.y; p.mx1 = clamp(o.x + dx * 1.9, -W + 0.4, W - 0.4); p.my1 = clamp(o.y + dy * 1.9, 0.5, (m.L || D) - 0.4);
     act(o, "megged", 0.9); o.wind = -1; p.stats.megs++; m.emit("megs", {by: p.i});
     if (m.cfg.panna) { m.win = p.i; m.ko = 1; m.phase = "goal"; m.pt = 1; m.next = p.i; }
+    else if (m.cfg.megpt) {
+      m.score[p.i]++; m.emit("megpt", {by: p.i});
+      if (m.cfg.golden || (m.cfg.target && m.score[p.i] >= m.cfg.target)) { m.win = p.i; m.ko = 2; m.phase = "goal"; m.pt = 1; m.next = p.i; }
+    }
   } else {
     b.own = -1; b.last = p.i; b.nop[p.i] = 0.5; b.vx = dx * 4.5; b.vy = dy * 4.5; b.vz = 0; b.shot = null;
     act(p, "kick", 0.3); m.emit("read", {by: o.i});
@@ -242,23 +283,34 @@ M.megs = function(p){
 // poke or slide at the ball; a protected dribbler makes it miss
 M.tackle = function(p){
   var m = this, b = m.b, o = m.p[1 - p.i], sl = p.act === "slide", dx, dy, d, reach, j;
-  if (p.hit || b.own !== o.i || (!sl && (p.at < 0.1 || p.at > 0.25))) return;
+  if (p.hit || b.own !== o.i || (!sl && (p.at < 0.07 || p.at > 0.3))) return;
   dx = b.x - p.x; dy = b.y - p.y; d = hyp(dx, dy) || 0.01;
   reach = sl ? 0.85 : 1.1 + 0.03 * (p.st.tackle - 5) - 0.02 * (o.st.ctrl - 5) + (o.act === "burst" ? 0.22 : 0);
   if (d > reach || (!sl && (dx * p.ax + dy * p.ay) / d < 0.4)) return;
   if (!sl && d > 0.7 && segDist(o.x, o.y, p.x, p.y, b.x, b.y) < 0.22) return;   // shielded by the body
   p.hit = 1;
-  if (o.prot > 0 || o.act === "spin" || o.act === "megs") { if (o.act === "cut" || o.act === "spin") m.ankles(o, p, 0.78); return; }
+  if (o.prot > 0 || o.act === "spin" || o.act === "megs") { if (o.act === "spin" || (o.act === "cut" && o.at < 0.1)) m.ankles(o, p, 0.55); return; }
+  if (!sl && d < 0.78) { o.wind = -1; act(o, "stumble", 0.3); p.stats.tackles++; m.gain(p.i); m.emit("steal", {by: p.i}); return; }   // close enough to come away with it
   j = sl ? 7 : 5.2;
   b.own = -1; b.last = p.i; b.nop[o.i] = 0.4; b.shot = null; b.z = BR + 0.01;
   b.vx = (sl ? p.ax : dx / d) * j + (m.r() - 0.5) * 2.4; b.vy = (sl ? p.ay : dy / d) * j + (m.r() - 0.5) * 2.4; b.vz = 0.8 + m.r() * 1.6;
   o.wind = -1; act(o, "stumble", 0.3); p.stats.tackles++; m.emit("tackle", {by: p.i});
 };
+// no button needed: a defender on his feet who gets a foot to an unprotected ball takes it
+M.strip = function(dt){
+  var m = this, b = m.b, o, p;
+  if (b.own < 0) return;
+  o = m.p[b.own]; p = m.p[1 - b.own];
+  if ((p.act !== "" && p.act !== "press") || o.prot > 0 || o.act === "megs" || o.act === "spin" || hyp(b.x - p.x, b.y - p.y) > 0.5 + 0.012 * (p.st.tackle - 5) || segDist(o.x, o.y, p.x, p.y, b.x, b.y) < 0.2) { p.grab = 0; return; }
+  p.grab = (p.grab || 0) + dt;
+  if (p.grab < (p.ai ? 0.1 + 0.26 * (1 - p.ai.t) : 0.09)) return;   // weaker rivals are slow to take it
+  p.grab = 0; o.wind = -1; act(o, "stumble", 0.3); p.stats.tackles++; m.gain(p.i); m.emit("steal", {by: p.i});
+};
 // one player for one tick: action timers, steering, stamina, facing
 M.move = function(p, dt, frz){
   var m = this, b = m.b, inp = p.inp, has = b.own === p.i, mx = frz ? 0 : inp.mx, my = frz ? 0 : inp.my, l = hyp(mx, my), a = p.act, u, sprint, top, acc = 30, tvx, tvy, s, n, dvx, dvy, dv, sp, want, bx, by;
   if (l > 1) { mx /= l; my /= l; l = 1; }
-  p.prot = Math.max(0, p.prot - dt); p.legs = Math.max(0, p.legs - dt);
+  p.prot = Math.max(0, p.prot - dt); p.legs = Math.max(0, p.legs - dt); p.stam = 1;   // nobody tires
   if (p.stam < 0) p.stam = 0;
   if (p.z > 0 || p.vz > 0) { p.vz -= 15 * dt; p.z += p.vz * dt; if (p.z <= 0) { p.z = 0; p.vz = 0; } }
   sprint = !frz && inp.sp && !p.tired && l > 0.2;
@@ -272,15 +324,16 @@ M.move = function(p, dt, frz){
       else {
         p.wind += dt; tvx *= 0.12; tvy *= 0.12;
         p.aimX = mx > 0.4 ? 1 : mx < -0.4 ? -1 : 0; p.aimH = my < -0.4 ? 1 : my > 0.4 ? -1 : 0;
-        if (p.wind >= TF * 1.25) m.shoot(p, p.wind);
+        if (p.wind >= 3.2) m.shoot(p, p.wind);
       }
     }
-    else if (a === "cut") { if (p.at < 0.16) { tvx = p.ax * 7.4; tvy = p.ay * 7.4; acc = 90; } }
+    else if (a === "cut") { if (p.at < 0.16) { tvx = p.ax * 7.4 * p.cb; tvy = p.ay * 7.4 * p.cb; acc = 90; } }
     else if (a === "drag") { if (p.at < 0.2) { tvx = p.ax * 6; tvy = p.ay * 6; acc = 80; } else { tvx *= 0.4; tvy *= 0.4; } }
     else if (a === "burst") {
       if (l > 0.3) { p.ax = lerp(p.ax, mx / l, 4 * dt); p.ay = lerp(p.ay, my / l, 4 * dt); n = hyp(p.ax, p.ay) || 1; p.ax /= n; p.ay /= n; }
       s = lerp(9.6, top, u); tvx = p.ax * s; tvy = p.ay * s; acc = 70;
     }
+    else if (a === "press") { s = lerp(8.8, top, u); n = hyp(b.x - p.x, b.y - p.y) || 1; p.ax = lerp(p.ax, (b.x - p.x) / n, 5 * dt); p.ay = lerp(p.ay, (b.y - p.y) / n, 5 * dt); n = hyp(p.ax, p.ay) || 1; tvx = p.ax / n * s; tvy = p.ay / n * s; acc = 70; }
     else if (a === "spin") { s = p.sa + p.sd * Math.sin(PI * Math.min(1, u)) * 1.1; tvx = Math.cos(s) * 6.4; tvy = Math.sin(s) * 6.4; acc = 90; }
     else if (a === "megs") { s = Math.cos(PI * Math.min(1, u * 1.2)) * 4.2 * p.sd; tvx = p.ax * 6.6 - p.ay * s; tvy = p.ay * 6.6 + p.ax * s; acc = 90; }
     else if (a === "tackle") { if (p.at < 0.12) { tvx = p.ax * 4.2; tvy = p.ay * 4.2; acc = 70; } else { tvx *= 0.25; tvy *= 0.25; } m.tackle(p); }
@@ -290,19 +343,19 @@ M.move = function(p, dt, frz){
     else { tvx = 0; tvy = 0; }
     if (p.act === a && a !== "wind" && p.at >= p.ad) p.act = "";
   }
-  dvx = tvx - p.vx; dvy = tvy - p.vy; dv = hyp(dvx, dvy); s = acc * dt;
+  dvx = tvx - p.vx; dvy = tvy - p.vy; dv = hyp(dvx, dvy); s = acc * dt * m.cfg.grip;
   if (dv > s) { dvx *= s / dv; dvy *= s / dv; }
   p.vx += dvx; p.vy += dvy;
-  p.x = clamp(p.x + p.vx * dt, -W + PR, W - PR); p.y = clamp(p.y + p.vy * dt, 0.3, D - PR);
+  p.x = clamp(p.x + p.vx * dt, -W + PR, W - PR); p.y = clamp(p.y + p.vy * dt, 0.3, m.L ? m.L - 0.3 : D - PR);
   sp = hyp(p.vx, p.vy); p.stride += sp * dt;
-  if (sprint && sp > 5) p.stam = Math.max(0, p.stam - 0.2 * dt); else p.stam = Math.min(1, p.stam + (sp < 1 ? 0.2 : 0.11) * dt);
+  if (sprint && sp > 5) p.stam = Math.max(0, p.stam - 0.2 * dt * m.cfg.tire); else p.stam = Math.min(1, p.stam + (sp < 1 ? 0.2 : 0.11) * dt);
   if (p.stam <= 0.02) p.tired = 1; else if (p.stam > 0.3) p.tired = 0;
   a = p.act; bx = b.x - p.x; by = b.y - p.y; want = p.fa;
   if (a === "spin") { p.fa = wrap(p.fa + p.sd * 14.3 * dt); return; }
   if (a === "wind" || a === "kick" || a === "fake") want = Math.atan2(-p.y, p.aimX * (GW - 0.4) - p.x);
   else if (a === "tackle" || a === "slide" || a === "lunge") want = Math.atan2(p.ay, p.ax);
   else if (a === "drag" || a === "megged" || a === "stumble" || a === "celebrate" || a === "sad" || a === "jump") want = p.fa;
-  else if (has || a === "megs" || a === "burst" || a === "cut" || (sp > 4.8 && !p.jock)) { if (sp > 0.5) want = Math.atan2(p.vy, p.vx); }
+  else if (has || a === "megs" || a === "burst" || a === "press" || a === "cut" || (sp > 4.8 && !p.jock)) { if (sp > 0.5) want = Math.atan2(p.vy, p.vx); }
   else if (hyp(bx, by) > 0.3) want = Math.atan2(by, bx);
   p.fa = wrap(p.fa + clamp(wrap(want - p.fa), -15 * dt, 15 * dt));
 };
@@ -325,18 +378,20 @@ M.carry = function(dt){
   var m = this, b = m.b, p = m.p[b.own], a = p.act, reach = a === "burst" ? 0.95 : a === "drag" ? 0.28 : a === "wind" ? 0.42 : 0.52, tx, ty, u, k = Math.min(1, 22 * dt), ox = b.x, oy = b.y;
   if (a === "megs") { u = Math.min(1, p.at / 0.4); u = 1 - (1 - u) * (1 - u); tx = lerp(p.mx0, p.mx1, u); ty = lerp(p.my0, p.my1, u); k = 1; }
   else { tx = p.x + Math.cos(p.fa) * reach; ty = p.y + Math.sin(p.fa) * reach; }
-  b.x = clamp(b.x + (tx - b.x) * k, -W + BR, W - BR); b.y = Math.min(b.y + (ty - b.y) * k, D - BR); b.z = BR; b.vz = 0;
+  b.x = clamp(b.x + (tx - b.x) * k, -W + BR, W - BR); b.y += (ty - b.y) * k; b.z = BR + (a === "megs" && p.rb ? Math.sin(PI * u) * 1.9 : 0); b.vz = 0;
+  if (!m.L) b.y = Math.min(b.y, D - BR); else if (b.y > m.L - BR && Math.abs(b.x) > GW - BR) b.y = m.L - BR;
   if (b.y < BR && Math.abs(b.x) > GW - BR) b.y = BR;
   b.vx = (b.x - ox) / dt; b.vy = (b.y - oy) / dt;
-  if (b.y < -BR && m.phase === "live") { b.own = -1; b.net = 1; b.vx *= 0.3; b.vy = -3.5; b.shot = null; b.last = p.i; m.goal(); }
+  if (b.y < -BR && m.phase === "live") { b.own = -1; b.net = 1; b.vx *= 0.3; b.vy = -3.5; b.shot = null; b.last = p.i; m.goal(0); }
+  else if (m.L && b.y > m.L + BR && m.phase === "live") { b.own = -1; b.net = 2; b.vx *= 0.3; b.vy = 3.5; b.shot = null; b.last = p.i; m.bf(); m.goal(1); m.bf(); }
 };
 // one small step of a free ball: flight or roll, ground, goal frame, end wall, net, cage walls, bodies
 M.bstep = function(h, g){
-  var m = this, b = m.b, c = m.cfg, e = 0.72, R = BR + 0.06, s, dx, dy, dz, d, vn, inG;
+  var m = this, b = m.b, c = m.cfg, e = Math.min(0.97, 0.72 * c.wall), R = BR + 0.06, s, dx, dy, dz, d, vn, inG;
   if (b.z > BR + 0.003 || Math.abs(b.vz) > 0.3) fly(b, h, g);
   else {
     b.z = BR; b.vz = 0; d = hyp(b.vx, b.vy);
-    if (d > 0.02) { s = Math.max(0, d - (b.net ? 8 : 1.2) * h) / d; b.vx *= s; b.vy *= s; b.x += b.vx * h; b.y += b.vy * h; }
+    if (d > 0.02) { s = Math.max(0, d - (b.net ? 8 : 1.2 * c.roll) * h) / d; b.vx *= s; b.vy *= s; b.x += b.vx * h; b.y += b.vy * h; }
   }
   b.spin *= 1 - 0.6 * h;
   if (b.z < BR) {
@@ -345,6 +400,15 @@ M.bstep = function(h, g){
     else b.vz = 0;
   }
   m.body();
+  m.gphys(1);
+  if (m.L) { m.bf(); m.gphys(2); m.bf(); }
+  if (Math.abs(b.x) > W - BR) { s = b.x > 0 ? 1 : -1; b.x = s * (W - BR); if (b.vx * s > 0) { m.emit("wall", {v: b.vx * s}); b.vx *= -e; b.vy *= 0.94; } }
+  if (!m.L && b.y > D - BR) { b.y = D - BR; if (b.vy > 0) { m.emit("wall", {v: b.vy}); b.vy *= -e; b.vx *= 0.94; } }
+};
+// one goal: posts, crossbar, the wall either side of it and the net. id 1 is the goal at y = 0; id 2 is the far one, handled with the ball turned round
+M.gphys = function(id){
+  var m = this, b = m.b, e = Math.min(0.97, 0.72 * m.cfg.wall), R = BR + 0.06, s, dx, dy, dz, d, vn, inG;
+  if (b.net && b.net !== id) return;
   if (b.y < 0.6 && b.y > -0.4) {   // posts, then crossbar
     for (s = -1; s <= 1; s += 2) {
       dx = b.x - s * GW; dy = b.y; d = hyp(dx, dy);
@@ -363,18 +427,16 @@ M.bstep = function(h, g){
   }
   inG = Math.abs(b.x) < GW && b.z < GH;
   if (!b.net) {
-    if (b.y < 0 && inG) b.net = 1;
+    if (b.y < 0 && inG) b.net = id;
     else if (b.y < BR && !inG) { b.y = BR; if (b.vy < 0) { m.emit("wall", {v: -b.vy}); b.vy *= -e; b.vx *= 0.94; } }
   }
   if (b.net) {   // inside the goal: the net soaks the ball up
-    if (b.y < -GD + BR) { b.y = -GD + BR; if (b.vy < 0) { m.emit("net", {x: b.x, z: b.z, v: -b.vy, f: 0}); b.vy *= -0.12; b.vx *= 0.4; b.vz *= 0.4; } }
-    if (Math.abs(b.x) > GW - BR) { s = b.x > 0 ? 1 : -1; b.x = s * (GW - BR); if (b.vx * s > 0) { m.emit("net", {x: b.x, z: b.z, v: b.vx * s, f: s}); b.vx *= -0.12; b.vy *= 0.5; } }
-    if (b.z > GH - BR) { b.z = GH - BR; if (b.vz > 0) { m.emit("net", {x: b.x, z: b.z, v: b.vz, f: 2}); b.vz *= -0.1; } }
-    if (!b.inGoal && b.y < -BR) { if (m.phase === "live") m.goal(); else b.inGoal = true; }
+    if (b.y < -GD + BR) { b.y = -GD + BR; if (b.vy < 0) { m.emit("net", {x: b.x, y: b.y, z: b.z, v: -b.vy, f: 0, g: id - 1}); b.vy *= -0.12; b.vx *= 0.4; b.vz *= 0.4; } }
+    if (Math.abs(b.x) > GW - BR) { s = b.x > 0 ? 1 : -1; b.x = s * (GW - BR); if (b.vx * s > 0) { m.emit("net", {x: b.x, y: b.y, z: b.z, v: b.vx * s, f: s, g: id - 1}); b.vx *= -0.12; b.vy *= 0.5; } }
+    if (b.z > GH - BR) { b.z = GH - BR; if (b.vz > 0) { m.emit("net", {x: b.x, y: b.y, z: b.z, v: b.vz, f: 2, g: id - 1}); b.vz *= -0.1; } }
+    if (!b.inGoal && b.y < -BR) { if (m.phase === "live") m.goal(id - 1); else b.inGoal = true; }
     if (b.y > 0.05) b.net = 0;
   }
-  if (Math.abs(b.x) > W - BR) { s = b.x > 0 ? 1 : -1; b.x = s * (W - BR); if (b.vx * s > 0) { m.emit("wall", {v: b.vx * s}); b.vx *= -e; b.vy *= 0.94; } }
-  if (b.y > D - BR) { b.y = D - BR; if (b.vy > 0) { m.emit("wall", {v: b.vy}); b.vy *= -e; b.vx *= 0.94; } }
 };
 // free ball against bodies: blocks, deflections, and shots that go through open legs
 M.body = function(){
@@ -382,8 +444,8 @@ M.body = function(){
   for (i = 0; i < 2; i++) {
     p = m.p[i]; a = p.act;
     if (b.nop[i] > 0) continue;
-    R = a === "slide" || a === "lunge" ? 0.7 + 0.02 * (p.st.block - 5) : a === "jump" ? 0.6 + 0.02 * (p.st.block - 5) : a === "tackle" ? 0.48 : 0.34;
-    H = a === "slide" || a === "stumble" ? 0.6 : a === "lunge" ? 1.4 : a === "jump" ? 2.25 : 1.78;
+    R = a === "slide" || a === "lunge" ? 0.8 + 0.02 * (p.st.block - 5) : a === "wall" ? 0.86 + 0.02 * (p.st.block - 5) : a === "jump" ? 0.68 + 0.02 * (p.st.block - 5) : a === "tackle" ? 0.5 : p.jock && b.z < 0.9 ? 0.6 : 0.42;
+    H = a === "slide" || a === "stumble" ? 0.6 : a === "lunge" ? 1.5 : a === "jump" ? 2.3 : a === "wall" ? 2 : 1.8;
     dx = b.x - p.x; dy = b.y - p.y; d = hyp(dx, dy);
     if (d >= R + BR || b.z > H) continue;
     rvx = b.vx - p.vx; rvy = b.vy - p.vy; rel = hyp(rvx, rvy);
@@ -418,23 +480,24 @@ M.gain = function(i){
   if (b.shot && b.shot.by !== i) { p.stats.blocks++; m.emit("save", {by: i}); }
   b.shot = null; b.own = i; b.last = i; b.spin = 0; b.vz = 0; p.prot = 0.3;
   if (m.poss !== i) { m.poss = i; m.sc = m.cfg.sc; } else if (m.sc < 5) m.sc = 5;
-  if (i === m.off) m.need = -1;
+  if (m.L) { if (m.off !== i) { m.emit("turn", {by: i}); if (m.p[0].ai) m.p[0].ai.hist.length = 0; if (m.p[1].ai) m.p[1].ai.hist.length = 0; } m.off = i; m.need = -1; }
+  else if (i === m.off) m.need = -1;
   else { if (m.need !== i) m.emit("turn", {by: i}); m.need = i; }
 };
-M.goal = function(){
-  var m = this, b = m.b, c = m.cfg, s = b.shot, by = m.off, bad = m.need >= 0 && b.last === m.need ? 1 : 0, pts = s && s.by === by && s.two ? 2 : 1, p = m.p[by], o = m.p[1 - by];
+M.goal = function(g){
+  var m = this, b = m.b, c = m.cfg, s = b.shot, by = m.L ? g : m.off, bad = !m.L && m.need >= 0 && b.last === m.need ? 1 : 0, pts = s && s.by === by && s.two ? 2 : 1, p = m.p[by], o = m.p[1 - by];
   b.inGoal = true; b.shot = null; m.pt = 0;
   if (!bad && c.far && pts < 2) bad = 2;
   if (bad) { m.phase = "dead"; m.next = bad === 2 ? 1 - by : by; m.emit("nogoal", {why: bad}); return; }
   m.score[by] += pts; p.stats.goals++; if (pts === 2) p.stats.twos++; p.heat++; o.heat = 0;
-  m.phase = "goal"; m.next = c.take ? by : 1 - by;
+  m.phase = "goal"; m.next = c.take && !m.L ? by : 1 - by;
   if (c.golden || (c.target && m.score[by] >= c.target)) m.win = by;
   act(p, "celebrate", 9); act(o, "sad", 9); p.wind = -1; o.wind = -1;
-  m.emit("goal", {by: by, pts: pts, q: s ? s.q : 0, megs: s ? s.megs : 0, hit: s ? s.hit : "", vol: s && s.vol ? 1 : 0, own: b.last !== by, top: b.z > 1.4, wide: Math.abs(b.x) > GW - 0.5, x: b.x, z: b.z});
+  m.emit("goal", {by: by, pts: pts, q: s ? s.q : 0, megs: s ? s.megs : 0, hit: s ? s.hit : "", vol: s && s.vol ? 1 : 0, own: b.last !== by, top: b.z > 1.4, wide: Math.abs(b.x) > GW - 0.5, x: b.x, z: b.z, g: g || 0});
 };
 // advance the match by one tick of DT
 M.step = function(){
-  var m = this, dt = DT, b = m.b, c = m.cfg, i, p, live = m.phase === "live";
+  var m = this, dt = DT, b = m.b, c = m.cfg, i, p, fl, live = m.phase === "live";
   m.t += dt; m.pt += dt;
   if (m.phase === "check") {
     for (i = 0; i < 2; i++) cp(m.p[i].prev, m.p[i].inp);
@@ -442,12 +505,14 @@ M.step = function(){
     if (m.pt > 1.1) { m.phase = "live"; m.emit("go", {}); }
     return;
   }
+  fl = m.L && m.off === 1; if (fl) m.flip();
   if (live) for (i = 0; i < 2; i++) { p = m.p[i]; if (p.ai) think(m, p); m.press(p); }
   for (i = 0; i < 2; i++) m.move(m.p[i], dt, !live);
-  m.collide(); m.ball(dt);
+  m.collide(); if (fl) m.flip();
+  m.ball(dt);
   for (i = 0; i < 2; i++) cp(m.p[i].prev, m.p[i].inp);
   if (m.phase === "live") {
-    m.pick();
+    m.strip(dt); m.pick();
     if (b.own >= 0) {
       m.p[b.own].stats.poss += dt;
       if (m.need === b.own && hyp(b.x, b.y) > ARC + 0.15) { m.off = b.own; m.need = -1; m.emit("live", {by: m.off}); }
@@ -474,7 +539,7 @@ function go(p, inp, tx, ty, sp){
   inp.sp = sp && d > 1.2 ? 1 : 0;
   return d;
 }
-function megOpen(o){ return o.act !== "slide" && (o.legs > 0 || (hyp(o.vx, o.vy) > 3.9 && !o.jock)); }
+function megOpen(o){ return o.act !== "slide" && (o.legs > 0 || o.act === "press" || (hyp(o.vx, o.vy) > 3.9 && !o.jock)); }
 // how clear the best shooting lane is (metres between the defender and the line to a target)
 function lanes(m, p, o){
   var b = m.b, best = {s: 0, c: -9}, s, c, down = o.act === "stumble" || o.act === "megged" || (o.act === "slide" && o.at > 0.3);
@@ -485,7 +550,7 @@ function lanes(m, p, o){
   return best;
 }
 function block(m, p, a, inp, o, dist){
-  var b = m.b, r = m.r, read = r() < 0.3 + 0.6 * a.t, tx = read ? m.aim(o, o.aimX) : r() < 0.5 ? 0 : (r() < 0.5 ? -1 : 1) * (GW - 0.36), lx = tx - b.x, ly = -b.y, l = hyp(lx, ly) || 1, off = ((p.x - b.x) * ly - (p.y - b.y) * lx) / l, k;
+  var b = m.b, r = m.r, read = r() < 0.12 + 0.68 * a.t, tx = read ? m.aim(o, o.aimX) : r() < 0.5 ? 0 : (r() < 0.5 ? -1 : 1) * (GW - 0.36), lx = tx - b.x, ly = -b.y, l = hyp(lx, ly) || 1, off = ((p.x - b.x) * ly - (p.y - b.y) * lx) / l, k;
   inp.mx = inp.my = 0;
   if (Math.abs(off) < 0.45 || dist < 1.2) { if (dist < 1.7 || (read && o.aimH > 0)) inp.sh = 1; }
   else { k = off > 0 ? 1 : -1; inp.mx = -k * ly / l; inp.my = k * lx / l; inp.sh = 1; }
@@ -507,10 +572,17 @@ function think(m, p){
     ln = lanes(m, p, o);
     a.dec -= DT;
     if (a.dec <= 0) { a.dec = 0.5 + r() * 0.7; a.side = o.x > p.x ? -1 : 1; if (Math.abs(p.x) > 6 && (p.x > 0 ? 1 : -1) === a.side) a.side = -a.side; }
-    if (p.act === "") {
+    qx = hyp(b.x - o.x, b.y - o.y) || 1; u = ((b.x - o.x) * (o.vx - b.vx) + (b.y - o.y) * (o.vy - b.vy)) / qx;   // how near his feet are to the ball, and how fast they are closing
+    if (qx > 1.9) a.dz = 0;
+    else if (t > a.dz && (o.act === "" || o.act === "press") && qx < 0.85 + 0.22 * Math.max(0, u)) { a.dz = t + 0.5; if (r() < 0.12 + 0.86 * a.skill) a.ev = t + a.react * 0.35; }
+    if (p.act === "" && a.ev && t >= a.ev) {   // he is stepping in to take it: move the ball first
+      a.ev = 0;
+      if (megOpen(o) && r() < a.skill) inp.d = 1; else if (d > 4.5 && r() < 0.3) inp.b = 1; else { a.side = (o.x - p.x) * -Math.sin(p.fa) + (o.y - p.y) * Math.cos(p.fa) > 0 ? -1 : 1; inp.a = 1; }
+    }
+    else if (p.act === "") {
       need = 0.66 - 0.16 * a.t + (dd < 1.9 && !down ? 0.35 * a.skill : 0);   // a close defender can still spread and block
-      if ((ln.c > need && d < a.range && (d < 6.2 || r() < 1.2 * DT)) || m.sc < 1.5 || (down && d < 8.5 && ln.c > 0.45)) {
-        a.aimX = ln.s; a.aimH = dd < 2.4 && ln.c < need && d > 3.5 ? 1 : r() < 0.3 ? -1 : 0; a.rel = Math.max(0.2, TF * (GC + gauss(r) * a.err)); inp.sh = 1; return;
+      if ((ln.c > need && (m.cfg.far ? d > ARC + 0.3 && d < 11.5 : d < a.range && (d < 6.2 || r() < 1.2 * DT))) || (m.cfg.sc && m.sc < 1.5) || (down && d < 8.5 && ln.c > 0.45)) {
+        a.aimX = ln.s; a.aimH = dd < 2.4 && ln.c < need && d > 3.5 ? 1 : r() < 0.3 ? -1 : 0; a.rel = 0.3 + r() * 0.25; a.shotX = clamp(ln.s * m.green(p) * 0.62 + gauss(r) * (0.05 + a.err * 2.4), -1, 1); inp.sh = 1; return;
       }
       if (a.fk && t > a.fk) { a.fk = 0; if (o.act === "jump" || o.act === "lunge") inp.c = 1; }
       else if (dd < 1.5 && o.act === "tackle" && o.at < 0.06 && r() < a.skill * 0.8) { if (a.lv >= 3 && r() < 0.3) inp.d = 1; else inp.a = 1; }
@@ -518,15 +590,15 @@ function think(m, p){
         a.moveT = t + lerp(1.5, 0.6, a.t) * (0.7 + 0.6 * r()); k = r();
         if (megOpen(o) && dd < 1.9 && k < a.skill * 0.7) inp.d = 1;
         else if (down) inp.c = 1;
-        else if (k < 0.28) { a.rel = 0.04; a.aimX = a.aimH = 0; inp.sh = 1; a.fk = t + 0.3; return; }
+        else if (k < 0.28) { a.rel = 0.04; a.shotX = 0; a.aimX = a.aimH = 0; inp.sh = 1; a.fk = t + 0.3; return; }
         else if (k < 0.62) { a.side = -a.side; inp.a = 1; }
         else if (k < 0.8 && d > 5) inp.b = 1;
         else if (p.stam > 0.3) inp.c = 1;
       }
     }
-    tx = clamp(p.x * 0.3, -1, 1) - p.x; ty = 1.8 - p.y; u = hyp(tx, ty) || 1; tx /= u; ty /= u;
+    tx = clamp(p.x * 0.3, -1, 1) - p.x; ty = (m.cfg.far ? 9.4 : 1.8) - p.y; u = hyp(tx, ty) || 1; tx /= u; ty /= u;
     if (dd < 2.7 && o.y < p.y + 0.3 && !down) { qx = -ty * a.side; ty = ty * 0.5 + tx * a.side * 0.9; tx = tx * 0.5 + qx * 0.9; u = hyp(tx, ty) || 1; tx /= u; ty /= u; }
-    inp.mx = tx; inp.my = ty; inp.sp = (down || o.y > p.y || m.sc < 4) && p.stam > 0.25 ? 1 : 0;
+    inp.mx = tx; inp.my = ty; inp.sp = (down || o.y > p.y || (m.cfg.sc && m.sc < 4)) && p.stam > 0.25 ? 1 : 0;
     return;
   }
   if (b.own < 0) {   // loose ball: go and get it, finish first time if it sits up
@@ -539,7 +611,7 @@ function think(m, p){
       }
     } else a.sv = 0;
     k = clamp(hyp(b.x - p.x, b.y - p.y) / 7, 0, 0.5);
-    go(p, inp, clamp(b.x + b.vx * k, -W + 0.4, W - 0.4), clamp(b.y + b.vy * k, 0.4, D - 0.4), 1);
+    go(p, inp, clamp(b.x + b.vx * k, -W + 0.4, W - 0.4), clamp(b.y + b.vy * k, 0.4, (m.L || D) - 0.4), 1);
     if (p.act === "" && m.off === p.i && m.need < 0 && hyp(b.x - p.x, b.y - p.y) < 0.95 && b.z < 1.5 && d < 7 && r() < a.skill * 0.25) inp.sh = 1;
     return;
   }
@@ -552,6 +624,9 @@ function think(m, p){
   u = (1 - a.t) * (1 - a.t) * 1.1 * Math.sin(t * 1.3 + a.ph);   // weaker rivals drift off the line
   k = go(p, inp, sx - sx / gd * gap + sy / gd * u, Math.max(0.7, sy - sy / gd * gap - sx / gd * u), 1);
   if (dist < 3.2 && (k < 1 || (t - o.lastCut > 0.75 && a.disc < a.skill * 1.2 && p.y < o.y))) { inp.sp = 0; inp.b = 1; }
+  if (a.step > t) { inp.b = 0; go(p, inp, b.x, b.y, 0); }   // stepping in to take the ball off his toes
+  else if (dist < 1.7 && o.prot <= 0 && o.act === "" && r() < a.tack * 0.4 * DT) a.step = t + 0.35;
+  else if (dist > 1.3 && dist < 2.6 && p.act === "" && o.act === "" && p.stam > 0.45 && p.y < o.y && r() < a.tack * 0.1 * DT) { inp.b = 0; inp.d = 1; return; }
   if (p.act !== "") return;
   if (o.act === "wind" && !a.w) { a.w = 1; a.guess = r() < a.bite * clamp(3 - dist, 0.15, 1); a.wt = t + a.react + (a.guess ? 0 : 0.07); }
   if (a.w === 1 && t >= a.wt) { a.w = 2; if ((o.act === "wind" || a.guess) && dist < 2.8) { block(m, p, a, inp, o, dist); return; } }
