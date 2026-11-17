@@ -102,10 +102,23 @@ function kitTex(it, back, num, cus){
   else if (p === "plate") { g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, col[0]); g.addColorStop(0.5, "#eef2fa"); g.addColorStop(1, col[0]); x.fillStyle = g; x.fillRect(0, 0, w, h); x.strokeStyle = col[2]; x.lineWidth = 1.6; x.strokeRect(8, 10, 64, 34); x.strokeRect(14, 50, 52, 40); x.fillStyle = col[1]; x.shadowColor = col[1]; x.shadowBlur = 8; x.beginPath(); x.arc(40, 27, 7, 0, TAU); x.fill(); x.shadowBlur = 0; x.fillStyle = col[2]; for (i = 0; i < 4; i++) { x.beginPath(); x.arc(11 + (i & 1) * 58, 13 + (i >> 1) * 28, 1.600, 0, TAU); x.fill(); } }
   else if (p === "crown") { x.fillRect(0, 0, w, 7); x.fillRect(0, h - 9, w, 9); if (!back) crown(x, 40, 46, 15); }
   else if (p === "n67") x.fillRect(0, h - 8, w, 8);
-  x.globalAlpha = 1; x.shadowBlur = 0; x.setLineDash([]); x.fillStyle = col[1]; x.beginPath();
-  if (back) x.ellipse(40, 0, 13, 6, 0, 0, TAU); else { x.moveTo(27, 0); x.lineTo(40, 13); x.lineTo(53, 0); }
-  x.fill();
+  x.globalAlpha = 1; x.shadowBlur = 0; x.setLineDash([]); x.lineCap = "butt";
   big = back || p === "n67"; a = lum(col[0]) > 0.6 ? "#17171c" : "#ffffff";
+  // the tailoring every shirt shares: side panels, shoulder seams, a ribbed collar and a hem band
+  x.fillStyle = "rgba(0,0,12,.16)"; x.fillRect(0, 22, 5, h); x.fillRect(w - 5, 22, 5, h);
+  x.strokeStyle = "rgba(0,0,12,.22)"; x.lineWidth = 0.8; x.beginPath(); x.moveTo(5, 22); x.lineTo(5, h); x.moveTo(w - 5, 22); x.lineTo(w - 5, h); x.moveTo(0, 16); x.quadraticCurveTo(14, 10, 26, 2); x.moveTo(w, 16); x.quadraticCurveTo(w - 14, 10, w - 26, 2); x.stroke();
+  x.fillStyle = col[1]; x.fillRect(0, h - 4, w, 4); x.fillStyle = "rgba(0,0,12,.25)"; x.fillRect(0, h - 4.6, w, 0.8);
+  x.fillStyle = col[2] === col[0] ? col[1] : col[2]; x.beginPath();
+  if (back) x.ellipse(40, 0, 14, 6, 0, 0, TAU); else { x.moveTo(25, 0); x.lineTo(40, 15); x.lineTo(55, 0); }
+  x.fill(); x.fillStyle = col[1]; x.beginPath();
+  if (back) x.ellipse(40, 0, 11, 3.6, 0, 0, TAU); else { x.moveTo(29, 0); x.lineTo(40, 11); x.lineTo(51, 0); }
+  x.fill(); x.fillStyle = "rgba(20,14,12,.55)"; x.beginPath(); if (back) x.ellipse(40, 0, 8, 1.6, 0, 0, TAU); else { x.moveTo(33, 0); x.lineTo(40, 7); x.lineTo(47, 0); } x.fill();
+  if (!back && p !== "n67") {   // a shield crest over the heart and a small maker's mark opposite
+    x.fillStyle = a; x.beginPath(); x.moveTo(17, 23); x.lineTo(27, 23); x.lineTo(27, 30); x.quadraticCurveTo(27, 35, 22, 37); x.quadraticCurveTo(17, 35, 17, 30); x.closePath(); x.fill();
+    x.fillStyle = col[1] === a ? col[0] : col[1]; x.beginPath(); x.moveTo(18.500, 24.500); x.lineTo(25.500, 24.500); x.lineTo(25.500, 30); x.quadraticCurveTo(25.500, 33.500, 22, 35); x.quadraticCurveTo(18.500, 33.500, 18.500, 30); x.closePath(); x.fill();
+    x.fillStyle = a; x.fillRect(21.300, 26, 1.400, 7); x.fillRect(19.500, 28.500, 5, 1.300);
+  }
+  if (back) { x.fillStyle = a; x.globalAlpha = 0.85; x.font = "800 7px " + FONT; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("ARGYLE", 40, 24); x.globalAlpha = 1; }
   if (big || p !== "crown") {
     x.textAlign = "center"; x.textBaseline = "middle"; x.lineJoin = "round"; x.font = "800 " + (big ? 40 : 15) + "px " + FONT;
     b = p === "n67" ? "67" : String(num); i = big ? 40 : 58; j = big ? 54 : 30;
@@ -145,14 +158,17 @@ function drawBall(g, x, y, r, it, pts, t, sn, cs){
   if (s === 4) { gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, c[1]); gr.addColorStop(1, c[0]); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
   else for (i = 0; i < 12; i++) {
     p = pts[i]; f = p[1] * cs + p[2] * sn;
-    if (f < 0.1) continue;
-    u = x + p[0] * r * 0.92; v = y - (p[2] * cs - p[1] * sn) * r * 0.92; q = r * (s === 1 ? 0.56 : 0.36);
+    if (f < -0.34) continue;
+    // a mark turning away is squeezed towards the edge and cut off by the outline, the way a real panel goes round the back
+    u = p[0] * r; v = -(p[2] * cs - p[1] * sn) * r; q = r * (s === 1 ? 0.56 : 0.36);
+    g.save(); g.translate(x + u, y + v); g.rotate(Math.atan2(v, u)); g.scale(f < 0.1 ? Math.max(0.03, (f + 0.34) * 0.43) : f, 1);
     g.fillStyle = s === 1 ? c[1 + i % 3] : c[1];
-    if (s === 2) { if (i % 3 === 0) star(g, u, v, q * 1.5 * f, 5, 0); }
-    else if (s === 3) dia(g, u, v, q * 0.75 * f, q * 1.1);
-    else if (s === 5) g.fillRect(u - q * 0.55 * f, v - q * 0.55, q * 1.1 * f, q * 1.1);
-    else if (s === 6) { g.globalAlpha = 0.25 + 0.75 * Math.abs(Math.sin(t * 4 + i * 2.1)); g.fillRect(u - q * 0.5, v - q * 0.5, q, q); g.globalAlpha = 1; }
-    else { g.beginPath(); g.ellipse(u, v, q * Math.max(0.3, f), q, Math.atan2(v - y, u - x), 0, TAU); g.fill(); }
+    if (s === 2) { if (i % 3 === 0) star(g, 0, 0, q * 1.5, 5, 0); }
+    else if (s === 3) dia(g, 0, 0, q * 0.75, q * 1.1);
+    else if (s === 5) g.fillRect(-q * 0.55, -q * 0.55, q * 1.1, q * 1.1);
+    else if (s === 6) { g.globalAlpha = 0.25 + 0.75 * Math.abs(Math.sin(t * 4 + i * 2.1)); g.fillRect(-q * 0.5, -q * 0.5, q, q); g.globalAlpha = 1; }
+    else { g.beginPath(); g.arc(0, 0, q, 0, TAU); g.fill(); }
+    g.restore();
   }
   gr = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05); gr.addColorStop(0, "rgba(255,255,255,.5)"); gr.addColorStop(0.45, "rgba(255,255,255,0)"); gr.addColorStop(1, "rgba(0,0,20,.42)");
   g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); g.restore();
@@ -174,22 +190,21 @@ function cap(g, x, y, r, c){ var e = lerp(0.6, -0.22, (c + 1) / 2); g.beginPath(
 function head(g, H, N, s, c, sg, q, sd){
   var r = 0.205 * s, x = H.x, y = H.y, hc = MG.HAIR[sd.hc] || "#1b1b1f", st = sd.hair, sw = Math.sqrt(Math.max(0, 1 - c * c)) * (sg < 0 ? -1 : 1), ac = Math.abs(c), nx = -sw, ny = -(0.75 + 0.25 * ac), n = hyp(nx, ny), th = (c >= 0 ? lerp(-0.1, 0.25, c) : lerp(-0.1, -0.6, -c)) * r, ex, w, i, px, py;
   // the volume of curly or long hair sits behind the head, and hangs over the neck when seen from the back
-  function mass(){ if (st === 1) blob(g, x - sw * r * 0.22, y - r * 0.28, r * 1.3, r * 1.28, hc); else if (st === 2) blob(g, x - sw * r * 0.38, y + r * 0.38, r * 1.14, r * 1.5, hc); }
+  function mass(){ if (sd.hd) return; if (st === 1) blob(g, x - sw * r * 0.22, y - r * 0.28, r * 1.3, r * 1.28, hc); else if (st === 2) blob(g, x - sw * r * 0.38, y + r * 0.38, r * 1.14, r * 1.5, hc); }
   if (c >= 0) mass();
   limb(g, N, H, 0.1 * s, sd.skin);
   if (c < 0) mass();
   blob(g, x, y, r, r, sd.skin);
-  if (c > -0.3) {
-    ex = sw * r * 0.72; w = r * 0.36 * Math.max(0.2, c); g.fillStyle = "#15151c";
-    for (i = -1; i <= 1; i += 2) if (Math.abs(ex + i * w) < r * 0.82) { g.beginPath(); g.ellipse(x + ex + i * w, y + r * (0.1 + 0.22 * q.nod), r * 0.11, r * 0.17, 0, 0, TAU); g.fill(); }
-  }
+  g.save(); g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip(); g.fillStyle = "#15151c";
+  for (i = -1; i <= 1; i += 2) { ex = Math.atan2(sw, c) + i * 0.4; w = Math.cos(ex); if (w > -0.12) { g.beginPath(); g.ellipse(x + Math.sin(ex) * r * 0.9, y + r * (0.1 + 0.22 * q.nod), r * 0.11 * Math.max(0.12, w), r * 0.17, 0, 0, TAU); g.fill(); } }
+  g.restore();
   // the scalp: everything on the far side of a hairline that swings round as the head turns
   nx /= n; ny /= n; px = x + nx * th; py = y + ny * th;
   g.save(); g.beginPath(); g.arc(x, y, r * 1.04, 0, TAU); g.clip();
-  g.fillStyle = hc; g.globalAlpha = st === 3 ? 0.3 : 1; g.beginPath();
+  g.fillStyle = hc; g.globalAlpha = sd.hd ? 0 : st === 3 ? 0.3 : 1; g.beginPath();
   g.moveTo(px - ny * r * 2, py + nx * r * 2); g.lineTo(px + ny * r * 2, py - nx * r * 2); g.lineTo(px + ny * r * 2 + nx * r * 3, py - nx * r * 2 + ny * r * 3); g.lineTo(px - ny * r * 2 + nx * r * 3, py + nx * r * 2 + ny * r * 3); g.fill();
   g.restore(); g.globalAlpha = 1;
-  if (st === 3) blob(g, x - sw * r * 0.1, y - r * 1.02, r * lerp(0.8, 0.24, ac), r * 0.62, hc);
+  if (st === 3 && !sd.hd) blob(g, x - sw * r * 0.1, y - r * 1.02, r * lerp(0.8, 0.24, ac), r * 0.62, hc);
   if (sd.hd) mask(g, x, y, r, c, sw, sd.hd);
 }
 // the rest of a character skin. Called before the limbs (after = 0) for things behind the body, and again once it is drawn
@@ -211,39 +226,46 @@ function body(g, P, J, NK, sh, hip, s, hd, c, t, after){
 }
 // whole-head looks for the character skins
 function mask(g, x, y, r, c, sw, hd){
-  var t = Date.now() / 1000, i, a, fx = x + sw * r * 0.5;
+  var t = Date.now() / 1000, i, a, fx = x + sw * r * 0.62, wd = clamp(c + 0.3, 0, 1);   // wd: how much of the face is still in view
   if (hd === "robot") {
     g.fillStyle = OUT; g.fillRect(x - r * 1.08, y - r * 1.12, r * 2.16, r * 2.2); g.fillStyle = "#aab3c6"; g.fillRect(x - r, y - r * 1.04, r * 2, r * 2.04); g.fillStyle = "rgba(255,255,255,.35)"; g.fillRect(x - r, y - r * 1.04, r * 2, r * 0.3);
     g.strokeStyle = OUT; g.lineWidth = r * 0.12; g.beginPath(); g.moveTo(x, y - r * 1.04); g.lineTo(x, y - r * 1.5); g.stroke(); g.fillStyle = "#ff5d5d"; g.beginPath(); g.arc(x, y - r * 1.55, r * (0.14 + 0.04 * Math.sin(t * 6)), 0, TAU); g.fill();
-    if (c > -0.3) { g.fillStyle = "#0c1020"; g.fillRect(fx - r * 0.75 * Math.max(0.35, c), y - r * 0.3, r * 1.5 * Math.max(0.35, c), r * 0.5); g.fillStyle = "#38e1ff"; g.shadowColor = "#38e1ff"; g.shadowBlur = r * 0.6; g.fillRect(fx - r * 0.6 * Math.max(0.3, c), y - r * 0.16, r * 1.2 * Math.max(0.3, c), r * 0.2); g.shadowBlur = 0; }
+    if (c > -0.3) { g.fillStyle = "#0c1020"; g.fillRect(fx - r * 0.75 * wd, y - r * 0.3, r * 1.5 * wd, r * 0.5); g.fillStyle = "#38e1ff"; g.shadowColor = "#38e1ff"; g.shadowBlur = r * 0.6; g.fillRect(fx - r * 0.6 * wd, y - r * 0.16, r * 1.2 * wd, r * 0.2); g.shadowBlur = 0; }
   } else if (hd === "shark") {
     blob(g, x, y - r * 0.05, r * 1.06, r * 1.12, "#7d8ea3");
     g.fillStyle = OUT; g.beginPath(); g.moveTo(x - sw * r * 0.2 - r * 0.42, y - r * 0.9); g.lineTo(x - sw * r * 0.5, y - r * 2.05); g.lineTo(x - sw * r * 0.2 + r * 0.46, y - r * 0.85); g.fill(); g.fillStyle = "#6b7c91"; g.beginPath(); g.moveTo(x - sw * r * 0.2 - r * 0.3, y - r * 0.9); g.lineTo(x - sw * r * 0.48, y - r * 1.85); g.lineTo(x - sw * r * 0.2 + r * 0.34, y - r * 0.88); g.fill();
-    if (c > -0.3) { g.fillStyle = "#eef2fa"; g.beginPath(); g.ellipse(fx, y + r * 0.42, r * 0.7 * Math.max(0.35, c), r * 0.42, 0, 0, TAU); g.fill(); g.fillStyle = "#b3202e"; g.fillRect(fx - r * 0.55 * Math.max(0.35, c), y + r * 0.38, r * 1.1 * Math.max(0.35, c), r * 0.12);
-      g.fillStyle = "#0c1020"; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * r * 0.42 * Math.max(0.3, c), y - r * 0.18, r * 0.12, 0, TAU); g.fill(); } }
+    if (c > -0.3) { g.fillStyle = "#eef2fa"; g.beginPath(); g.ellipse(fx, y + r * 0.42, r * 0.7 * wd, r * 0.42, 0, 0, TAU); g.fill(); g.fillStyle = "#b3202e"; g.fillRect(fx - r * 0.55 * wd, y + r * 0.38, r * 1.1 * wd, r * 0.12);
+      g.fillStyle = "#0c1020"; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * r * 0.42 * wd, y - r * 0.18, r * 0.12, 0, TAU); g.fill(); } }
   } else if (hd === "zeus") {
     blob(g, x - sw * r * 0.3, y + r * 0.2, r * 1.2, r * 1.35, "#f4f6ff"); blob(g, x, y, r, r, "#e6b48a");
-    if (c > -0.3) { blob(g, fx, y + r * 0.7, r * 0.75 * Math.max(0.4, c), r * 0.75, "#f4f6ff"); g.fillStyle = "#38e1ff"; g.shadowColor = "#9fd0ff"; g.shadowBlur = r * 0.5; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * r * 0.36 * Math.max(0.3, c), y - r * 0.02, r * 0.11, 0, TAU); g.fill(); } g.shadowBlur = 0; }
+    if (c > -0.3) { blob(g, fx, y + r * 0.7, r * 0.75 * wd, r * 0.75, "#f4f6ff"); g.fillStyle = "#38e1ff"; g.shadowColor = "#9fd0ff"; g.shadowBlur = r * 0.5; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * r * 0.36 * wd, y - r * 0.02, r * 0.11, 0, TAU); g.fill(); } g.shadowBlur = 0; }
     blob(g, x - sw * r * 0.2, y - r * 0.72, r * 1.05, r * 0.5, "#f4f6ff"); g.strokeStyle = "#ffd23b"; g.lineWidth = r * 0.16; g.beginPath(); g.arc(x, y - r * 0.1, r * 1.02, PI * 1.12, PI * 1.88); g.stroke();
   } else if (hd === "fire") {
     for (i = 0; i < 7; i++) { a = (i - 3) * 0.3; g.fillStyle = i & 1 ? "#ffd23b" : "#ff5a1f"; g.beginPath(); g.moveTo(x + Math.sin(a) * r * 0.9 - r * 0.3, y - r * 0.5); g.quadraticCurveTo(x + Math.sin(a) * r * 1.3, y - r * (1.5 + 0.5 * Math.sin(t * 9 + i * 2)), x + Math.sin(a) * r * 1.5 + Math.sin(t * 7 + i) * r * 0.2, y - r * (2 + 0.45 * Math.sin(t * 11 + i * 1.3))); g.quadraticCurveTo(x + Math.sin(a) * r * 1.1, y - r, x + Math.sin(a) * r * 0.9 + r * 0.3, y - r * 0.5); g.fill(); }
-    if (c > -0.3) { g.fillStyle = "#ffe66b"; g.shadowColor = "#ff8a1f"; g.shadowBlur = r * 0.7; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * r * 0.36 * Math.max(0.3, c), y + r * 0.08, r * 0.13, 0, TAU); g.fill(); } g.shadowBlur = 0; }
+    if (c > -0.3) { g.fillStyle = "#ffe66b"; g.shadowColor = "#ff8a1f"; g.shadowBlur = r * 0.7; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.arc(fx + i * r * 0.36 * wd, y + r * 0.08, r * 0.13, 0, TAU); g.fill(); } g.shadowBlur = 0; }
   } else if (hd === "void") {
     g.fillStyle = "rgba(138,61,255," + (0.22 + 0.1 * Math.sin(t * 3)) + ")"; g.beginPath(); g.arc(x, y, r * 1.5, 0, TAU); g.fill(); blob(g, x, y, r * 1.02, r * 1.02, "#07040d");
-    if (c > -0.3) { g.fillStyle = "#c9a6ff"; g.shadowColor = "#8a3dff"; g.shadowBlur = r * 0.9; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.ellipse(fx + i * r * 0.36 * Math.max(0.3, c), y + r * 0.05, r * 0.16, r * 0.09, i * 0.3, 0, TAU); g.fill(); } g.shadowBlur = 0; }
+    if (c > -0.3) { g.fillStyle = "#c9a6ff"; g.shadowColor = "#8a3dff"; g.shadowBlur = r * 0.9; for (i = -1; i <= 1; i += 2) { g.beginPath(); g.ellipse(fx + i * r * 0.36 * wd, y + r * 0.05, r * 0.16, r * 0.09, i * 0.3, 0, TAU); g.fill(); } g.shadowBlur = 0; }
   }
 }
 var KFX = {gold: 1, holo: 1, nova: 1, frost: 1, crown: 1, chrome: 1, prism: 1, plate: 1, bolt: 2, lava: 2, void: 2, neon: 2, galaxy: 2, toxic: 2, circuit: 2, glitch: 3};
 // ph: how far the chest is turned away from the camera, 0 facing it, positive towards screen right
+var MESH = null;
 function torso(g, T, B, wt, wb, sd, ph, t){
   var vx = B.x - T.x, vy = B.y - T.y, l = hyp(vx, vy) || 1, nx = vy / l, ny = -vx / l, tex = sd.tex[0], k = KFX[sd.p], uc = ((40 - ph / TAU * 160) % 160 + 160) % 160, a, gr, i, a0, x0;
-  g.beginPath(); g.moveTo(T.x - nx * wt, T.y - ny * wt); g.lineTo(T.x + nx * wt, T.y + ny * wt); g.lineTo(B.x + nx * wb, B.y + ny * wb); g.lineTo(B.x - nx * wb, B.y - ny * wb); g.closePath();
-  g.lineWidth = 2.4; g.strokeStyle = OUT; g.stroke();
+  // the outline is cut like a shirt: sloped shoulders, a slight waist and a hem that curves round the body
+  g.save(); g.transform(nx * wt / 40, ny * wt / 40, vx / 100, vy / 100, T.x - nx * wt, T.y - ny * wt);
+  g.beginPath(); g.moveTo(8, 1); g.quadraticCurveTo(40, 6, 72, 1); g.quadraticCurveTo(81, 4, 80, 16); g.quadraticCurveTo(75, 58, 79, 95); g.quadraticCurveTo(40, 105, 1, 95); g.quadraticCurveTo(5, 58, 0, 16); g.quadraticCurveTo(-1, 4, 8, 1); g.closePath();
+  g.restore(); g.lineWidth = 2.4; g.strokeStyle = OUT; g.stroke();
   g.save(); g.clip(); g.transform(nx * wt / 40, ny * wt / 40, vx / 100, vy / 100, T.x - nx * wt, T.y - ny * wt);
   for (i = 0; i < 8; i++) { a0 = -PI / 2 + i * PI / 8; x0 = 40 + 40 * Math.sin(a0); g.drawImage(sd.wrap, (uc + a0 / TAU * 160 + 160) % 160, 0, 10, 100, x0 - 0.4, 0, 40 * (Math.sin(a0 + PI / 8) - Math.sin(a0)) + 0.8, 100); }
   gr = g.createLinearGradient(0, 0, 80, 0); gr.addColorStop(0, "rgba(0,0,10,.42)"); gr.addColorStop(0.22, "rgba(0,0,10,.06)"); gr.addColorStop(0.42, "rgba(255,255,255,.1)"); gr.addColorStop(0.7, "rgba(0,0,10,.05)"); gr.addColorStop(1, "rgba(0,0,10,.46)"); g.fillStyle = gr; g.fillRect(0, 0, 80, 100);
   gr = g.createLinearGradient(0, 0, 0, 100); gr.addColorStop(0, "rgba(255,255,255,.08)"); gr.addColorStop(0.55, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,10,.3)"); g.fillStyle = gr; g.fillRect(0, 0, 80, 100);
   g.strokeStyle = "rgba(0,0,10,.13)"; g.lineWidth = 2.2; g.beginPath(); g.moveTo(14, 58); g.quadraticCurveTo(30, 70, 26, 96); g.moveTo(66, 54); g.quadraticCurveTo(52, 72, 56, 98); g.moveTo(24, 30); g.quadraticCurveTo(40, 38, 58, 30); g.stroke();
+  if (!MESH) { MESH = document.createElement("canvas"); MESH.width = MESH.height = 4; a = MESH.getContext("2d"); a.fillStyle = "rgba(0,0,12,.5)"; a.fillRect(0, 0, 1.3, 1.3); a.fillRect(2, 2, 1.3, 1.3); a.fillStyle = "rgba(255,255,255,.35)"; a.fillRect(1.3, 0, 0.7, 0.7); a.fillRect(3.3, 2, 0.7, 0.7); }
+  g.globalAlpha = 0.2; g.fillStyle = g.createPattern(MESH, "repeat"); g.fillRect(0, 0, 80, 100); g.globalAlpha = 1;   // the knit of the fabric
+  g.fillStyle = "rgba(255,255,255,.1)"; g.beginPath(); g.ellipse(30, 30, 16, 22, 0.3, 0, TAU); g.fill();   // light catching the chest
+  g.strokeStyle = "rgba(0,0,10,.16)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(8, 78); g.quadraticCurveTo(26, 86, 40, 82); g.quadraticCurveTo(58, 78, 74, 86); g.moveTo(4, 40); g.quadraticCurveTo(12, 46, 10, 60); g.moveTo(76, 40); g.quadraticCurveTo(68, 46, 70, 60); g.stroke();   // creases
   if (k === 1) { a = ((t * 0.5 + 0.3) % 1.7) * 150 - 50; g.globalAlpha = 0.38; g.fillStyle = "#fff"; g.beginPath(); g.moveTo(a, 0); g.lineTo(a + 16, 0); g.lineTo(a - 24, 100); g.lineTo(a - 40, 100); g.fill(); }
   else if (k === 2) { g.globalAlpha = 0.14 + 0.13 * Math.sin(t * 3.3); g.fillStyle = sd.col[1]; g.fillRect(0, 0, 80, 100); }
   else if (k === 3) { a = Math.floor(t * 11); g.drawImage(tex, 0, a * 37 % 90, 80, 9, (a % 3 - 1) * 7, a * 37 % 90, 80, 9); g.drawImage(tex, 0, a * 53 % 90, 80, 6, a % 2 ? 6 : -6, a * 53 % 90, 80, 6); }
@@ -271,7 +293,7 @@ function figure(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
   for (i = 0; i < 6; i++) {
     k = parts[i][1];
     if (k < 2) { j = J[k]; limb(g, j.h, j.k, 0.16 * s, skin); limb(g, j.k, j.f, 0.125 * s, sd.hd ? skin : col[1]); limb(g, j.f, j.t, 0.13 * s, sd.boot); limb(g, j.h, mid(j.h, j.k, 0.64), 0.2 * s, col[2]); }
-    else if (k < 4) { j = J[k - 2]; limb(g, j.s, j.e, 0.105 * s, skin); limb(g, j.e, j.w, 0.09 * s, skin); if (!sd.hd) limb(g, j.s, mid(j.s, j.e, 0.55), 0.13 * s, col[0]); }
+    else if (k < 4) { j = J[k - 2]; limb(g, j.s, j.e, 0.105 * s, skin); limb(g, j.e, j.w, 0.09 * s, skin); if (!sd.hd) limb(g, j.s, mid(j.s, j.e, 0.6), 0.135 * s, col[0]); }
     else if (k === 4) { limb(g, J[0].h, J[1].h, 0.21 * s, col[2]); torso(g, NK, P(0, 0, hip - 0.05), s * lerp(0.17, 0.265, ac), s * lerp(0.15, 0.215, ac), sd, Math.atan2(sg, c), t); }
     else { head(g, HD, NK, s, c, sg, q, sd); if (sd.hd) body(g, P, J, NK, sh, hip, s, sd.hd, c, t, 1); }
   }
