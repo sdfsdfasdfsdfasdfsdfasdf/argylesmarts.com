@@ -1,7 +1,7 @@
 // MEGS meta: save data, coins and XP, Elo, quests, packs, the Ladder, cups and the simulated league. No DOM in here.
 (function(){
 "use strict";
-var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1, bt_std: 1, w_none: 1, bn0: 1, st0: 1, st1: 1, st2: 1, st3: 1, h_crop: 1, h_curly: 1, h_long: 1, h_mohawk: 1, h_buzz: 1, h_bald: 1, sc_night: 1, sc_street: 1};
+var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1, bt_std: 1, w_none: 1, bn0: 1, st0: 1, st1: 1, st2: 1, st3: 1, h_crop: 1, h_curly: 1, h_long: 1, h_mohawk: 1, h_buzz: 1, h_bald: 1, sc_night: 1, sc_street: 1, sd_classic: 1, sd_park: 1};
 function ls(k, v){
   try { if (v === undefined) return window.localStorage.getItem(k); window.localStorage.setItem(k, v); }
   catch (e) { if (v === undefined) return mem[k] == null ? null : mem[k]; mem[k] = v; }
@@ -15,9 +15,9 @@ MG.SET0 = {music: 0.35, vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 
   auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 1, dtap: 0,
   kv: 3,
   // k1: you against the computer. kp and k2: the two players in a party game on one keyboard
-  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO"},
-  kp: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyR", a: "KeyT", b: "KeyY", c: "KeyF", d: "KeyG"},
-  k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO"}};
+  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftLeft"},
+  kp: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyR", a: "KeyT", b: "KeyY", c: "KeyF", d: "KeyG", sp: "ShiftLeft"},
+  k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftRight"}};
 MG.LEVELS = ["Beginner", "Rookie", "Easy", "Casual", "Decent", "Solid", "Tough", "Hard", "Elite", "Brutal", "Unfair"];
 
 function fresh(){
@@ -32,10 +32,10 @@ MG.load = function(){
   S = MG.S = d; S.set = merge(MG.SET0, S.set);
   if (!S.eq.emote) { S.eq.emote = "e_wave"; S.inv.e_wave = 1; }
   // season 1 slots: boots, wrap, banner and four stickers
-  ["bt_std", "w_none", "bn0", "st0", "st1", "st2", "st3", "h_crop", "h_curly", "h_long", "h_mohawk", "h_buzz", "h_bald", "sc_night", "sc_street"].forEach(function(k){ S.inv[k] = 1; });
-  if (!S.eq.hair) S.eq.hair = MG.HFREE ? MG.HFREE[(S.look.hair || 0) % 4] : "h_crop"; if (!S.eq.scene) S.eq.scene = "sc_night";
+  ["bt_std", "w_none", "bn0", "st0", "st1", "st2", "st3", "h_crop", "h_curly", "h_long", "h_mohawk", "h_buzz", "h_bald", "sc_night", "sc_street", "sd_classic", "sd_park"].forEach(function(k){ S.inv[k] = 1; });
+  if (!S.eq.hair) S.eq.hair = MG.HFREE ? MG.HFREE[(S.look.hair || 0) % 4] : "h_crop"; if (!S.eq.scene) S.eq.scene = "sc_night"; if (!S.eq.stadium) S.eq.stadium = "sd_classic";
   if (!S.eq.boot) S.eq.boot = "bt_std"; if (!S.eq.wrap) S.eq.wrap = "w_none"; if (!S.eq.banner) S.eq.banner = "bn0"; if (!S.eq.stk) S.eq.stk = ["st0", "st1", "st2", "st3"];
-  for (k in S.eq) if (typeof S.eq[k] === "string" && k !== "scene" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
+  for (k in S.eq) if (typeof S.eq[k] === "string" && k !== "scene" && k !== "stadium" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
   // a blank or missing key would leave the player unable to move: put the default back
   ["k1", "kp", "k2"].forEach(function(m){ var d0 = MG.SET0[m], kk = S.set[m] = S.set[m] || {}, k; for (k in d0) if (typeof kk[k] !== "string" || !kk[k]) kk[k] = d0[k]; });
