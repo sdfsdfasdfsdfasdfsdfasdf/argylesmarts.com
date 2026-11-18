@@ -35,7 +35,7 @@ MG.load = function(){
   ["bt_std", "w_none", "bn0", "st0", "st1", "st2", "st3", "h_crop", "h_curly", "h_long", "h_mohawk", "h_buzz", "h_bald", "sc_night", "sc_street"].forEach(function(k){ S.inv[k] = 1; });
   if (!S.eq.hair) S.eq.hair = MG.HFREE ? MG.HFREE[(S.look.hair || 0) % 4] : "h_crop"; if (!S.eq.scene) S.eq.scene = "sc_night";
   if (!S.eq.boot) S.eq.boot = "bt_std"; if (!S.eq.wrap) S.eq.wrap = "w_none"; if (!S.eq.banner) S.eq.banner = "bn0"; if (!S.eq.stk) S.eq.stk = ["st0", "st1", "st2", "st3"];
-  for (k in S.eq) if (typeof S.eq[k] === "string" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
+  for (k in S.eq) if (typeof S.eq[k] === "string" && k !== "scene" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
   // a blank or missing key would leave the player unable to move: put the default back
   ["k1", "kp", "k2"].forEach(function(m){ var d0 = MG.SET0[m], kk = S.set[m] = S.set[m] || {}, k; for (k in d0) if (typeof kk[k] !== "string" || !kk[k]) kk[k] = d0[k]; });
