@@ -30,6 +30,7 @@ function emoTick(){
   if (ANIM.length) requestAnimationFrame(emoTick); else ticking = 0;
 }
 function paint(){
+  if (MG.paintX) MG.paintX();
   [].forEach.call(document.querySelectorAll("canvas[data-emote]"), function(c){ if (c._done) return; c._done = 1; ANIM.push(c); if (!ticking) { ticking = 1; requestAnimationFrame(emoTick); } });
   [].forEach.call(document.querySelectorAll("canvas[data-s],canvas[data-kit],canvas[data-ball]"), function(c){
     var d = c.dataset;
@@ -287,7 +288,7 @@ function swatch(it){
   if (it.t === "court") { c = R.COURTS[it.id.replace("c_", "")]; return "background:linear-gradient(180deg," + c.sky[0] + "," + c.sky[2] + " 52%," + c.floor[0] + " 52%," + c.floor[1] + ")"; }
   return "background:" + (it.t === "trail" ? TCOL[it.k] : "radial-gradient(circle at 50% 40%,#ffffff," + FCOL[it.k] + " 45%,#16182e 78%)");
 }
-function vis(it, cls){ return it.t === "emote" ? '<canvas class="' + cls + '" data-emote="' + it.k + '" width="300" height="400"></canvas>' : it.t === "kit" ? '<canvas class="' + cls + '" data-kit="' + it.id + '" width="300" height="400"></canvas>' : it.t === "ball" ? '<canvas class="sq ' + cls + '" data-ball="' + it.id + '" width="240" height="240"></canvas>' : '<span class="sw ' + cls + '" style="' + swatch(it) + '"></span>'; }
+function vis(it, cls){ var x = MG.visX && MG.visX(it, cls); if (x) return x; return it.t === "emote" ? '<canvas class="' + cls + '" data-emote="' + it.k + '" width="300" height="400"></canvas>' : it.t === "kit" ? '<canvas class="' + cls + '" data-kit="' + it.id + '" width="300" height="400"></canvas>' : it.t === "ball" ? '<canvas class="sq ' + cls + '" data-ball="' + it.id + '" width="240" height="240"></canvas>' : '<span class="sw ' + cls + '" style="' + swatch(it) + '"></span>'; }
 function itemCard(it){
   var s = S(), own = !!s.inv[it.id], r = MG.RAR[it.r];
   return '<button class="it' + (own ? "" : " off") + (s.eq[it.t] === it.id ? " on" : "") + (it.r >= 6 ? " hi" : "") + '" style="--r:' + r.c + '" data-a="item" data-id="' + it.id + '">' + vis(it, "") + '<span class="n">' + it.n + '</span><span class="rr">' + r.n + '</span>' + (own ? "" : '<span class="lk">' + ic("lock") + '</span>') + '</button>';
@@ -483,8 +484,9 @@ function onInput(e){
   }
 }
 document.addEventListener("input", onInput); document.addEventListener("change", onInput);
-MG.load(); MG.applySet();
-go("home"); requestAnimationFrame(loop);
-if (!S().name) welcome();
-MG.ui = {go: go, toast: toast};
+VIEW._editor = editor; VIEW._maker = maker;
+MG.ui = {go: go, toast: toast, VIEW: VIEW, ACT: ACT, AFTER: AFTER, modal: modal, close: close, coin: coin, ic: ic, esc: esc, reg: reg, head: head, chips: chips, itemCard: itemCard, vis: vis, paint: paint, start: start, top: top, tier: tier,
+  tick: function(f){ tick.push(f); }, cur: function(){ return cur; }, arg: function(){ return arg; }, nav: NAVOF, resA: function(a){ resA = a; }, pend: function(f){ pend = f; }};
+// started from the last script, once every screen has been added
+MG.boot = function(){ MG.load(); MG.applySet(); go("home"); requestAnimationFrame(loop); if (!S().name) welcome(); };
 })();
