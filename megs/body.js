@@ -3,7 +3,7 @@
 // full-body skins, hair items, and the extra pieces for the top rarities (wings, crowns, shards, constellations).
 (function(){
 "use strict";
-var MG = window.MG, R = MG.R, I = MG.ITEMS, BY = MG.ITEM, PI = Math.PI, TAU = PI * 2, clamp = MG.clamp, lerp = MG.lerp, hyp = MG.hyp, OUT = R.OUT, hexA = MG.hexA, RH = 0.205;
+var MG = window.MG, R = MG.R, I = MG.ITEMS, BY = MG.ITEM, PI = Math.PI, TAU = PI * 2, clamp = MG.clamp, lerp = MG.lerp, hyp = MG.hyp, OUT = R.OUT, hexA = MG.hexA, RH = 0.175;
 function add(t, id, n, r, src, o){ o = o || {}; o.t = t; o.id = id; o.n = n; o.r = r; o.src = src; I.push(o); BY[id] = o; return o; }
 function seeded(n, k){ var r = MG.rng(n * 7919 + k), a = [], i; for (i = 0; i < n; i++) a.push([r(), r(), r(), r()]); return a; }
 
@@ -80,6 +80,12 @@ function shadeLimb(g, A, F){
   var gr = g.createLinearGradient(A.x - F.nx * F.r, A.y - F.ny * F.r, A.x + F.nx * F.r, A.y + F.ny * F.r);
   gr.addColorStop(0, "rgba(0,0,14,.32)"); gr.addColorStop(0.3, "rgba(255,255,255,.12)"); gr.addColorStop(0.55, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,14,.36)");
   g.fillStyle = gr; g.fill();
+}
+// several pieces of bare skin joined without seams: outlines first, then the fills over them
+function skin(g, list, col){
+  list.forEach(function(q){ capsule(g, q[0], q[1], q[2], q[3]); g.lineWidth = 2; g.strokeStyle = OUT; g.stroke(); });
+  list.forEach(function(q){ capsule(g, q[0], q[1], q[2], q[3]); g.fillStyle = col; g.fill(); });
+  list.forEach(function(q){ capsule(g, q[0], q[1], q[2], q[3]); shadeLimb(g, q[0], frame(q[0], q[1], q[2], q[3])); });
 }
 function solid(g, A, B, ra, rb, col){ capsule(g, A, B, ra, rb); g.lineWidth = 2; g.strokeStyle = OUT; g.stroke(); g.fillStyle = col; g.fill(); shadeLimb(g, A, frame(A, B, ra, rb)); }
 // a piece of clothing over a limb. o: {c, pat, off, bands: [[at, width, colour]], st: [Q0, Q1, colour, alpha], mat, glow, t}
@@ -326,12 +332,12 @@ function mask2(g, sp, lp, vis, patch, cx, cy, r, sd, t){
 
 // ---- boots: a solid shoe seen from wherever the camera is ----
 // profile of the shoe from heel to toe: [forward, up, half width], measured from the ankle
-var SHOE = [[-0.06, -0.052, 0.036], [-0.068, -0.01, 0.039], [-0.062, 0.042, 0.041], [-0.02, 0.05, 0.043], [0.03, 0.044, 0.045], [0.08, 0.03, 0.046], [0.13, 0.017, 0.044], [0.17, 0.007, 0.038], [0.198, -0.013, 0.03], [0.207, -0.037, 0.024], [0.186, -0.054, 0.03], [0.06, -0.056, 0.042]];
+var SHOE = [[-0.055, -0.05, 0.033], [-0.068, -0.02, 0.035], [-0.063, 0.026, 0.037], [-0.015, 0.032, 0.039], [0.035, 0.018, 0.042], [0.085, 0.0, 0.043], [0.135, -0.017, 0.039], [0.175, -0.027, 0.032], [0.2, -0.037, 0.024], [0.207, -0.045, 0.02], [0.19, -0.052, 0.027], [0.07, -0.054, 0.04]];
 function boot2(g, P, L, k, sd, t){
   var a = L.a, c = sd.bootc || [sd.boot, "#e9ebf5", "#e9ebf5"], kind = sd.bootk || 0, rr = sd.bootr || 0, pts = [], sole = [], i, w, ctr, side, vs, deco, gl = rr >= 4 && sd.bootg;
   function bp(f, u, ww){ return P(a[0] + f, a[1] + ww, a[2] + u); }
   for (i = 0; i < SHOE.length; i++) for (w = -1; w <= 1; w += 2) pts.push(bp(SHOE[i][0], SHOE[i][1], w * SHOE[i][2]));
-  for (i = 0; i < SHOE.length; i++) if (SHOE[i][1] < -0.035 || i === 9) for (w = -1; w <= 1; w += 2) { sole.push(bp(SHOE[i][0], SHOE[i][1] - 0.004, w * (SHOE[i][2] + 0.003))); sole.push(bp(SHOE[i][0], -0.033, w * (SHOE[i][2] + 0.003))); }
+  for (i = 0; i < SHOE.length; i++) if (SHOE[i][1] < -0.04 || i === 8) for (w = -1; w <= 1; w += 2) { sole.push(bp(SHOE[i][0], SHOE[i][1] - 0.004, w * (SHOE[i][2] + 0.003))); sole.push(bp(SHOE[i][0], -0.033, w * (SHOE[i][2] + 0.003))); }
   ctr = bp(0.06, 0, 0);
   if (gl) { g.save(); g.shadowColor = sd.bootg; g.shadowBlur = Math.max(4, ctr.s * (0.1 + 0.06 * Math.sin(t * 4))); }
   poly(g, hull(pts)); g.lineWidth = 2; g.strokeStyle = OUT; g.stroke(); g.fillStyle = c[0]; g.fill();
@@ -341,7 +347,7 @@ function boot2(g, P, L, k, sd, t){
   if (rr >= 4) { i = hull(pts); w = ((t * 0.7) % 1.6) - 0.3; var gr = g.createLinearGradient(bp(-0.07, 0, 0).x, 0, bp(0.2, 0, 0).x, 0); gr.addColorStop(clamp(w, 0, 1), "rgba(255,255,255,0)"); gr.addColorStop(clamp(w + 0.08, 0, 1), "rgba(255,255,255,.45)"); gr.addColorStop(clamp(w + 0.16, 0, 1), "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(ctr.x - ctr.s, ctr.y - ctr.s, ctr.s * 2, ctr.s * 2); }
   // the upper of the rarer boots carries a print of its own
   if (rr >= 3) {
-    var bx = bp(-0.07, 0.05, 0), ex = bp(0.21, -0.05, 0), bw = ex.x - bx.x, bh = ex.y - bx.y, j;
+    var bx = bp(-0.07, 0.03, 0), ex = bp(0.21, -0.05, 0), bw = ex.x - bx.x, bh = ex.y - bx.y, j;
     g.globalAlpha = 0.5; g.strokeStyle = c[1]; g.lineWidth = Math.max(1, ctr.s * 0.006);
     if (rr <= 4) for (j = -6; j < 14; j++) { g.beginPath(); g.moveTo(bx.x + j * bw / 10, bx.y); g.lineTo(bx.x + j * bw / 10 + bh * 0.8, ex.y); g.stroke(); }
     else if (rr === 5) seeded(18, 7).forEach(function(q){ g.fillStyle = q[2] > 0.5 ? "#fff" : c[1]; g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 3 + q[3] * 9)); R.star(g, bx.x + q[0] * bw, bx.y + q[1] * bh, ctr.s * (0.006 + q[2] * 0.008), 4, t); g.fill(); });
@@ -357,17 +363,17 @@ function boot2(g, P, L, k, sd, t){
     vs = (ctr.d - bp(0.06, 0, side * 0.045).d) / 0.045; if (vs <= 0.02) continue;
     g.globalAlpha = clamp(vs * 3, 0, 1);
     deco = function(list, col, glow){ var q = list.map(function(e){ var j, ww = 0.04; for (j = 0; j < SHOE.length - 1; j++) if (e[0] >= SHOE[j][0] && e[0] <= SHOE[j + 1][0]) ww = SHOE[j][2]; return bp(e[0], e[1], side * (ww + 0.002)); }); poly(g, q); g.fillStyle = col; if (glow) { g.shadowColor = glow; g.shadowBlur = ctr.s * 0.06; } g.fill(); g.shadowBlur = 0; };
-    deco([[-0.066, -0.035], [-0.02, -0.035], [-0.02, 0.035], [-0.06, 0.045]], c[1]);   // heel counter
-    if (kind === 1 || kind === 3) deco([[-0.015, -0.028], [0.11, 0.0], [0.15, -0.012], [0.12, -0.02], [0.0, -0.04]], kind === 3 ? c[1] : c[2] === "#e9ebf5" ? c[1] : c[2], kind === 3 ? c[1] : "");
-    if (kind === 2) for (i = 0; i < 3; i++) deco([[0.0 + i * 0.03, -0.035], [0.025 + i * 0.03, 0.0], [0.0 + i * 0.03, 0.035], [0.012 + i * 0.03, 0.035], [0.037 + i * 0.03, 0.0], [0.012 + i * 0.03, -0.035]], c[1]);
-    if (kind === 0) deco([[0.12, -0.03], [0.19, -0.035], [0.19, -0.02], [0.12, 0.0]], c[1]);
-    if (rr >= 6) { deco([[0.02, 0.04], [0.06, 0.0], [0.04, 0.0], [0.08, -0.04], [0.03, -0.005], [0.05, -0.005]], "#ffffff", c[1]); }
+    deco([[-0.066, -0.038], [-0.022, -0.038], [-0.022, 0.022], [-0.06, 0.024]], c[1]);   // heel counter
+    if (kind === 1 || kind === 3) deco([[-0.015, -0.03], [0.11, -0.014], [0.15, -0.026], [0.12, -0.032], [0.0, -0.042]], kind === 3 ? c[1] : c[2] === "#e9ebf5" ? c[1] : c[2], kind === 3 ? c[1] : "");
+    if (kind === 2) for (i = 0; i < 3; i++) deco([[0.0 + i * 0.03, -0.042], [0.022 + i * 0.03, -0.015], [0.0 + i * 0.03, 0.012], [0.012 + i * 0.03, 0.012], [0.034 + i * 0.03, -0.015], [0.012 + i * 0.03, -0.042]], c[1]);
+    if (kind === 0) deco([[0.12, -0.034], [0.19, -0.042], [0.185, -0.032], [0.12, -0.02]], c[1]);
+    if (rr >= 6) { deco([[0.02, 0.02], [0.06, -0.01], [0.04, -0.01], [0.08, -0.042], [0.03, -0.016], [0.05, -0.016]], "#ffffff", c[1]); }
     if (rr >= 7) { w = bp(-0.07, 0.04, side * 0.05); g.fillStyle = "#fff6d6"; g.shadowColor = "#ffe9a8"; g.shadowBlur = ctr.s * 0.08; for (i = 0; i < 4; i++) { g.beginPath(); g.ellipse(w.x - ctr.s * (0.012 + i * 0.012), w.y - ctr.s * (0.01 + i * 0.012), ctr.s * (0.04 - i * 0.005), ctr.s * 0.01, -0.7, 0, TAU); g.fill(); } g.shadowBlur = 0; }
     g.globalAlpha = 1;
   }
   // laces across the top of the foot
   g.strokeStyle = kind === 3 ? c[1] : "rgba(255,255,255,.85)"; g.lineWidth = Math.max(1, ctr.s * 0.008);
-  for (i = 0; i < 3; i++) { w = 0.0 + i * 0.035; var l0 = bp(w, 0.052 - i * 0.008, -0.024), l1 = bp(w, 0.052 - i * 0.008, 0.024); g.beginPath(); g.moveTo(l0.x, l0.y); g.lineTo(l1.x, l1.y); g.stroke(); }
+  for (i = 0; i < 3; i++) { w = 0.0 + i * 0.035; var l0 = bp(w, 0.033 - i * 0.012, -0.024), l1 = bp(w, 0.033 - i * 0.012, 0.024); g.beginPath(); g.moveTo(l0.x, l0.y); g.lineTo(l1.x, l1.y); g.stroke(); }
   g.restore();
   if (rr >= 5) { w = bp(0.17 + 0.02 * Math.sin(t * 3), 0.02 + 0.03 * Math.sin(t * 5), 0); g.fillStyle = "#fff"; g.globalAlpha = 0.6 + 0.4 * Math.sin(t * 7); R.star(g, w.x, w.y, Math.max(1.5, ctr.s * 0.025), 4, t); g.fill(); g.globalAlpha = 1; }
 }
@@ -378,18 +384,18 @@ R.fig2 = function(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
   var fx = Math.cos(fa), fy = Math.sin(fa), rx = -fy, ry = fx, c = fx * tcx + fy * tcy, sg = fx * tcy - fy * tcx, ac = Math.abs(c),
     Lg = [R.legJ(-1, q.aL, q.bL, q.sL), R.legJ(1, q.aR, q.bR, q.sR)], Ar = [R.armJ(-1, q.uL, q.eL, q.oL), R.armJ(1, q.uR, q.eR, q.oR)],
     hip = Math.max(0.16, -Math.min(Lg[0][5], Lg[1][5])) + 0.05 + q.z + z0, cl = Math.cos(q.roll), tf = Math.sin(q.lean) * cl, tr = Math.sin(q.roll), tu = Math.cos(q.lean) * cl,
-    nf = tf * 0.5, nr = tr * 0.5, nu = hip + tu * 0.5, sh = nu - 0.04, col = sd.col, skin = sd.skin, ph = Math.atan2(sg, c), off = ph / TAU * 80, s, H3, HD, NK, HC, J = [], Jo = [], parts, i, k, F, cloth = sd.hd ? null : clothOf(sd), top = sd.tier >= 5 && !sd.hd ? sd : null, pipe = top ? sd.fc : "";
+    nf = tf * 0.5, nr = tr * 0.5, nu = hip + tu * 0.5, sh = nu - 0.04, col = sd.col, sk = sd.skin, ph = Math.atan2(sg, c), off = ph / TAU * 80, s, H3, HD, NK, HC, J = [], Jo = [], parts, i, k, F, cloth = sd.hd ? null : clothOf(sd), top = sd.tier >= 5 && !sd.hd ? sd : null, pipe = top ? sd.fc : "";
   function P(f, r, u){ return prj(x + fx * f + rx * r, y + fy * f + ry * r, u); }
   function pj(v){ return P(v[0], v[1], v[2]); }
   function at(a, b, u){ return [lerp(a[0], b[0], u), lerp(a[1], b[1], u), lerp(a[2], b[2], u)]; }
   // a stripe down the outer side of a limb, and how squarely that side faces the camera
   function side(a, b, k, rad){ var p0 = P(a[0], a[1] + k * rad, a[2]), p1 = P(b[0], b[1] + k * rad, b[2]), m = pj(at(a, b, 0.5)), v = (m.d - P((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + k * rad, (a[2] + b[2]) / 2).d) / rad; return [p0, p1, v]; }
   HC = P(0, 0, hip); s = HC.s; NK = P(nf, nr, nu);
-  H3 = [nf + tf * 0.25 + 0.05 * q.nod, nr + tr * 0.25, nu + tu * 0.25 - 0.03 * q.nod]; HD = pj(H3);
+  H3 = [nf + tf * 0.22 + 0.05 * q.nod, nr + tr * 0.22, nu + tu * 0.22 - 0.03 * q.nod]; HD = pj(H3);
   F = {P: P, s: s, t: t, sd: sd, NK: NK, nod: q.nod};
   for (i = 0; i < 2; i++) {
     k = i ? 1 : -1; var a = Lg[i], b = Ar[i];
-    J.push({k: k, h: [0, k * 0.115, hip], n: [a[0], a[1], hip + a[2]], a: [a[3], a[4], hip + a[5]], s: [nf, nr + k * 0.25, sh], e: [nf + b[0], nr + b[1], sh + b[2]], w: [nf + b[3], nr + b[4], sh + b[5]]});
+    J.push({k: k, h: [0, k * 0.115, hip], n: [a[0], a[1], hip + a[2]], a: [a[3], a[4], hip + a[5]], s: [nf, nr + k * 0.215, sh], e: [nf + b[0], nr + b[1] - k * 0.035, sh + b[2]], w: [nf + b[3], nr + b[4] - k * 0.035, sh + b[5]]});
     Jo.push({h: pj(J[i].h), k: pj(J[i].n), f: pj(J[i].a), t: P(a[3] + 0.19, a[4], hip + a[5] + 0.015), s: pj(J[i].s), e: pj(J[i].e), w: pj(J[i].w)});
   }
   parts = [[Jo[0].k.d, 0], [Jo[1].k.d, 1]].sort(function(m, n){ return n[0] - m[0]; }).concat([[Jo[0].e.d, 2], [Jo[1].e.d, 3], [(HC.d + NK.d) / 2, 4], [HD.d - 0.03, 5]].sort(function(m, n){ return n[0] - m[0]; }));
@@ -405,7 +411,7 @@ R.fig2 = function(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
     if (k < 2) leg(J[k]);
     else if (k < 4) arm(J[k - 2]);
     else if (k === 4) torso();
-    else { g.shadowBlur = 0; head2(g, F, H3, HD, 1); if (sd.hd) R.hbody(g, P, Jo, NK, sh, hip, s, sd.hd, c, t, 1); }
+    else { g.shadowBlur = 0; solid(g, NK, P(lerp(nf, H3[0], 0.6), lerp(nr, H3[1], 0.6), lerp(nu, H3[2], 0.6)), 0.046 * s, 0.042 * s, sk); head2(g, F, H3, HD, 1); if (sd.hd) R.hbody(g, P, Jo, NK, sh, hip, s, sd.hd, c, t, 1); }
     if (i === 1) { var sb = g.shadowBlur; g.shadowBlur = 0; head2(g, F, H3, HD, 0); g.shadowBlur = sb; }
   }
   g.shadowBlur = 0;
@@ -413,28 +419,27 @@ R.fig2 = function(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
   extras(1);
 
   function leg(L){
-    var h = pj(L.h), n = pj(L.n), an = pj(L.a), so = at(L.n, L.a, 0.24), sm = at(L.h, L.n, 0.56), sd2, st;
-    solid(g, h, n, 0.078 * s, 0.06 * s, skin);
-    solid(g, n, an, 0.06 * s, 0.042 * s, skin);
-    if (!sd.hd) { st = side(so, L.a, L.k, 0.05); garment(g, pj(so), an, 0.06 * s, 0.047 * s, {c: col[1], pat: sd.full ? cloth : null, off: off, bands: [[0.07, 0.08, col[0]], [0.19, 0.05, col[0]]], st: top ? [st[0], st[1], pipe, clamp(st[2] * 2, 0, 1)] : null, glow: pipe, mat: top, t: t}); }
+    var h = pj(L.h), n = pj(L.n), an = pj(L.a), cf = at(L.n, L.a, 0.3), so = at(L.n, L.a, 0.26), sm = at(L.h, L.n, 0.55), st;
+    skin(g, [[h, n, 0.066 * s, 0.05 * s], [n, pj(cf), 0.05 * s, 0.053 * s], [pj(cf), an, 0.053 * s, 0.033 * s]], sk);
+    if (!sd.hd) { st = side(so, L.a, L.k, 0.05); garment(g, pj(so), an, 0.056 * s, 0.037 * s, {c: col[1], pat: sd.full ? cloth : null, off: off, bands: [[0.07, 0.08, col[0]], [0.19, 0.05, col[0]]], st: top ? [st[0], st[1], pipe, clamp(st[2] * 2, 0, 1)] : null, glow: pipe, mat: top, t: t}); }
     boot2(g, P, L, L.k, sd, t);
-    st = side(L.h, sm, L.k, 0.095);
-    garment(g, h, pj(sm), 0.104 * s, 0.09 * s, {c: col[2], pat: sd.full ? cloth : null, off: off + 20, bands: [[0.94, 0.1, col[1]]], st: [st[0], st[1], top ? pipe : col[1], clamp(st[2] * 2.5, 0, 1)], glow: pipe, mat: top, t: t});
+    st = side(L.h, sm, L.k, 0.08);
+    garment(g, h, pj(sm), 0.086 * s, 0.072 * s, {c: col[2], pat: sd.full ? cloth : null, off: off + 20, bands: [[0.94, 0.1, col[1]]], st: [st[0], st[1], top ? pipe : col[1], clamp(st[2] * 2.5, 0, 1)], glow: pipe, mat: top, t: t});
   }
   function arm(A){
-    var sp = pj(A.s), e = pj(A.e), w = pj(A.w), hd = P(lerp(A.e[0], A.w[0], 1.25), lerp(A.e[1], A.w[1], 1.25), lerp(A.e[2], A.w[2], 1.25)), sl = at(A.s, A.e, 0.56), st;
-    solid(g, sp, e, 0.053 * s, 0.045 * s, skin);
-    solid(g, e, w, 0.045 * s, 0.036 * s, skin);
-    if (sd.gloves) garment(g, w, hd, 0.058 * s, 0.054 * s, {c: "#f2f4ff", bands: [[0.15, 0.3, col[0]]]});
-    else solid(g, w, hd, 0.04 * s, 0.036 * s, skin);
-    if (!sd.hd && sd.ls) { st = side(A.e, A.w, A.k, 0.05); garment(g, e, w, 0.058 * s, 0.047 * s, {c: col[0], pat: cloth, off: off + A.k * 20, bands: [[0.9, 0.14, col[1]]], st: top ? [st[0], st[1], pipe, clamp(st[2] * 2, 0, 1)] : null, glow: pipe, mat: top, t: t}); sl = A.e; }
-    if (!sd.hd) { st = side(A.s, sl, A.k, 0.07); garment(g, sp, pj(sl), 0.076 * s, sd.ls ? 0.06 * s : 0.064 * s, {c: col[0], pat: cloth, off: off + A.k * 20, bands: sd.ls ? null : [[0.9, 0.16, col[1]]], st: top ? [st[0], st[1], pipe, clamp(st[2] * 2, 0, 1)] : null, glow: pipe, mat: top, t: t}); }
+    var sp = pj(A.s), e = pj(A.e), w = pj(A.w), d = [A.w[0] - A.e[0], A.w[1] - A.e[1], A.w[2] - A.e[2]], dl = Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) || 1, sl = at(A.s, A.e, 0.56), st, hc;
+    d = [d[0] / dl, d[1] / dl, d[2] / dl];
+    var palm = [A.w[0] + d[0] * 0.075, A.w[1] + d[1] * 0.075, A.w[2] + d[2] * 0.075], th0 = [A.w[0] + d[0] * 0.02 + 0.022, A.w[1] + d[1] * 0.02 - A.k * 0.008, A.w[2] + d[2] * 0.02], th1 = [A.w[0] + d[0] * 0.055 + 0.03, A.w[1] + d[1] * 0.055 - A.k * 0.012, A.w[2] + d[2] * 0.055];
+    hc = sd.gloves ? "#f2f4ff" : sk;
+    if (sd.gloves) { skin(g, [[sp, e, 0.045 * s, 0.038 * s], [e, w, 0.037 * s, 0.028 * s]], sk); garment(g, w, pj(palm), 0.042 * s, 0.04 * s, {c: hc, bands: [[0.15, 0.3, col[0]]]}); }
+    else skin(g, [[sp, e, 0.045 * s, 0.038 * s], [e, w, 0.037 * s, 0.028 * s], [w, pj(palm), 0.03 * s, 0.027 * s], [pj(th0), pj(th1), 0.013 * s, 0.011 * s]], sk);
+    if (!sd.hd && sd.ls) { st = side(A.e, A.w, A.k, 0.04); garment(g, e, w, 0.048 * s, 0.037 * s, {c: col[0], pat: cloth, off: off + A.k * 20, bands: [[0.9, 0.14, col[1]]], st: top ? [st[0], st[1], pipe, clamp(st[2] * 2, 0, 1)] : null, glow: pipe, mat: top, t: t}); sl = A.e; }
+    if (!sd.hd) { st = side(A.s, sl, A.k, 0.06); garment(g, sp, pj(sl), 0.064 * s, sd.ls ? 0.05 * s : 0.054 * s, {c: col[0], pat: cloth, off: off + A.k * 20, bands: sd.ls ? null : [[0.9, 0.16, col[1]]], st: top ? [st[0], st[1], pipe, clamp(st[2] * 2, 0, 1)] : null, glow: pipe, mat: top, t: t}); }
   }
   function torso(){
     var a = Jo[0].h, b = Jo[1].h;
-    garment(g, a, b, 0.11 * s, 0.11 * s, {c: col[2], pat: sd.full ? cloth : null, off: off, mat: top, t: t});
-    solid(g, NK, P(lerp(nf, H3[0], 0.6), lerp(nr, H3[1], 0.6), lerp(nu, H3[2], 0.6)), 0.056 * s, 0.05 * s, skin);
-    R.torso(g, NK, P(0, 0, hip - 0.05), s * lerp(0.17, 0.265, ac), s * lerp(0.15, 0.215, ac), sd, ph, t);
+    garment(g, a, b, 0.092 * s, 0.092 * s, {c: col[2], pat: sd.full ? cloth : null, off: off, mat: top, t: t});
+    R.torso(g, NK, P(0, 0, hip - 0.05), s * lerp(0.14, 0.225, ac), s * lerp(0.125, 0.18, ac), sd, ph, t);
   }
   // wings, a crown, crystal shards and a constellation for the top rarities. phase 0 is behind the body, 1 in front
   function extras(phase){
@@ -481,5 +486,47 @@ R.bootPreview = function(cv, it, t){
 // a hair style on its own, on a plain head
 R.hairPreview = function(cv, it, t, look){
   R.portrait(cv, {kit: "home", hair: it.id, look: look || {skin: 1, hair: 0, hc: 0, num: 10}}, t, {bust: 1, turn: 0.5 * Math.sin(t * 0.7)});
+};
+
+// ---- how players move: a walk that rolls through the foot, a run with knee drive, heel kick and arm drive,
+// leaning into turns, and small steps on the spot when turning while standing ----
+R.gait = function(q, p, sp, t){
+  var dt = t - (p._gt == null ? t : p._gt), turn, k, run, ph, i, side, f, s, c, hipA, knee, w, amp;
+  if (!(dt > 0 && dt < 0.25)) dt = 0;
+  turn = dt ? wrapTh(p.fa - (p._gf == null ? p.fa : p._gf)) / dt : 0; p._gt = t; p._gf = p.fa;
+  p._gw = lerp(p._gw || 0, clamp(turn, -12, 12), dt ? Math.min(1, dt * 10) : 0); turn = p._gw;
+  k = clamp((sp - 0.3) / 7, 0, 1); run = clamp((sp - 3) / 3.2, 0, 1);
+  // cadence rises with speed: about one step a second walking, nearly two flat out
+  p._gp = (p._gp || p.i * 1.7 || 0) + dt * (sp > 0.5 ? 4.6 + 1.0 * sp : Math.abs(turn) > 1.2 ? 9 : 0);
+  ph = p._gp;
+  if (sp <= 0.5) {
+    w = Math.sin(t * 2.2 + p.i * 2); q.lean = 0.05 + 0.014 * w; q.eL = q.eR = 0.32 + 0.04 * w; q.roll = 0.03 * Math.sin(t * 1.1 + p.i);
+    q.bL = q.bR = 0.14; q.sL = q.sR = 0.075;
+    if (Math.abs(turn) > 1.2) {   // turning on the spot: lift one foot then the other
+      s = Math.sin(ph); q.aL = 0.18 * Math.max(0, s); q.bL = 0.14 + 0.45 * Math.max(0, s); q.aR = 0.18 * Math.max(0, -s); q.bR = 0.14 + 0.45 * Math.max(0, -s);
+      q.sL = q.sR = 0.1;
+    }
+    return;
+  }
+  amp = lerp(0.34, 0.62, run) * (0.55 + 0.45 * k);
+  for (i = 0; i < 2; i++) {
+    f = ph + i * PI; s = Math.sin(f); c = Math.cos(f);
+    // the thigh swings forward and back, further forward than back when running
+    hipA = amp * s + lerp(0.02, 0.16, run) + (s > 0 ? run * 0.12 * s : 0);
+    // the knee bends most while the leg swings through, kicking the heel up when running; a little on landing
+    knee = lerp(0.1, 0.2, run) + lerp(0.62, 1.75, run) * Math.pow(Math.max(0, Math.cos(f - 0.55)), 2) * (0.5 + 0.5 * k) + 0.12 * Math.max(0, Math.sin(f - PI * 0.85)) * (1 - run);
+    if (i) { q.aR = hipA; q.bR = knee; } else { q.aL = hipA; q.bL = knee; }
+  }
+  // arms swing against the legs, elbows bend more the faster you go
+  s = Math.sin(ph); w = lerp(0.24, 0.95, run) * (0.5 + 0.5 * k);
+  q.uL = -w * s + 0.08 * run; q.uR = w * s + 0.08 * run; q.eL = lerp(0.3, 1.25, run) + lerp(0.1, 0.45, run) * Math.max(0, -s); q.eR = lerp(0.3, 1.25, run) + lerp(0.1, 0.45, run) * Math.max(0, s);
+  q.oL = q.oR = lerp(0.12, 0.22, run);
+  q.sL = q.sR = 0.05;
+  // lean forward with speed, bounce at each stride, lean into the turn and splay the feet a touch
+  q.lean = lerp(0.06, 0.24, run) + 0.04 * k;
+  q.z = run * 0.035 * Math.max(0, Math.cos(2 * ph));
+  q.roll = clamp(turn * (0.025 + 0.035 * k), -0.38, 0.38) + 0.03 * Math.sin(ph) * (1 - run);
+  if (Math.abs(turn) > 2) { q.sL += 0.06; q.sR += 0.06; }
+  q.nod = 0.05 * run;
 };
 })();
