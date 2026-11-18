@@ -100,6 +100,11 @@ function kitTex(it, back, num, cus){
   else if (p === "bolt") { x.shadowColor = col[1]; x.shadowBlur = 8; x.beginPath(); x.moveTo(52, 0); x.lineTo(28, 44); x.lineTo(42, 44); x.lineTo(22, 100); x.lineTo(60, 36); x.lineTo(45, 36); x.lineTo(66, 0); x.fill(); x.shadowBlur = 0; x.fillRect(0, 0, w, 5); }
   else if (p === "shark") { g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, col[0]); g.addColorStop(0.5, col[0]); g.addColorStop(0.62, col[1]); g.addColorStop(1, col[1]); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = "#ffffff"; for (i = 0; i < 9; i++) { x.beginPath(); x.moveTo(i * 9 + 1, 50); x.lineTo(i * 9 + 5.500, 60); x.lineTo(i * 9 + 10, 50); x.fill(); } x.fillStyle = "#b3202e"; x.fillRect(0, 46, w, 4); x.fillStyle = "rgba(10,20,30,.5)"; for (i = 0; i < 3; i++) x.fillRect(8 + (big ? 0 : 0), 14 + i * 8, 14, 2.500); }
   else if (p === "plate") { g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, col[0]); g.addColorStop(0.5, "#eef2fa"); g.addColorStop(1, col[0]); x.fillStyle = g; x.fillRect(0, 0, w, h); x.strokeStyle = col[2]; x.lineWidth = 1.6; x.strokeRect(8, 10, 64, 34); x.strokeRect(14, 50, 52, 40); x.fillStyle = col[1]; x.shadowColor = col[1]; x.shadowBlur = 8; x.beginPath(); x.arc(40, 27, 7, 0, TAU); x.fill(); x.shadowBlur = 0; x.fillStyle = col[2]; for (i = 0; i < 4; i++) { x.beginPath(); x.arc(11 + (i & 1) * 58, 13 + (i >> 1) * 28, 1.600, 0, TAU); x.fill(); } }
+  else if (p === "carbon") { for (j = 0; j < 25; j++) for (i = 0; i < 20; i++) { x.globalAlpha = (i + j) & 1 ? 0.5 : 0.18; x.fillRect(i * 4, j * 4, 4, 2); x.globalAlpha = (i + j) & 1 ? 0.18 : 0.5; x.fillRect(i * 4, j * 4 + 2, 4, 2); } }
+  else if (p === "marble") { x.lineCap = "round"; for (i = 0; i < 9; i++) { x.globalAlpha = 0.25 + r() * 0.55; x.lineWidth = 0.6 + r() * 2.2; x.strokeStyle = i % 3 ? col[1] : col[2]; x.beginPath(); a = r() * w; b = -5; x.moveTo(a, b); for (j = 0; j < 7; j++) { a += (r() - 0.5) * 26; b += 16; x.quadraticCurveTo(a + (r() - 0.5) * 20, b - 8, a, b); } x.stroke(); } }
+  else if (p === "topo") { x.lineWidth = 1.2; for (k = 0; k < 3; k++) { a = r() * w; b = r() * h; for (i = 1; i < 9; i++) { x.globalAlpha = 0.65; x.beginPath(); for (j = 0; j <= 24; j++) { g = j / 24 * TAU; x.lineTo(a + Math.cos(g) * i * 6 * (1 + 0.25 * Math.sin(g * 3 + k)), b + Math.sin(g) * i * 5 * (1 + 0.2 * Math.cos(g * 2 + k))); } x.stroke(); } } }
+  else if (p === "hex") { x.lineWidth = 1.4; for (j = 0; j < 9; j++) for (i = 0; i < 6; i++) { a = i * 15 + (j & 1 ? 7.5 : 0); b = j * 13; x.globalAlpha = 0.4 + 0.5 * r(); x.beginPath(); for (k = 0; k < 6; k++) x.lineTo(a + Math.cos(k * PI / 3) * 7.5, b + Math.sin(k * PI / 3) * 7.5); x.closePath(); x.stroke(); if (r() < 0.15) { x.globalAlpha = 0.5; x.fill(); } } }
+  else if (p === "digi") { for (i = 0; i < 220; i++) { x.fillStyle = [col[1], col[2], col[0]][i % 3]; x.globalAlpha = 0.9; a = Math.floor(r() * 20) * 4; b = Math.floor(r() * 25) * 4; x.fillRect(a, b, 4 * (1 + Math.floor(r() * 2)), 4); } }
   else if (p === "crown") { x.fillRect(0, 0, w, 7); x.fillRect(0, h - 9, w, 9); if (!back) crown(x, 40, 46, 15); }
   else if (p === "n67") x.fillRect(0, h - 8, w, 8);
   x.globalAlpha = 1; x.shadowBlur = 0; x.setLineDash([]); x.lineCap = "butt";
@@ -266,6 +271,7 @@ function torso(g, T, B, wt, wb, sd, ph, t){
   g.globalAlpha = 0.2; g.fillStyle = g.createPattern(MESH, "repeat"); g.fillRect(0, 0, 80, 100); g.globalAlpha = 1;   // the knit of the fabric
   g.fillStyle = "rgba(255,255,255,.1)"; g.beginPath(); g.ellipse(30, 30, 16, 22, 0.3, 0, TAU); g.fill();   // light catching the chest
   g.strokeStyle = "rgba(0,0,10,.16)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(8, 78); g.quadraticCurveTo(26, 86, 40, 82); g.quadraticCurveTo(58, 78, 74, 86); g.moveTo(4, 40); g.quadraticCurveTo(12, 46, 10, 60); g.moveTo(76, 40); g.quadraticCurveTo(68, 46, 70, 60); g.stroke();   // creases
+  if (R.mat && sd.tier >= 5) R.mat(g, sd, t);
   if (k === 1) { a = ((t * 0.5 + 0.3) % 1.7) * 150 - 50; g.globalAlpha = 0.38; g.fillStyle = "#fff"; g.beginPath(); g.moveTo(a, 0); g.lineTo(a + 16, 0); g.lineTo(a - 24, 100); g.lineTo(a - 40, 100); g.fill(); }
   else if (k === 2) { g.globalAlpha = 0.14 + 0.13 * Math.sin(t * 3.3); g.fillStyle = sd.col[1]; g.fillRect(0, 0, 80, 100); }
   else if (k === 3) { a = Math.floor(t * 11); g.drawImage(tex, 0, a * 37 % 90, 80, 9, (a % 3 - 1) * 7, a * 37 % 90, 80, 9); g.drawImage(tex, 0, a * 53 % 90, 80, 6, a % 2 ? 6 : -6, a * 53 % 90, 80, 6); }
@@ -290,14 +296,16 @@ function figure(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
   // character skins change the whole body: one material for every limb, a glow round the outline, and extra parts
   if (sd.glow) { g.shadowColor = sd.glow; g.shadowBlur = s * 0.07; }
   if (sd.hd) body(g, P, J, NK, sh, hip, s, sd.hd, c, t, 0);
+  if (R.flair && sd.tier >= 5) R.flair(g, P, J, HD, hip, s, sd, c, sg, t, 0);
   for (i = 0; i < 6; i++) {
     k = parts[i][1];
-    if (k < 2) { j = J[k]; limb(g, j.h, j.k, 0.16 * s, skin); limb(g, j.k, j.f, 0.125 * s, sd.hd ? skin : col[1]); limb(g, j.f, j.t, 0.13 * s, sd.boot); limb(g, j.h, mid(j.h, j.k, 0.64), 0.2 * s, col[2]); }
+    if (k < 2) { j = J[k]; limb(g, j.h, j.k, 0.16 * s, skin); limb(g, j.k, j.f, 0.125 * s, sd.hd ? skin : col[1]); if (R.boot) R.boot(g, j.f, j.t, s, sd, t); else limb(g, j.f, j.t, 0.13 * s, sd.boot); limb(g, j.h, mid(j.h, j.k, 0.64), 0.2 * s, col[2]); }
     else if (k < 4) { j = J[k - 2]; limb(g, j.s, j.e, 0.105 * s, skin); limb(g, j.e, j.w, 0.09 * s, skin); if (!sd.hd) limb(g, j.s, mid(j.s, j.e, 0.6), 0.135 * s, col[0]); }
     else if (k === 4) { limb(g, J[0].h, J[1].h, 0.21 * s, col[2]); torso(g, NK, P(0, 0, hip - 0.05), s * lerp(0.17, 0.265, ac), s * lerp(0.15, 0.215, ac), sd, Math.atan2(sg, c), t); }
     else { head(g, HD, NK, s, c, sg, q, sd); if (sd.hd) body(g, P, J, NK, sh, hip, s, sd.hd, c, t, 1); }
   }
   g.shadowBlur = 0;
+  if (R.flair && sd.tier >= 5) R.flair(g, P, J, HD, hip, s, sd, c, sg, t, 1);
 }
 // turn an engine player into joint angles
 function poseOf(p, m, t){
@@ -330,10 +338,11 @@ function poseOf(p, m, t){
 
 // ---- the match view ----
 // s: {kit, cus: {p, c}, look: {skin, hair, hc, num}, trail, fx, name, ring, human}
-function side(s){
+function side(s){ var d = side0(s); if (R.dress) R.dress(d, s); return d; }
+function side0(s){
   var it = MG.ITEM[s.kit] || MG.ITEM.home, lk = s.look || {}, cu = it.p === "custom" ? s.cus || {p: "solid", c: it.c} : null, col = cu ? cu.c : it.c, num = it.num || lk.num || 7;
   return {it: it, p: cu ? cu.p : it.p, col: col, tex: [kitTex(it, 0, num, cu), kitTex(it, 1, num, cu)], wrap: wrapTex(it, num, cu), skin: it.sk || MG.SKIN[lk.skin || 0] || MG.SKIN[0], hd: it.hd || "", glow: it.gl || "", emote: (MG.ITEM[s.emote] || {}).k || "", hair: lk.hair || 0, hc: lk.hc || 0, aura: it.f || "",
-    trail: (MG.ITEM[s.trail] || {}).k || "none", fx: (MG.ITEM[s.fx] || {}).k || "confetti", name: s.name || "", ring: s.ring || "#3b6ef5", human: !!s.human, boot: lum(col[1]) < 0.25 ? "#e9ebf5" : "#1b1b22"};
+    trail: (MG.ITEM[s.trail] || {}).k || "none", fx: (MG.ITEM[s.fx] || {}).k || "confetti", name: s.name || "", ring: s.ring || "#3b6ef5", human: !!s.human, boot: lum(col[1]) < 0.25 ? "#e9ebf5" : "#1b1b22", tier: it.r || 0, mat: it.p};
 }
 function View(cv){
   var v = this;
@@ -716,5 +725,6 @@ R.ballIcon = function(cv, id, t){
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
   drawBall(g, w / 2, h / 2, Math.min(w, h) * 0.34, MG.ITEM[id] || MG.ITEM.classic, spin(ico(), 0.35, 0.2, 1, 0.6 + t), t, 0.3, 0.95);
 };
-R.View = View; R.side = side;
+R.View = View; R.side = side; R.kitTex = kitTex; R.wrapTex = wrapTex;
+R.figure = figure; R.pose0 = pose0; R.poseOf = poseOf; R.drawBall = drawBall; R.ico = ico; R.spin = spin; R.star = star; R.limb = limb; R.blob = blob; R.lum = lum; R.FONT = FONT; R.OUT = OUT; R.VR = VR;
 })();
