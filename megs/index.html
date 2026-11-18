@@ -133,6 +133,19 @@ canvas.big{width:170px;max-width:60%;aspect-ratio:3/4;margin:.4rem auto;display:
 .won{margin:0 0 .5rem;text-align:center;opacity:0;transition:opacity .3s;color:#a3a3b8;font-size:.9rem}.won b{color:var(--r)}.won.show{opacity:1}
 .emo{height:230px;width:auto}
 .row.wrap{flex-wrap:wrap}
+/* scenes */
+#scn{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+header,#app{position:relative;z-index:1}
+body.scn header,body.brnd header{background:rgba(10,12,28,.55);backdrop-filter:blur(6px);border-bottom-color:rgba(255,255,255,.08)}
+body.scn .panel,body.brnd .panel{background:rgba(22,24,46,.84);backdrop-filter:blur(8px)}
+.stage0{position:relative;display:flex;align-items:flex-end;gap:1rem;min-height:250px;margin-bottom:.8rem;border-radius:18px;overflow:hidden}
+.stage0 canvas#hero{width:190px;height:253px;flex:none;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+.st0t{display:flex;flex-direction:column;gap:.3rem;padding:0 0 1.2rem;text-shadow:0 2px 12px rgba(0,0,0,.85)}.st0t b{font-size:2rem;letter-spacing:-.02em}
+.rk{display:inline-flex;align-items:center;gap:.25rem;color:var(--c);font-weight:800}.rk canvas{width:30px;height:30px;margin:-6px 0}.st0t .rk canvas{width:46px;height:46px}
+.pos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin:.8rem 0}.chip.big{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:.7rem .8rem;border-radius:12px;height:auto}.chip.big small{opacity:.8;font-weight:400}
+.tier .free,.tier .premt{height:auto;min-height:200px;justify-content:flex-start}.tier .tr canvas{max-height:84px}
+.tr.blank{width:100%;min-height:90px;border:1px dashed #2a2d55;background:transparent;cursor:default}
+.it canvas.bn{aspect-ratio:9/5}
 /* season */
 .season{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.7rem;margin:.8rem 0}
 .sbig{position:relative;overflow:hidden;text-align:left;color:#fff;border:2px solid transparent;border-radius:18px;padding:1rem 1.1rem;min-height:132px;cursor:pointer;display:flex;flex-direction:column;gap:.25rem}
@@ -436,15 +449,17 @@ kbd{display:inline-block;font:inherit;font-weight:800;font-size:.8em;background:
 <div id="modal" hidden></div>
 <div id="toasts"></div>
 
-<script src="engine.js?v=7"></script>
-<script src="data.js?v=7"></script>
-<script src="render.js?v=7"></script>
-<script src="cosm.js?v=7"></script>
-<script src="meta.js?v=7"></script>
-<script src="season.js?v=7"></script>
-<script src="team.js?v=7"></script>
-<script src="play.js?v=7"></script>
-<script src="ui.js?v=7"></script>
-<script src="ui2.js?v=7"></script>
+<script src="engine.js?v=8"></script>
+<script src="data.js?v=8"></script>
+<script src="render.js?v=8"></script>
+<script src="cosm.js?v=8"></script>
+<script src="body.js?v=8"></script>
+<script src="meta.js?v=8"></script>
+<script src="season.js?v=8"></script>
+<script src="team.js?v=8"></script>
+<script src="play.js?v=8"></script>
+<script src="ui.js?v=8"></script>
+<script src="ui2.js?v=8"></script>
+<script src="scene.js?v=8"></script>
 </body>
 </html>
