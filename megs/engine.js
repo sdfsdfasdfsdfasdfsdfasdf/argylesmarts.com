@@ -75,7 +75,7 @@ function mkP(i, o){
   o = o || {};
   var s = o.st || {}, st = {};
   ["pace", "shot", "ctrl", "power", "tackle", "block"].forEach(function(k){ st[k] = s[k] == null ? 5 : s[k]; });
-  return {i: i, name: o.name || "P" + (i + 1), x: 0, y: 0, vx: 0, vy: 0, fa: 0, z: 0, vz: 0, st: st, stam: 1, tired: 0, act: "", at: 0, ad: 0, ax: 0, ay: 0, hit: 0, sd: 1, sa: 0,
+  return {i: i, name: o.name || "P" + (i + 1), x: 0, y: 0, vx: 0, vy: 0, fa: 0, z: 0, vz: 0, st: st, stam: 1, tired: 0, en: 1, act: "", at: 0, ad: 0, ax: 0, ay: 0, hit: 0, sd: 1, sa: 0,
     wind: -1, w0: 0, pull: false, aimX: 0, aimH: 0, prot: 0, legs: 0, jock: 0, lastCut: -9, lastBurst: -9, lastFake: -9, lastDrag: -9, lastMeg: -9, lastPress: -9, lastAnk: -9, lastEl: -9, lastRb: -9, cs: 1, cb: 1, rb: 0, grab: 0, buf: "", bufT: -9, stride: 0, heat: 0, rel: null,
     mx0: 0, my0: 0, mx1: 0, my1: 0, inp: inp0(), prev: inp0(), ai: o.ai == null ? null : aiP(o.ai),
     stats: {shots: 0, goals: 0, twos: 0, perfect: 0, green: 0, megs: 0, ankles: 0, tackles: 0, blocks: 0, poss: 0}};
@@ -83,8 +83,9 @@ function mkP(i, o){
 function act(p, name, dur, ax, ay){ p.act = name; p.at = 0; p.ad = dur; p.ax = ax || 0; p.ay = ay || 0; p.hit = 0; }
 function ctl(p){ return p.act === "" || p.act === "tackle" || p.act === "burst" || p.act === "cut" || p.act === "press"; }
 function maxSpd(m, p, sprint){
-  var v = 5.7 + 0.13 * (p.st.pace - 5);   // one speed: there is no sprint
-  if (m.b.own === p.i) v *= 0.93;
+  var v = 5.7 + 0.13 * (p.st.pace - 5), has = m.b.own === p.i;
+  if (has) v *= 0.93;
+  if (sprint) v *= (has ? 1.17 : 1.27) + 0.01 * (p.st.pace - 5);   // sprint: quicker, but it uses up the sprint bar
   if (p.ai) v *= p.ai.spd;
   return v * (0.88 + 0.12 * p.stam) * m.cfg.pace;
 }
@@ -313,6 +314,7 @@ M.move = function(p, dt, frz){
   p.prot = Math.max(0, p.prot - dt); p.legs = Math.max(0, p.legs - dt); p.stam = 1;   // nobody tires
   if (p.stam < 0) p.stam = 0;
   if (p.z > 0 || p.vz > 0) { p.vz -= 15 * dt; p.z += p.vz * dt; if (p.z <= 0) { p.z = 0; p.vz = 0; } }
+  if (p.en === undefined) p.en = 1;
   sprint = !frz && inp.sp && !p.tired && l > 0.2;
   top = maxSpd(m, p, sprint); tvx = mx * top; tvy = my * top;
   p.jock = !frz && !has && inp.b && a === "" ? 1 : 0;
@@ -348,8 +350,9 @@ M.move = function(p, dt, frz){
   p.vx += dvx; p.vy += dvy;
   p.x = clamp(p.x + p.vx * dt, -W + PR, W - PR); p.y = clamp(p.y + p.vy * dt, 0.3, m.L ? m.L - 0.3 : D - PR);
   sp = hyp(p.vx, p.vy); p.stride += sp * dt;
-  if (sprint && sp > 5) p.stam = Math.max(0, p.stam - 0.2 * dt * m.cfg.tire); else p.stam = Math.min(1, p.stam + (sp < 1 ? 0.2 : 0.11) * dt);
-  if (p.stam <= 0.02) p.tired = 1; else if (p.stam > 0.3) p.tired = 0;
+  // the sprint bar: tricks are still free, only sprinting uses it. Empty it and you cannot sprint again until it is back to a third
+  if (sprint && sp > 4.5) p.en = Math.max(0, p.en - 0.24 * dt * m.cfg.tire); else p.en = Math.min(1, p.en + (sp < 1 ? 0.24 : 0.14) * dt);
+  if (p.en <= 0.02) p.tired = 1; else if (p.en > 0.33) p.tired = 0;
   a = p.act; bx = b.x - p.x; by = b.y - p.y; want = p.fa;
   if (a === "spin") { p.fa = wrap(p.fa + p.sd * 14.3 * dt); return; }
   if (a === "wind" || a === "kick" || a === "fake") want = Math.atan2(-p.y, p.aimX * (GW - 0.4) - p.x);
@@ -598,7 +601,7 @@ function think(m, p){
     }
     tx = clamp(p.x * 0.3, -1, 1) - p.x; ty = (m.cfg.far ? 9.4 : 1.8) - p.y; u = hyp(tx, ty) || 1; tx /= u; ty /= u;
     if (dd < 2.7 && o.y < p.y + 0.3 && !down) { qx = -ty * a.side; ty = ty * 0.5 + tx * a.side * 0.9; tx = tx * 0.5 + qx * 0.9; u = hyp(tx, ty) || 1; tx /= u; ty /= u; }
-    inp.mx = tx; inp.my = ty; inp.sp = (down || o.y > p.y || (m.cfg.sc && m.sc < 4)) && p.stam > 0.25 ? 1 : 0;
+    inp.mx = tx; inp.my = ty; inp.sp = (down || o.y > p.y || (m.cfg.sc && m.sc < 4)) && p.en > 0.35 ? 1 : 0;
     return;
   }
   if (b.own < 0) {   // loose ball: go and get it, finish first time if it sits up
