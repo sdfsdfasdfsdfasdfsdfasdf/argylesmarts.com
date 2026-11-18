@@ -1,7 +1,7 @@
 // MEGS play: sound, controls, the match loop and its HUD.
 (function(){
 "use strict";
-var MG = window.MG, R = MG.R, K = MG.K, DT = K.DT, run = null, demo = null, stageView = null, keys = {}, AC = null, out = null, nz = null, amb = null;
+var MG = window.MG, R = MG.R, K = MG.K, DT = K.DT, run = null, demo = null, stageView = null, teamView = null, keys = {}, AC = null, out = null, nz = null, amb = null;
 var TAP = {};
 // which key an event is. Some browsers and embedded pages leave e.code empty, so fall back to the character
 MG.code = function(e){
@@ -132,6 +132,7 @@ function wire(){
       });
     }
     keys[c] = 1;
+    if (/^Digit[1-4]$/.test(c) && !e.repeat && !run.paused) sticker(run, 0, MG.S.eq.stk[+c.slice(5) - 1]);
     if ((c === "Escape" || c === "KeyP") && !e.repeat && !run.over) pause(!run.paused);
     if (/^Arrow|^Space$|^Slash$|^Quote$/.test(c)) e.preventDefault();
   });
@@ -160,12 +161,30 @@ function banner(a, b){
 }
 function fmt(s){ s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + s % 60; }
 function hintRow(r, has){
+  if (r.m.team) return teamHints(r, has);
   var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go when the marker is in the green"], ["a", "Cut"], ["b", "Drag back"], ["c", "Burst"], ["d", "Megs"]] : [["sh", "Block"], ["a", "Tackle"], ["b", "Jockey"], ["c", "Slide"], ["d", "Press"]], lab = has ? ["Cut", "Drag", "Burst", "Megs"] : ["Tackle", "Jockey", "Slide", "Press"];
   $("hint").innerHTML = kk ? list.map(function(x){ return "<span><kbd>" + n(kk[x[0]]) + "</kbd>" + x[1] + "</span>"; }).join("") : "";
   ["a", "b", "c", "d"].forEach(function(k, i){ $("t" + k).textContent = lab[i]; $("t" + k).style.visibility = lab[i] ? "" : "hidden"; });
   $("tsh").textContent = has ? "SHOOT" : "BLOCK";
 }
+function teamHints(r, has){
+  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go in the green, away from the keeper"], ["a", "Pass"], ["d", "Lob pass"]] : [["b", "Tackle"], ["c", "Switch player"]], lab = has ? ["Pass", "", "", "Lob"] : ["", "Tackle", "Switch", ""];
+  $("hint").innerHTML = kk ? list.map(function(x){ return "<span><kbd>" + n(kk[x[0]]) + "</kbd>" + x[1] + "</span>"; }).join("") + "<span><kbd>1-4</kbd>Stickers</span>" : "";
+  ["a", "b", "c", "d"].forEach(function(k, i){ $("t" + k).textContent = lab[i]; $("t" + k).style.visibility = lab[i] ? "" : "hidden"; });
+  $("tsh").textContent = has ? "SHOOT" : "";
+  $("tsh").style.visibility = has ? "" : "hidden";
+}
+function teamHud(r, dt){
+  var m = r.m, b = m.b, me = r.oneI < 0 ? 0 : r.oneI, has;
+  set($("s0"), m.score[0]); set($("s1"), m.score[1]);
+  set($("rule"), m.clockText() + (m.half === 1 ? "  1ST" : "  2ND")); set($("sc"), "");
+  if (r.chipT > 0) r.chipT -= dt;
+  set($("chip"), r.chipT > 0 ? r.chip : "");
+  has = b.own >= 0 && m.p[b.own].tm === me && m.ctl[me] === b.own ? 1 : 0;
+  if (has !== r.has) { r.has = has; hintRow(r, has === 1); }
+}
 function hud(r, dt){
+  if (r.m.team) return teamHud(r, dt);
   var m = r.m, c = m.cfg, b = m.b, chip = "", has, sc = $("sc");
   set($("s0"), m.score[0]); set($("s1"), m.score[1]);
   set($("rule"), c.clock ? fmt(m.left) : c.golden ? "GOLDEN GOAL" : c.target ? (c.field ? "FULL FIELD: " : "") + "FIRST TO " + c.target : "FREE PLAY");
@@ -204,7 +223,7 @@ function pause(on){
   } else r.last = performance.now();
   MG.applySet();
 }
-function result(r){ var m = r.m; return {win: m.win === 0, winner: m.win, sc: [m.score[0], m.score[1]], me: m.p[0].stats, them: m.p[1].stats, top: r.top, t: m.t, ko: m.ko}; }
+function result(r){ var m = r.m; if (m.result) return m.result(); return {win: m.win === 0, winner: m.win, sc: [m.score[0], m.score[1]], me: m.p[0].stats, them: m.p[1].stats, top: r.top, t: m.t, ko: m.ko}; }
 function stop(){
   if (!run) return;
   cancelAnimationFrame(run.raf); run = null; ambOff(); keys = {};
@@ -230,6 +249,11 @@ function onEvent(r, e){
   else if (k === "turn") MG.sfx("turn");
   else if (k === "go") MG.sfx("whistle");
   else if (k === "hint") { r.chip = "Take it past the arc before you shoot"; r.chipT = 1.6; }
+  else if (k === "goal" && m.team) {
+    MG.sfx("goal"); buzz(120); banner("GOAL!", (e.own ? "Own goal" : e.who ? e.who : "") + (e.q === 2 ? " - perfect strike" : ""));
+    if (st.slow) { r.ts = 0.35; r.slow = 0.8; }
+    if (e.by !== r.oneI && Math.random() < 0.5) sticker(r, -1, ["st2", "st16", "st20", "st40"][Math.floor(Math.random() * 4)]);
+  }
   else if (k === "goal") {
     if (e.by === 0 && e.top && e.wide) r.top++;
     MG.sfx("goal"); buzz(120);
@@ -239,7 +263,10 @@ function onEvent(r, e){
   else if (k === "nogoal") banner("NO GOAL", e.why === 2 ? "Only long range counts here" : "Take it out past the arc first");
   else if (k === "clock") { banner("TIME UP", "Possession lost"); MG.sfx("whistle"); }
   else if (k === "golden") { banner("GOLDEN GOAL", "Next goal wins"); MG.sfx("whistle"); }
-  else if (k === "over") { r.over = 2.4; MG.sfx("final"); banner("FULL TIME", r.o.sides[e.win].name + " wins"); }
+  else if (k === "over") { r.over = 2.6; MG.sfx("final"); banner("FULL TIME", e.win < 0 ? "A draw" : r.o.sides[e.win].name + " wins"); }
+  else if (k === "half") { MG.sfx("whistle"); banner("HALF TIME", m.score[0] + " - " + m.score[1]); }
+  else if (k === "out") { r.chip = {throw: "Throw-in", corner: "Corner kick", gk: "Goal kick"}[e.kind] || ""; r.chipT = 1.2; MG.sfx("whistle", 0.4); }
+  else if (k === "check" && m.team) MG.sfx("whistle", 0.6);
 }
 function frame(now){
   var r = run, dt, n = 0, m, i, ev;
@@ -249,7 +276,7 @@ function frame(now){
   if (r.paused) return;
   m = r.m; r.view.resize(); r.acc += dt * r.ts;
   while (r.acc >= DT && n < 4) {
-    for (i = 0; i < 2; i++) if (r.src[i] && m.phase !== "over") read(r.src[i], m.p[i].inp);
+    for (i = 0; i < 2; i++) if (r.src[i] && m.phase !== "over") read(r.src[i], m.inp ? m.inp[i] : m.p[i].inp);
     m.step(); ev = m.ev;
     for (i = 0; i < ev.length; i++) onEvent(r, ev[i]);
     ev.length = 0; r.acc -= DT; n++;
@@ -258,19 +285,40 @@ function frame(now){
   if (r.slow > 0) { r.slow -= dt; if (r.slow <= 0) r.ts = 1; }
   hud(r, dt);
   r.skip = !r.skip;
-  if (!MG.S.set.fps || r.skip) r.view.draw(m, dt * r.ts * (MG.S.set.fps ? 2 : 1));
+  if (!MG.S.set.fps || r.skip) { r.view.draw(m, dt * r.ts * (MG.S.set.fps ? 2 : 1)); drawStickers(r, dt); }
   if (r.over > 0) { r.over -= dt; if (r.over <= 0) { i = result(r); ev = r.o; stop(); ev.done(i); } }
 }
 // o: {name, sub, cfg, sides: [a, b], st: [a, b], ai: [level or null, ...], src: [controls or null, ...], court, ball, first, forfeit, done(result), quit(result)}
+// stickers float above a player for two seconds: i is the side that sent it (-1 for the computer side)
+function sticker(r, side, id){
+  var m = r.m, i;
+  if (!id || !MG.ITEM[id]) return;
+  if (side < 0) side = r.oneI === 0 ? 1 : 0;
+  i = m.team ? (m.ctl[side] >= 0 ? m.ctl[side] : side * 5 + 3) : side;
+  r.stk = (r.stk || []).filter(function(s){ return s.i !== i; }); r.stk.push({i: i, id: id, l: 2.2}); MG.sfx("ui");
+}
+function drawStickers(r, dt){
+  var v = r.view, g = v.g, i, s, p, q, k;
+  if (!r.stk || !r.stk.length) return;
+  g.setTransform(v.dpr, 0, 0, v.dpr, 0, 0);
+  for (i = r.stk.length - 1; i >= 0; i--) {
+    s = r.stk[i]; s.l -= dt; if (s.l <= 0) { r.stk.splice(i, 1); continue; }
+    p = r.m.p[s.i]; if (!p) continue; q = v.pr(p.x, p.y, 2.9); if (q.d < 1) continue; k = Math.min(1, (2.2 - s.l) * 6);
+    g.globalAlpha = Math.min(1, s.l * 3); R.sticker(g, s.id, q.x, q.y - 26, 46 * (0.6 + 0.4 * k), v.t); g.globalAlpha = 1;
+  }
+}
+MG.sticker = function(id){ if (run) sticker(run, 0, id); };
 MG.play = function(o){
   var v, r, n = 0;
   MG.demoStop(); stop();
   $("stage").hidden = false; document.body.classList.add("playing");
   if (!stageView) { stageView = new R.View($("cv")); wire(); }
-  v = stageView; v.resize();
+  if (o.team && !teamView) teamView = new MG.TeamView($("cv"));
+  v = o.team ? teamView : stageView; v.resize();
   r = run = {o: o, view: v, src: o.src, acc: 0, ts: 1, slow: 0, last: performance.now(), paused: false, over: 0, top: 0, chip: "", chipT: 0, has: -2, skip: false, one: null, oneI: -1,
-    vs: {court: o.court || MG.S.eq.court, ball: o.ball || MG.S.eq.ball, sides: o.sides}};
+    vs: o.team ? {sides: o.teams, ball: o.ball || MG.S.eq.ball, ring: ["#3b6ef5", "#ff5d7a"]} : {court: o.court || MG.S.eq.court, ball: o.ball || MG.S.eq.ball, sides: o.sides}, stk: []};
   r.mk = function(){
+    if (o.team) { var tc = {first: o.first == null ? (Math.random() < 0.5 ? 0 : 1) : o.first}, tk; for (tk in o.cfg) tc[tk] = o.cfg[tk]; return new MG.TeamMatch(tc); }
     var c = {p0: {name: o.sides[0].name, st: o.st[0], ai: o.ai[0]}, p1: {name: o.sides[1].name, st: o.st[1], ai: o.ai[1]}, first: o.first == null ? (Math.random() < 0.5 ? 0 : 1) : o.first}, k;
     for (k in o.cfg) c[k] = o.cfg[k];
     return new MG.Match(c);
