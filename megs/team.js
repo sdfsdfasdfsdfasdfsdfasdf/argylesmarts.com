@@ -20,7 +20,7 @@ function TeamMatch(cfg){
   m.b = {x: L / 2, y: 0, z: BR, vx: 0, vy: 0, vz: 0, own: -1, last: -1, lt: -1, to: -1, shot: null, net: 0};
   for (i = 0; i < 10; i++) {
     k = i < 5 ? 0 : 1; lv = c.human[k] && i % 5 !== 0 ? c.mate : c.lv[k];
-    p = {i: i, tm: k, role: i % 5, x: 0, y: 0, vx: 0, vy: 0, fa: k ? PI : 0, act: "", at: 0, ad: 0, ax: 1, ay: 0, stride: 0, jock: 0, wind: -1, legs: 0, prot: 0, stam: 1, nop: 0, grab: 0, hold: 0,
+    p = {i: i, tm: k, role: i % 5, x: 0, y: 0, vx: 0, vy: 0, fa: k ? PI : 0, act: "", at: 0, ad: 0, ax: 1, ay: 0, stride: 0, jock: 0, wind: -1, legs: 0, prot: 0, stam: 1, en: 1, spr: 0, nop: 0, grab: 0, hold: 0,
       lv: lv, sk: lv / 10, name: c.names ? c.names[k][i % 5] : "", num: [1, 4, 5, 9, 10][i % 5], ai: {t: 0, dec: 0, rx: 0, ry: 0, shotX: null, rel: 0, pass: 0, aim: 0}, aimX: 0, aimH: 0, stats: {}};
     m.p.push(p);
   }
@@ -122,7 +122,7 @@ M.control = function(dt){
 M.human = function(p, dt){
   var m = this, b = m.b, inp = m.inp[p.tm], pr = m.prev[p.tm], has = b.own === p.i, l = hyp(inp.mx || 0, inp.my || 0), sp = m.spd(p, has), x, y, o, d;
   // the camera looks across the pitch from the +y side: right on the keys is +x, up is towards the far touchline (-y)
-  x = inp.mx || 0; y = inp.my || 0;
+  x = inp.mx || 0; y = inp.my || 0; p.spr = inp.sp && l > 0.2 ? 1 : 0;
   if (l > 0.12) { p.tx = p.x + x / l * 5; p.ty = p.y + y / l * 5; p.tv = sp * Math.min(1, l); }
   else { p.tx = p.x; p.ty = p.y; p.tv = 0; }
   if (has && (p.act === "" || p.act === "wind")) {
@@ -197,7 +197,7 @@ M.tackle = function(p){ p.act = "tackle"; p.at = 0; p.ad = 0.45; p.didT = 0; };
 // ---- the computer's players ----
 M.think = function(p, dt, frozen){
   var m = this, b = m.b, a = p.ai, sk = p.sk, has = b.own === p.i, att = m.poss() === p.tm, dir = m.dir(p.tm), gx = m.gx(p.tm), h, d, o, best, bd, i, q, tt, mine, dist;
-  a.t -= dt;
+  a.t -= dt; p.spr = 0;
   if (p.role === 0) return m.gk(p, dt, frozen);
   if (frozen) { h = m.home(p); go(p, h.x, h.y, 4); return; }
   if (has) {
@@ -222,11 +222,11 @@ M.think = function(p, dt, frozen){
     return;
   }
   // a pass on its way to me: go and meet it
-  if (b.to === p.i && b.own < 0) { tt = Math.max(0.2, hyp(b.x - p.x, b.y - p.y) / 10); go(p, b.x + b.vx * tt * 0.6, b.y + b.vy * tt * 0.6, m.spd(p, 0)); return; }
+  if (b.to === p.i && b.own < 0) { tt = Math.max(0.2, hyp(b.x - p.x, b.y - p.y) / 10); go(p, b.x + b.vx * tt * 0.6, b.y + b.vy * tt * 0.6, m.spd(p, 0)); p.spr = p.en > 0.4 && tt > 0.5; return; }
   // loose ball: the quickest of each side goes for it
   if (b.own < 0) {
     best = m.chaser(p.tm);
-    if (best === p) { tt = clamp(hyp(b.x - p.x, b.y - p.y) / 7, 0, 1.2); go(p, b.x + b.vx * tt * 0.5, b.y + b.vy * tt * 0.5, m.spd(p, 0)); return; }
+    if (best === p) { tt = clamp(hyp(b.x - p.x, b.y - p.y) / 7, 0, 1.2); go(p, b.x + b.vx * tt * 0.5, b.y + b.vy * tt * 0.5, m.spd(p, 0)); p.spr = p.en > 0.35 && tt > 0.25; return; }
   }
   h = m.home(p);
   if (att) {
@@ -241,7 +241,7 @@ M.think = function(p, dt, frozen){
     q = m.p[b.own]; d = hyp(q.x - p.x, q.y - p.y);
     // close in on the ball itself, from the goal side when he can
     d = hyp(b.x - p.x, b.y - p.y);
-    go(p, b.x - dir * (d > 2 ? 0.8 : 0.2) + q.vx * 0.15, b.y + q.vy * 0.15, m.spd(p, 0));
+    go(p, b.x - dir * (d > 2 ? 0.8 : 0.2) + q.vx * 0.15, b.y + q.vy * 0.15, m.spd(p, 0)); p.spr = d > 4 && p.en > 0.5 && (p.i % 3 > 0 || sk > 0.6);
     if (d < 1.1 && p.act === "" && m.t > (p.ai.tk || 0) && m.r() < (0.5 + 1.4 * sk) * dt) { m.tackle(p); p.ai.tk = m.t + 1.3; }
     return;
   }
@@ -288,6 +288,10 @@ M.move = function(p, dt, idle){
   if (p.act) { p.at += dt; if (p.at >= p.ad) { if (p.act === "tackle" && !p.didT) { p.act = "stumble"; p.at = 0; p.ad = 0.35; } else p.act = ""; } }
   if (p.act === "stumble") v = 0; else if (p.act === "tackle") v = Math.max(v, 7.2); else if (p.act === "lunge") v = 5.6 + 2.6 * p.sk;
   if (m.phase === "over" && p.cel) { v = 0; }
+  if (p.en == null) p.en = 1;
+  k = !idle && p.spr && !p.tired && v > 3 && p.act !== "stumble" && p.wind < 0;
+  if (k) { v *= m.b.own === p.i ? 1.16 : 1.25; p.en = Math.max(0, p.en - 0.2 * dt); } else p.en = Math.min(1, p.en + (hyp(p.vx, p.vy) < 1 ? 0.22 : 0.12) * dt);
+  if (p.en <= 0.02) p.tired = 1; else if (p.en > 0.33) p.tired = 0;
   if (d < 0.25) { wx = 0; wy = 0; } else { k = Math.min(v, d * 3.5) / d; wx = dx * k; wy = dy * k; }
   k = Math.min(1, dt * (p.act === "lunge" ? 14 : 9));
   p.vx += (wx - p.vx) * k; p.vy += (wy - p.vy) * k;
@@ -474,12 +478,12 @@ V.pitch = function(){
   var v = this, g = v.g, i, a, c, n = 14;
   v.poly([-7, -H - 2.2, 0, L + 7, -H - 2.2, 0, L + 7, H + 8, 0, -7, H + 8, 0], "#2a6b3a");
   for (i = 0; i < n; i++) v.poly([i * L / n, -H, 0, (i + 1) * L / n, -H, 0, (i + 1) * L / n, H, 0, i * L / n, H, 0], i & 1 ? "#3d9a55" : "#358c4b");
-  if (!v.grass) { v.grass = document.createElement("canvas"); v.grass.width = v.grass.height = 64; a = v.grass.getContext("2d"); for (i = 0; i < 900; i++) { a.fillStyle = Math.random() < 0.5 ? "rgba(0,30,0,.18)" : "rgba(200,255,180,.08)"; a.fillRect(Math.random() * 64, Math.random() * 64, 1, 1 + Math.random() * 2); } }
-  // the grass is not perfect: lighter and darker patches of every size, and worn ground in the goalmouths and the centre
-  if (!v.patch) { a = MG.rng(77); v.patch = [];
-    for (i = 0; i < 80; i++) v.patch.push([a() * L, (a() * 2 - 1) * H, 0.8 + Math.pow(a(), 2) * 6, 0.6 + a() * 0.8, a() * PI, a() < 0.5 ? "rgba(0,40,0," + (0.06 + a() * 0.1) + ")" : "rgba(220,255,170," + (0.04 + a() * 0.07) + ")"]);
-    [[3.5, 0, 4, "rgba(150,120,60,.28)"], [L - 3.5, 0, 4, "rgba(150,120,60,.28)"], [8, 0, 3, "rgba(150,130,70,.14)"], [L - 8, 0, 3, "rgba(150,130,70,.14)"], [L / 2, 0, 2.2, "rgba(150,130,70,.18)"]].forEach(function(w){ var k; for (k = 0; k < 7; k++) v.patch.push([w[0] + (a() - 0.5) * w[2], w[1] + (a() - 0.5) * w[2] * 1.6, w[2] * (0.35 + a() * 0.4), 0.7 + a() * 0.6, a() * PI, w[3]]); }); }
-  v.patch.forEach(function(q){ var k, pts = [], ca = Math.cos(q[4]), sa = Math.sin(q[4]), ex, ey, pp; for (k = 0; k < 10; k++) { ex = Math.cos(k / 10 * TAU) * q[2] * (0.85 + 0.15 * Math.sin(k * 3 + q[0])); ey = Math.sin(k / 10 * TAU) * q[2] * q[3]; pts.push(clamp(q[0] + ex * ca - ey * sa, 0, L), clamp(q[1] + ex * sa + ey * ca, -H, H), 0); } v.poly(pts, q[5]); });
+  // grass texture: blades of different lengths, angles and shades scattered at random, with small uneven clumps, so it never looks tiled
+  if (!v.grass) { v.grass = document.createElement("canvas"); v.grass.width = v.grass.height = 384; a = v.grass.getContext("2d"); c = MG.rng(91); a.lineCap = "round";
+    for (i = 0; i < 9000; i++) { var gx = c() * 384, gy = c() * 384, gl = 1 + Math.pow(c(), 2) * 5, ga = -PI / 2 + (c() - 0.5) * 1.4, sh = c();
+      a.strokeStyle = sh < 0.45 ? "rgba(0,34,0," + (0.08 + c() * 0.16) + ")" : sh < 0.9 ? "rgba(190,255,150," + (0.04 + c() * 0.09) + ")" : "rgba(120,110,40," + (0.05 + c() * 0.08) + ")"; a.lineWidth = 0.6 + c() * 1.1;
+      a.beginPath(); a.moveTo(gx, gy); a.lineTo(gx + Math.cos(ga) * gl, gy + Math.sin(ga) * gl); a.stroke(); }
+    for (i = 0; i < 70; i++) { var cx0 = c() * 384, cy0 = c() * 384, cr = 3 + c() * 9, k2; a.fillStyle = c() < 0.5 ? "rgba(0,30,0,.05)" : "rgba(210,255,170,.04)"; for (k2 = 0; k2 < 6; k2++) { a.beginPath(); a.arc(cx0 + (c() - 0.5) * cr * 2, cy0 + (c() - 0.5) * cr * 2, cr * (0.3 + c() * 0.5), 0, TAU); a.fill(); } } }
   g.save(); g.fillStyle = g.createPattern(v.grass, "repeat"); g.beginPath(); [[-7, -H - 2.2], [L + 7, -H - 2.2], [L + 7, H + 8], [-7, H + 8]].forEach(function(pt){ var q = v.pr(pt[0], pt[1], 0); g.lineTo(q.x, q.y); }); g.fill(); g.restore();
   c = "rgba(255,255,255,.88)";
   v.line([0, -H, 0, L, -H, 0, L, H, 0, 0, H, 0, 0, -H, 0], 0.12, c);
@@ -510,7 +514,7 @@ V.draw = function(m, dt){
   c.x += (tx - c.x) * Math.min(1, dt * 2.6); c.y += (ty - c.y) * Math.min(1, dt * 1.8);
   g.setTransform(v.dpr, 0, 0, v.dpr, 0, 0); g.lineCap = g.lineJoin = "round";
   if (v.shake > 0 && v.o.shake) { v.shake -= dt; g.translate((Math.random() - 0.5) * v.shake * 14, (Math.random() - 0.5) * v.shake * 14); }
-  v.back(); v.pitch();
+  v.back(m); v.pitch();
   v.goalBack(L, 1); v.goalBack(0, -1);
   // shadows
   for (i = 0; i < 10; i++) { p = m.p[i]; q = v.pr(p.x, p.y, 0); g.fillStyle = "rgba(0,10,0,.3)"; g.beginPath(); g.ellipse(q.x + q.s * 0.25, q.y, q.s * 0.42, q.s * 0.13, 0, 0, TAU); g.fill(); }
@@ -518,7 +522,9 @@ V.draw = function(m, dt){
   // markers on the ground under the players each human is steering
   for (k = 0; k < 2; k++) {
     if (!m.cfg.human[k] || m.ctl[k] < 0) continue; p = m.p[m.ctl[k]]; q = v.pr(p.x, p.y, 0.02);
-    g.strokeStyle = v.ring[k]; g.lineWidth = Math.max(2, q.s * 0.08); g.globalAlpha = 0.9; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.6, q.s * 0.2, 0, 0, TAU); g.stroke(); g.globalAlpha = 1;
+    g.strokeStyle = v.ring[k]; g.lineWidth = Math.max(2, q.s * 0.08); g.globalAlpha = 0.9; g.globalAlpha = 0.3; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.6, q.s * 0.2, 0, 0, TAU); g.stroke();
+    // the bright part of the ring is the sprint bar
+    g.globalAlpha = p.tired ? 0.55 + 0.35 * Math.sin(v.t * 12) : 0.95; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.6, q.s * 0.2, 0, -PI / 2, -PI / 2 + TAU * clamp(p.en == null ? 1 : p.en, 0.001, 1)); g.stroke(); g.globalAlpha = 1;
   }
   // players and ball, far to near
   for (i = 0; i < 10; i++) ents.push([v.pr(m.p[i].x, m.p[i].y, 0).d, i]);
