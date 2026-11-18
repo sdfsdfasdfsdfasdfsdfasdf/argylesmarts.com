@@ -475,6 +475,11 @@ V.pitch = function(){
   v.poly([-7, -H - 2.2, 0, L + 7, -H - 2.2, 0, L + 7, H + 8, 0, -7, H + 8, 0], "#2a6b3a");
   for (i = 0; i < n; i++) v.poly([i * L / n, -H, 0, (i + 1) * L / n, -H, 0, (i + 1) * L / n, H, 0, i * L / n, H, 0], i & 1 ? "#3d9a55" : "#358c4b");
   if (!v.grass) { v.grass = document.createElement("canvas"); v.grass.width = v.grass.height = 64; a = v.grass.getContext("2d"); for (i = 0; i < 900; i++) { a.fillStyle = Math.random() < 0.5 ? "rgba(0,30,0,.18)" : "rgba(200,255,180,.08)"; a.fillRect(Math.random() * 64, Math.random() * 64, 1, 1 + Math.random() * 2); } }
+  // the grass is not perfect: lighter and darker patches of every size, and worn ground in the goalmouths and the centre
+  if (!v.patch) { a = MG.rng(77); v.patch = [];
+    for (i = 0; i < 80; i++) v.patch.push([a() * L, (a() * 2 - 1) * H, 0.8 + Math.pow(a(), 2) * 6, 0.6 + a() * 0.8, a() * PI, a() < 0.5 ? "rgba(0,40,0," + (0.06 + a() * 0.1) + ")" : "rgba(220,255,170," + (0.04 + a() * 0.07) + ")"]);
+    [[3.5, 0, 4, "rgba(150,120,60,.28)"], [L - 3.5, 0, 4, "rgba(150,120,60,.28)"], [8, 0, 3, "rgba(150,130,70,.14)"], [L - 8, 0, 3, "rgba(150,130,70,.14)"], [L / 2, 0, 2.2, "rgba(150,130,70,.18)"]].forEach(function(w){ var k; for (k = 0; k < 7; k++) v.patch.push([w[0] + (a() - 0.5) * w[2], w[1] + (a() - 0.5) * w[2] * 1.6, w[2] * (0.35 + a() * 0.4), 0.7 + a() * 0.6, a() * PI, w[3]]); }); }
+  v.patch.forEach(function(q){ var k, pts = [], ca = Math.cos(q[4]), sa = Math.sin(q[4]), ex, ey, pp; for (k = 0; k < 10; k++) { ex = Math.cos(k / 10 * TAU) * q[2] * (0.85 + 0.15 * Math.sin(k * 3 + q[0])); ey = Math.sin(k / 10 * TAU) * q[2] * q[3]; pts.push(clamp(q[0] + ex * ca - ey * sa, 0, L), clamp(q[1] + ex * sa + ey * ca, -H, H), 0); } v.poly(pts, q[5]); });
   g.save(); g.fillStyle = g.createPattern(v.grass, "repeat"); g.beginPath(); [[-7, -H - 2.2], [L + 7, -H - 2.2], [L + 7, H + 8], [-7, H + 8]].forEach(function(pt){ var q = v.pr(pt[0], pt[1], 0); g.lineTo(q.x, q.y); }); g.fill(); g.restore();
   c = "rgba(255,255,255,.88)";
   v.line([0, -H, 0, L, -H, 0, L, H, 0, 0, H, 0, 0, -H, 0], 0.12, c);
