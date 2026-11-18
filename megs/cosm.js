@@ -8,7 +8,9 @@ var MG = window.MG, R = MG.R, I = MG.ITEMS, BY = MG.ITEM, PI = Math.PI, TAU = PI
 // pack: packs only. shop: the weekly shop only. pass: the free season pass track. season: the premium track (buyable soon).
 // earn: earned by playing. free: everyone starts with it. Items from before this season are pack items unless earned or free.
 MG.SRC = {pack: "Packs", shop: "Weekly shop", pass: "Season pass", season: "Season pass premium", earn: "Earned", free: "Starter"};
-MG.SEASON = {n: 1, name: "Kickoff", ends: "2027-01-31"};
+// seasons have no end date: a season runs until the next one is released by hand. To start one, raise n and set its name
+// (the pass then starts again from tier 1 for everyone).
+MG.SEASON = {n: 1, name: "Kickoff"};
 function add(t, id, n, r, src, o){ o = o || {}; o.t = t; o.id = id; o.n = n; o.r = r; o.src = src; I.push(o); BY[id] = o; return o; }
 I.forEach(function(it){ if (!it.src) it.src = it.need || it.how ? "earn" : "pack"; });
 ["home", "away", "classic", "t_none", "f_conf", "c_street", "e_wave"].forEach(function(k){ if (BY[k]) BY[k].src = "free"; });
