@@ -84,7 +84,7 @@ MG.weekly = function(){
 };
 MG.weekAdd = function(cnt){ MG.weekly().forEach(function(x){ if (!x.q.c) x.q.p = Math.min(x.need, x.q.p + (cnt[x.key] || 0)); }); };
 MG.weekClaim = function(id){ var x = MG.weekly().filter(function(y){ return y.q.id === id; })[0]; if (!x || !x.done || x.q.c) return 0; x.q.c = 1; MG.passAdd(x.xp); MG.save(); return x.xp; };
-MG.daysLeft = function(){ var e = new Date(MG.SEASON.ends + "T23:59:59"); return Math.max(0, Math.ceil((e - new Date()) / 86400000)); };
+MG.daysLeft = function(){ return null; };   // no countdown: a season ends when the next one is released
 
 // every match feeds the pass and the weekly challenges
 var fin0 = MG.finish;
@@ -106,7 +106,7 @@ var SLOTS = [5, 4, 4, 3, 3, 3, 2, 2, 1, 1], WS = {w: -1, list: []};
 MG.weekShop = function(){
   var w = MG.week(), r, pool, used = {}, out = [];
   if (WS.w === w) return WS.list;
-  r = MG.rng(w * 7919 + 13); pool = MG.ITEMS.filter(function(it){ return it.src === "shop"; });
+  r = MG.rng(w * 7919 + 13); pool = MG.ITEMS.filter(function(it){ return it.src === "shop" && it.t !== "stadium"; });   // stadiums have their own shelf
   SLOTS.forEach(function(q){
     var d, c;
     for (d = 0; d < 8; d++) {
