@@ -1,7 +1,7 @@
 // MEGS meta: save data, coins and XP, Elo, quests, packs, the Ladder, cups and the simulated league. No DOM in here.
 (function(){
 "use strict";
-var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1};
+var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1, bt_std: 1, w_none: 1, bn0: 1, st0: 1, st1: 1, st2: 1, st3: 1};
 function ls(k, v){
   try { if (v === undefined) return window.localStorage.getItem(k); window.localStorage.setItem(k, v); }
   catch (e) { if (v === undefined) return mem[k] == null ? null : mem[k]; mem[k] = v; }
@@ -11,7 +11,7 @@ function hash(s){ var h = 2166136261, i; for (i = 0; i < s.length; i++) { h ^= s
 function merge(a, b){ var o = {}, k; b = b || {}; for (k in a) o[k] = a[k] && typeof a[k] === "object" ? merge(a[k], b[k]) : b[k] == null ? a[k] : b[k]; return o; }
 
 // every setting, with its default
-MG.SET0 = {vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 1, fx: 1, names: 1, rings: 1, meter: 1, aim: 1, pops: 1, zoom: 0, pan: 1, cb: 0, net: 1, trail: 1, aura: 1, slow: 1, banner: 1, hints: 1, hud: 1, fps: 0,
+MG.SET0 = {music: 0.35, vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 1, fx: 1, names: 1, rings: 1, meter: 1, aim: 1, pops: 1, zoom: 0, pan: 1, cb: 0, net: 1, trail: 1, aura: 1, slow: 1, banner: 1, hints: 1, hud: 1, fps: 0,
   auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 1, dtap: 0,
   kv: 3,
   // k1: you against the computer. kp and k2: the two players in a party game on one keyboard
@@ -31,6 +31,10 @@ MG.load = function(){
   if (o && o.v === 1) for (k in o) d[k] = o[k];
   S = MG.S = d; S.set = merge(MG.SET0, S.set);
   if (!S.eq.emote) { S.eq.emote = "e_wave"; S.inv.e_wave = 1; }
+  // season 1 slots: boots, wrap, banner and four stickers
+  ["bt_std", "w_none", "bn0", "st0", "st1", "st2", "st3"].forEach(function(k){ S.inv[k] = 1; });
+  if (!S.eq.boot) S.eq.boot = "bt_std"; if (!S.eq.wrap) S.eq.wrap = "w_none"; if (!S.eq.banner) S.eq.banner = "bn0"; if (!S.eq.stk) S.eq.stk = ["st0", "st1", "st2", "st3"];
+  for (k in S.eq) if (typeof S.eq[k] === "string" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
   // a blank or missing key would leave the player unable to move: put the default back
   ["k1", "kp", "k2"].forEach(function(m){ var d0 = MG.SET0[m], kk = S.set[m] = S.set[m] || {}, k; for (k in d0) if (typeof kk[k] !== "string" || !kk[k]) kk[k] = d0[k]; });
@@ -55,7 +59,7 @@ MG.myStats = function(){ var b = MG.ARCH[S.arch][2], o = {}; MG.STATS.forEach(fu
 MG.points = function(){ var u = 0, k; for (k in S.al) u += S.al[k]; return S.lvl - 1 - u; };
 MG.spend = function(k){ if (MG.points() < 1 || MG.myStats()[k] >= 10) return false; S.al[k] = (S.al[k] || 0) + 1; MG.save(); return true; };
 MG.respec = function(a){ if (a != null) S.arch = a; S.al = {}; MG.save(); };
-MG.me = function(){ return {kit: S.eq.kit, cus: S.cus, look: S.look, trail: S.eq.trail, fx: S.eq.fx, emote: S.eq.emote, name: S.name || "You", ring: "#3b6ef5", human: true}; };
+MG.me = function(){ return {kit: S.eq.kit, cus: S.cus, look: S.look, trail: S.eq.trail, fx: S.eq.fx, emote: S.eq.emote, boot: S.eq.boot, wrap: S.eq.wrap, banner: S.eq.banner, name: S.name || "You", ring: "#3b6ef5", human: true}; };
 MG.equip = function(id){ var it = MG.ITEM[id]; if (!it || !S.inv[id]) return false; S.eq[it.t] = id; MG.save(); return true; };
 MG.addXp = function(x){ var up = 0; S.xp += x; while (S.xp >= MG.xpNeed(S.lvl)) { S.xp -= MG.xpNeed(S.lvl); S.lvl++; up++; S.coins += 50; } return up; };
 // hand out anything that has just been earned; returns the new items
@@ -153,7 +157,7 @@ MG.roll = function(pk, force, kind){
   var r = Math.random() * 100, a = 0, q = 7, i, pool = [];
   for (i = 0; i < 8; i++) { a += pk.odds[i]; if (r < a) { q = i; break; } }
   if (force && q < MG.LEG) q = MG.LEG;
-  function of(k){ return MG.ITEMS.filter(function(it){ return it.r === k && !it.need && !FREE[it.id] && (!kind || it.t === kind); }); }
+  function of(k){ return MG.ITEMS.filter(function(it){ return it.r === k && it.src === "pack" && !FREE[it.id] && (!kind || it.t === kind); }); }
   while (!(pool = of(q)).length && q > 0) q--;
   while (!pool.length && q < 8) pool = of(++q);
   return pool[Math.floor(Math.random() * pool.length)];
