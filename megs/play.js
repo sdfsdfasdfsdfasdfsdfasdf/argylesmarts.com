@@ -162,13 +162,13 @@ function banner(a, b){
 function fmt(s){ s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + s % 60; }
 function hintRow(r, has){
   if (r.m.team) return teamHints(r, has);
-  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go when the marker is in the green"], ["a", "Cut"], ["b", "Drag back"], ["c", "Burst"], ["d", "Megs"]] : [["sh", "Block"], ["a", "Tackle"], ["b", "Jockey"], ["c", "Slide"], ["d", "Press"]], lab = has ? ["Cut", "Drag", "Burst", "Megs"] : ["Tackle", "Jockey", "Slide", "Press"];
+  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go when the marker is in the green"], ["a", "Cut"], ["b", "Drag back"], ["c", "Burst"], ["d", "Megs"], ["sp", "Sprint"]] : [["sh", "Block"], ["a", "Tackle"], ["b", "Jockey"], ["c", "Slide"], ["d", "Press"], ["sp", "Sprint"]], lab = has ? ["Cut", "Drag", "Burst", "Megs"] : ["Tackle", "Jockey", "Slide", "Press"];
   $("hint").innerHTML = kk ? list.map(function(x){ return "<span><kbd>" + n(kk[x[0]]) + "</kbd>" + x[1] + "</span>"; }).join("") : "";
   ["a", "b", "c", "d"].forEach(function(k, i){ $("t" + k).textContent = lab[i]; $("t" + k).style.visibility = lab[i] ? "" : "hidden"; });
   $("tsh").textContent = has ? "SHOOT" : "BLOCK";
 }
 function teamHints(r, has){
-  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go in the green, away from the keeper"], ["a", "Pass"], ["d", "Lob pass"]] : [["b", "Tackle"], ["c", "Switch player"]], lab = has ? ["Pass", "", "", "Lob"] : ["", "Tackle", "Switch", ""];
+  var st = MG.S.set, src = r.one, kk = src && src.k ? st[src.k] : null, n = MG.keyName, list = has ? [["sh", "Shoot: hold, let go in the green, away from the keeper"], ["a", "Pass"], ["d", "Lob pass"], ["sp", "Sprint"]] : [["b", "Tackle"], ["c", "Switch player"], ["sp", "Sprint"]], lab = has ? ["Pass", "", "", "Lob"] : ["", "Tackle", "Switch", ""];
   $("hint").innerHTML = kk ? list.map(function(x){ return "<span><kbd>" + n(kk[x[0]]) + "</kbd>" + x[1] + "</span>"; }).join("") + "<span><kbd>1-4</kbd>Stickers</span>" : "";
   ["a", "b", "c", "d"].forEach(function(k, i){ $("t" + k).textContent = lab[i]; $("t" + k).style.visibility = lab[i] ? "" : "hidden"; });
   $("tsh").textContent = has ? "SHOOT" : "";
