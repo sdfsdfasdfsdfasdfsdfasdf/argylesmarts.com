@@ -280,6 +280,7 @@ function torso(g, T, B, wt, wb, sd, ph, t){
 }
 // sd: a dressed side (see side() below); tcx, tcy: unit vector from the figure towards the camera
 function figure(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
+  if (R.fig2) return R.fig2(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t);
   var fx = Math.cos(fa), fy = Math.sin(fa), rx = -fy, ry = fx, c = fx * tcx + fy * tcy, sg = fx * tcy - fy * tcx, ac = Math.abs(c),
     Lg = [legJ(-1, q.aL, q.bL, q.sL), legJ(1, q.aR, q.bR, q.sR)], A = [armJ(-1, q.uL, q.eL, q.oL), armJ(1, q.uR, q.eR, q.oR)],
     hip = Math.max(0.16, -Math.min(Lg[0][5], Lg[1][5])) + 0.05 + q.z + z0, cl = Math.cos(q.roll), tf = Math.sin(q.lean) * cl, tr = Math.sin(q.roll), tu = Math.cos(q.lean) * cl,
@@ -726,5 +727,6 @@ R.ballIcon = function(cv, id, t){
   drawBall(g, w / 2, h / 2, Math.min(w, h) * 0.34, MG.ITEM[id] || MG.ITEM.classic, spin(ico(), 0.35, 0.2, 1, 0.6 + t), t, 0.3, 0.95);
 };
 R.View = View; R.side = side; R.kitTex = kitTex; R.wrapTex = wrapTex;
+R.torso = torso; R.legJ = legJ; R.armJ = armJ; R.hbody = body; R.mask = mask;
 R.figure = figure; R.pose0 = pose0; R.poseOf = poseOf; R.drawBall = drawBall; R.ico = ico; R.spin = spin; R.star = star; R.limb = limb; R.blob = blob; R.lum = lum; R.FONT = FONT; R.OUT = OUT; R.VR = VR;
 })();
