@@ -178,7 +178,7 @@ VIEW.tres = function(a){ MG.ui.lastRes = a; if (a.o.next && !(a.res.win)) a.o = 
 // ---- season pass ----
 VIEW.pass = function(){
   var p = MG.pass(), t = MG.passTier(), tiers = MG.passTiers(), into = p.xp % MG.PASS_XP;
-  return '<div class="phead"><div><span class="kick">Season ' + MG.SEASON.n + ' &middot; ' + MG.daysLeft() + ' days left</span><h2>' + MG.SEASON.name + ' Pass</h2><p class="mute">Earn pass XP from every match, daily quests and weekly challenges. Coins only come from pass tiers. Tier ' + t + ' of 50.</p>' +
+  return '<div class="phead"><div><span class="kick">Season ' + MG.SEASON.n + ' &middot; runs until Season ' + (MG.SEASON.n + 1) + ' is released</span><h2>' + MG.SEASON.name + ' Pass</h2><p class="mute">Earn pass XP from every match, daily quests and weekly challenges. Coins only come from pass tiers. Tier ' + t + ' of 50.</p>' +
     '<div class="pbar"><i style="width:' + (t >= 50 ? 100 : Math.round(into / MG.PASS_XP * 100)) + '%"></i><span>' + (t >= 50 ? "Complete" : into + " / " + MG.PASS_XP + " XP to tier " + (t + 1)) + '</span></div></div>' +
     '<div class="prem"><b>Premium track</b><p class="mute">Season signature kits, wraps, emotes and banners.</p><button class="btn gold" disabled>Buyable soon</button></div></div>' +
     (MG.passReady() ? '<div class="row"><button class="btn gold" data-a="pclaimall">Claim all (' + MG.passReady() + ')</button></div>' : "") +
@@ -205,20 +205,23 @@ var shop0 = VIEW.shop;
 VIEW.shop = function(){
   var s = S(), h = shop0(), cut = h.indexOf('<section class="panel"><h3>Featured today'), left = 7 - ((MG.day() + 3) % 7);
   if (cut > 0) h = h.slice(0, cut);
-  return '<section class="panel"><h3>This week&#39;s shop <small>resets in ' + left + (left === 1 ? " day" : " days") + '</small></h3><p class="mute">Ten items you can buy outright, no packs. One Mythic and two Legendary every week.</p><div class="items wk">' + MG.weekShop().map(function(it){
+  return '<section class="panel"><h3>This week&#39;s shop <small>resets in ' + left + (left === 1 ? " day" : " days") + '</small></h3><p class="mute">Ten items you can buy outright, no packs. One Mythic and two Legendary every week.</p><div class="items wk">' + MG.weekShop().filter(function(it){ return it.t !== "stadium"; }).map(function(it){
     var p = MG.shopPrice(it);
     return '<div class="shopi">' + U.itemCard(it) + '<small class="ty">' + TYPE[it.t] + '</small>' + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="wbuy" data-id="' + it.id + '"' + (s.coins < p ? " disabled" : "") + '>' + coin(p) + '</button>') + '</div>';
-  }).join("") + '</div></section>' +
+  }).join("") + '</div></section>' + (MG.weekStadiums ? '<section class="panel"><h3>Stadiums this week</h3><p class="mute">The ground your 5-a-side games are played in. Three new ones every week.</p><div class="items wk">' + MG.weekStadiums().map(function(it){
+    var p = MG.shopPrice(it);
+    return '<div class="shopi">' + U.itemCard(it) + '<small class="ty">Stadium</small>' + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="wbuy" data-id="' + it.id + '"' + (s.coins < p ? " disabled" : "") + '>' + coin(p) + '</button>') + '</div>';
+  }).join("") + '</div></section>' : "") +
   '<section class="panel"><h3>Bundles <small>buyable soon</small></h3><div class="bund">' + MG.BUNDLES.map(function(b){ return '<div class="bd"><b>' + b[0] + '</b><p class="mute">' + b[1] + '</p><button class="btn gold sm" disabled>Buyable soon</button></div>'; }).join("") + '</div></section>' + h;
 };
-var TYPE = {kit: "Kit", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Emote", court: "Cage", boot: "Boots", wrap: "Wrap", sticker: "Sticker", banner: "Banner", hair: "Hair", scene: "Scene"};
+var TYPE = {kit: "Kit", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Emote", court: "Cage", boot: "Boots", wrap: "Wrap", sticker: "Sticker", banner: "Banner", hair: "Hair", scene: "Scene", stadium: "Stadium"};
 ACT.wbuy = function(d){ if (MG.shopBuy(d.id)) { MG.sfx("coin"); toast("Bought " + MG.ITEM[d.id].n + "."); } else toast("Not enough coins."); go("shop"); };
 MG.KINDS.splice(6, 0, ["boot", "Boots"], ["wrap", "Wraps"], ["sticker", "Stickers"], ["banner", "Banners"]);
 
 // ---- locker ----
 var stkSlot = 0;
 VIEW.locker = function(tab){
-  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["court", "Cages"], ["pre", "Presets"], ["me", "Player"]],
+  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["stadium", "Stadiums"], ["court", "Cages"], ["pre", "Presets"], ["me", "Player"]],
     list = MG.ITEMS.filter(function(it){ return it.t === t; }), own = list.filter(function(it){ return s.inv[it.id]; }).length, body;
   list.sort(function(a, b){ return (s.inv[b.id] ? 1 : 0) - (s.inv[a.id] ? 1 : 0) || a.r - b.r; });
   if (t === "me") body = U.VIEW._editor ? U.VIEW._editor() : "";
