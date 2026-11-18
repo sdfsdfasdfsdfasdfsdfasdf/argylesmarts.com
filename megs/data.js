@@ -276,7 +276,7 @@ MG.world = function(day){
     g = Math.floor(40 + r() * 620); wr = MG.clamp(0.5 + (e - 1150) / 2600, 0.2, 0.86);
     out.push({id: i, n: n, clan: r() < 0.55 ? one(CLAN) : "", elo: Math.round(e + 55 * Math.sin(day * 0.9 + i * 1.7) + 30 * Math.sin(day * 0.23 + i)), w: Math.round(g * wr), l: Math.round(g * (1 - wr)),
       gaunt: MG.clamp(Math.round((e - 760) / 120 + i * 7 % 5 - 1), 0, 14), megs: Math.floor(g * (0.1 + r() * 0.5) * e / 1500), cups: Math.floor(r() * r() * g / 45 * e / 1400), strk: 2 + Math.floor(r() * r() * 9 + Math.max(0, e - 1000) / 160),
-      kit: pick("kit", e), ball: pick("ball", e), trail: pick("trail", e), fx: pick("fx", e), skin: Math.floor(r() * 5), hair: Math.floor(r() * 4), hc: Math.floor(r() * 7), num: 1 + Math.floor(r() * 99),
+      kit: pick("kit", e), ball: pick("ball", e), trail: pick("trail", e), fx: pick("fx", e), skin: Math.floor(r() * 5), hair: Math.floor(r() * 22), hc: Math.floor(r() * 7), num: 1 + Math.floor(r() * 99),
       title: MG.TITLES[Math.floor(r() * Math.min(MG.TITLES.length, 2 + Math.max(0, e - 800) / 130))][0]});
   }
   out[0].kit = "one";
