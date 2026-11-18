@@ -39,7 +39,7 @@ function liveTick(){
 }
 function draw(c, t){
   var d = c.dataset, g;
-  if (d.boot) bootIcon(c, MG.ITEM[d.boot], t);
+  if (d.boot) (R.bootPreview || bootIcon)(c, MG.ITEM[d.boot], t);
   else if (d.wrap) R.portrait(c, Object.assign({}, MG.me(), {wrap: d.wrap}), t, {turn: 0.4});
   else if (d.stk) { g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); R.sticker(g, d.stk, c.width / 2, c.height / 2, c.width * 0.8, t); }
   else if (d.bn) R.banner(c, d.bn, t);
@@ -62,7 +62,7 @@ MG.music = function(){
   v = st.mute ? 0 : (st.music == null ? 0.35 : st.music) * (st.vol == null ? 0.7 : st.vol);
   if (!song && v > 0) { try { song = new Audio("/musicmegs.mp3"); song.loop = true; song.preload = "auto"; } catch (e) { song = null; } }
   if (!song) return;
-  song.volume = MG.clamp(v * (document.body.classList.contains("playing") ? 0.55 : 1), 0, 1);
+  song.volume = MG.clamp(v * (document.body.classList.contains("playing") ? 0.28 : 1), 0, 1);
   if (v > 0 && songOn && song.paused) song.play().catch(function(){});
   if (v <= 0 && !song.paused) song.pause();
 };
@@ -78,7 +78,7 @@ VIEW.home = function(){
   card = '<div class="season"><button class="sbig camp" data-a="go" data-v="campaign"><span class="kick">Campaign</span><b>Road to the Galaxy Cup</b><span>' + cs + ' of 108 stars &middot; 6 chapters of 5-a-side</span>' + ic("trophy") + '</button>' +
     '<button class="sbig team" data-a="go" data-v="team"><span class="kick">New</span><b>5-a-side</b><span>A full-size pitch, four team-mates, two halves</span>' + ic("users") + '</button>' +
     '<button class="sbig pass" data-a="go" data-v="pass"><span class="kick">Season ' + MG.SEASON.n + ': ' + MG.SEASON.name + '</span><b>Season Pass</b><span>Tier ' + pt + ' of 50' + (rd ? ' &middot; <i class="hot">' + rd + ' to claim</i>' : "") + '</span><span class="bar"><i style="width:' + Math.round((MG.pass().xp % MG.PASS_XP) / MG.PASS_XP * 100) + '%"></i></span>' + ic("star") + '</button>' +
-    '<button class="sbig online" data-a="online"><span class="kick">Coming soon</span><b>Online</b><span>Play real people. For now every match is against computer players.</span>' + ic("bolt") + '</button></div>';
+    '<button class="sbig online" data-a="online"><span class="kick">Coming soon</span><b>Online</b><span>Play real people. Pick your position now: ' + ({gk: "Keeper", def: "Defender", fwd: "Striker"}[s.pos] || "Anywhere") + '</span>' + ic("bolt") + '</button></div>';
   h = h.replace('<div class="modes">', card + '<div class="modes">').replace('1v1 cage football</span>', 'Season ' + MG.SEASON.n + ': ' + MG.SEASON.name + '</span>');
   h = h.replace('<section class="panel"><h3>Lobby', weeklyPanel() + '</div><div class="cols"><section class="panel"><h3>Lobby');
   return h;
@@ -99,12 +99,12 @@ MG.ITEM.gk_b = {id: "gk_b", t: "kit", r: 0, p: "fade", c: ["#5ee6a8", "#0f3d2a",
 var MATES = ["Sami", "Theo", "Kofi", "Nico", "Rafa", "Leo", "Omar", "Jude", "Milo", "Tariq"];
 function mySides(){
   var me = MG.me(), s = S(), out = [], i;
-  for (i = 0; i < 5; i++) out.push(Object.assign({}, me, {kit: i ? me.kit : "gk_a", wrap: i ? me.wrap : "w_none", calm: i !== 3, name: i === 3 ? (s.name || "You") : MATES[(i * 3 + s.look.num) % MATES.length], look: i === 3 ? s.look : {skin: (i * 2 + 1) % 5, hair: i % 4, hc: (i * 3) % 7, num: [1, 4, 5, 9, 10][i]}}));
+  for (i = 0; i < 5; i++) out.push(Object.assign({}, me, {kit: i ? me.kit : "gk_a", wrap: i ? me.wrap : "w_none", calm: i !== 3, name: i === 3 ? (s.name || "You") : MATES[(i * 3 + s.look.num) % MATES.length], look: i === 3 ? s.look : {skin: (i * 2 + 1) % 5, hair: (i * 5 + s.look.num) % 22, hc: (i * 3) % 7, num: [1, 4, 5, 9, 10][i]}}));
   return out;
 }
 function foeSides(f){
   MG.ITEM[f.kit.id] = f.kit;
-  return [0, 1, 2, 3, 4].map(function(i){ return {kit: i ? f.kit.id : "gk_b", name: f.names[i], look: {skin: (i * 3 + f.name.length) % 5, hair: (i + f.name.length) % 4, hc: (i * 5) % 7, num: [1, 3, 6, 7, 11][i]}, trail: "t_none", fx: "f_conf", boot: "bt" + ((f.name.length + i) % 20)}; });
+  return [0, 1, 2, 3, 4].map(function(i){ return {kit: i ? f.kit.id : "gk_b", name: f.names[i], look: {skin: (i * 3 + f.name.length) % 5, hair: (i * 7 + f.name.length) % 22, hc: (i * 5) % 7, num: [1, 3, 6, 7, 11][i]}, trail: "t_none", fx: "f_conf", boot: "bt" + ((f.name.length + i) % 20)}; });
 }
 var TEAMLV = [["0.5", "Beginner"], ["2.5", "Casual"], ["4.5", "Pro"], ["6.5", "Elite"], ["8.5", "Legend"]], tset = {lv: "2.5", half: "150"};
 function randClub(lv){
@@ -144,7 +144,7 @@ VIEW.tres = function(a){
     rows = [["Shots", "shots"], ["On target", "ont"], ["Passes completed", "pok"], ["Tackles", "tackles"], ["Saves", "saves"]];
   U.resA(a);
   h = '<div class="res ' + (w ? "win" : dr ? "" : "loss") + '"><span class="kick">' + esc(a.o.name) + '</span><h2>' + (res.quit ? "Forfeit" : w ? "You win" : dr ? "A draw" : "You lose") + '</h2><div class="score"><b>' + res.sc[0] + '</b><i>-</i><b>' + res.sc[1] + '</b></div><p class="mute">against ' + esc(a.o.foe.name) + '</p><div class="rw">' +
-    (out.coins ? '<span class="pill">' + coin("+" + (out.coins + (x && x.coins || 0))) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.pass ? '<span class="pill up">+' + out.pass + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (out.lv ? '<span class="pill up">Level ' + s.lvl + '</span>' : "") + '</div>';
+    (out.coins ? '<span class="pill">' + coin("+" + (out.coins + (x && x.coins || 0))) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.pass || x && x.pass ? '<span class="pill up">+' + ((out.pass || 0) + (x && x.pass || 0)) + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (out.lv ? '<span class="pill up">Level ' + s.lvl + '</span>' : "") + '</div>';
   if (x && x.stars != null) h += '<p class="stars">' + [1, 2, 3].map(function(k){ return star(k <= x.stars); }).join("") + '</p><p class="mute">Win for one star, win by two for two, win without conceding for three.</p>';
   if (w) h += '<div class="center"><canvas class="emo" data-emote="' + (MG.ITEM[s.eq.emote] || {k: "wave"}).k + '" width="300" height="400"></canvas></div>';
   h += (out.items || []).concat(x && x.items || []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + (out.quests || []).map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("");
@@ -161,7 +161,7 @@ VIEW.campaign = function(){
     var open = MG.campOpen(c, 0), rw = MG.ITEM[ch.reward], got = S().inv[ch.reward], n = 0;
     ch.m.forEach(function(x){ n += cp[x.id] || 0; });
     return '<section class="panel chap' + (open ? "" : " off") + '"><div class="chh"><div><span class="kick">Chapter ' + (c + 1) + '</span><h2>' + ch.n + '</h2><p class="mute">' + ch.d + '</p><p>' + n + ' / 18 ' + star(1) + '</p></div><div class="rwd">' + U.vis(rw, "") + '<small>' + (got ? "Won: " : "Win the chapter for: ") + '<b style="color:' + MG.RAR[rw.r].c + '">' + rw.n + '</b></small></div></div><div class="cm">' +
-      ch.m.map(function(x){ var ok = MG.campOpen(c, x.i), st = cp[x.id] || 0; return '<button class="cmm' + (x.boss ? " boss" : "") + (st ? " done" : "") + '"' + (ok ? ' data-a="camp" data-id="' + x.id + '"' : " disabled") + '><span class="kick">' + (x.boss ? "Final" : "Match " + (x.i + 1)) + '</span><b>' + x.club + '</b><span>' + (ok ? [1, 2, 3].map(function(k){ return star(k <= st); }).join("") : ic("lock") + " Locked") + '</span><small>' + MG.LEVELS[Math.round(MG.clamp(x.lv, 0, 10))] + ' &middot; ' + coin(x.coins) + '</small></button>'; }).join("") + '</div></section>';
+      ch.m.map(function(x){ var ok = MG.campOpen(c, x.i), st = cp[x.id] || 0; return '<button class="cmm' + (x.boss ? " boss" : "") + (st ? " done" : "") + '"' + (ok ? ' data-a="camp" data-id="' + x.id + '"' : " disabled") + '><span class="kick">' + (x.boss ? "Final" : "Match " + (x.i + 1)) + '</span><b>' + x.club + '</b><span>' + (ok ? [1, 2, 3].map(function(k){ return star(k <= st); }).join("") : ic("lock") + " Locked") + '</span><small>' + MG.LEVELS[Math.round(MG.clamp(x.lv, 0, 10))] + ' &middot; +' + x.coins * 4 + ' XP</small></button>'; }).join("") + '</div></section>';
   }).join("");
 };
 function campMatch(id){ var k = +id.slice(1); return MG.CAMP[Math.floor(k / 6)].m[k % 6]; }
@@ -178,24 +178,26 @@ VIEW.tres = function(a){ MG.ui.lastRes = a; if (a.o.next && !(a.res.win)) a.o = 
 // ---- season pass ----
 VIEW.pass = function(){
   var p = MG.pass(), t = MG.passTier(), tiers = MG.passTiers(), into = p.xp % MG.PASS_XP;
-  return '<div class="phead"><div><span class="kick">Season ' + MG.SEASON.n + ' &middot; ' + MG.daysLeft() + ' days left</span><h2>' + MG.SEASON.name + ' Pass</h2><p class="mute">Earn pass XP from every match, daily quests and weekly challenges. Tier ' + t + ' of 50.</p>' +
+  return '<div class="phead"><div><span class="kick">Season ' + MG.SEASON.n + ' &middot; ' + MG.daysLeft() + ' days left</span><h2>' + MG.SEASON.name + ' Pass</h2><p class="mute">Earn pass XP from every match, daily quests and weekly challenges. Coins only come from pass tiers. Tier ' + t + ' of 50.</p>' +
     '<div class="pbar"><i style="width:' + (t >= 50 ? 100 : Math.round(into / MG.PASS_XP * 100)) + '%"></i><span>' + (t >= 50 ? "Complete" : into + " / " + MG.PASS_XP + " XP to tier " + (t + 1)) + '</span></div></div>' +
     '<div class="prem"><b>Premium track</b><p class="mute">Season signature kits, wraps, emotes and banners.</p><button class="btn gold" disabled>Buyable soon</button></div></div>' +
     (MG.passReady() ? '<div class="row"><button class="btn gold" data-a="pclaimall">Claim all (' + MG.passReady() + ')</button></div>' : "") +
+    (t >= 50 ? '<section class="panel"><h3>Bonus tiers</h3><p class="mute">Every 1000 pass XP after tier 50 is a bonus tier worth ' + coin(MG.BONUS) + '.</p>' + (MG.passBonus() ? '<button class="btn gold" data-a="pbonus">Claim ' + MG.passBonus() + ' bonus ' + (MG.passBonus() === 1 ? "tier" : "tiers") + '</button>' : '<span class="mute">Next bonus tier in ' + (MG.PASS_XP - into) + ' XP</span>') + '</section>' : "") +
     '<div class="tiers">' + tiers.map(function(x){
       var open = t > x.k, got = p.got[x.k];
       function rew(list, coins, prem){
         if (list.length) return list.map(function(it){ return '<button class="tr" style="--r:' + RAR(it).c + '" data-a="pitem" data-id="' + it.id + '">' + U.vis(it, "") + '<span>' + it.n + '</span></button>'; }).join("");
-        return '<div class="tr coin">' + coin(coins) + '</div>';
+        return coins ? '<div class="tr coin">' + coin(coins) + '</div>' : '<div class="tr blank"></div>';
       }
       return '<div class="tier' + (open ? " open" : "") + (got ? " got" : "") + '"><b class="tn">' + (x.k + 1) + '</b><div class="free">' + rew(x.free, x.coins) + (open && !got ? '<button class="btn gold sm" data-a="pclaim" data-k="' + x.k + '">Claim</button>' : got ? '<span class="mute">Claimed</span>' : "") + '</div>' +
         '<div class="premt">' + rew(x.prem, x.pcoins, 1) + '<span class="lk">' + ic("lock") + 'Premium</span></div></div>';
     }).join("") + '</div>' + '<div class="cols">' + weeklyPanel() + '</div>';
 };
 AFTER.pass = function(){ var k = MG.passTier(), el = document.querySelectorAll(".tier")[Math.max(0, k - 2)]; if (el && el.scrollIntoView) { var box = el.parentNode; box.scrollLeft = el.offsetLeft - 20; } };
-ACT.pclaim = function(d){ var g = MG.passClaim(+d.k); if (g) { MG.sfx("coin"); toast("Tier " + (+d.k + 1) + ": " + (g.items.length ? g.items.map(function(it){ return it.n; }).join(", ") + " and " : "") + coin(g.coins)); } go("pass"); };
+ACT.pclaim = function(d){ var g = MG.passClaim(+d.k); if (g) { MG.sfx("coin"); toast("Tier " + (+d.k + 1) + ": " + (g.items.length ? g.items.map(function(it){ return it.n; }).join(", ") : "") + (g.items.length && g.coins ? " and " : "") + (g.coins ? coin(g.coins) : "") + (g.items.length || g.coins ? "" : "nothing on this tier")); } go("pass"); };
 ACT.pclaimall = function(){ var t = MG.passTier(), k, n = 0, c = 0, g; for (k = 0; k < t; k++) { g = MG.passClaim(k); if (g) { n += g.items.length; c += g.coins; } } MG.sfx("coin"); toast("Claimed " + n + " items and " + coin(c)); go("pass"); };
 ACT.pitem = function(d){ ACT.item(d); };
+ACT.pbonus = function(){ var c = MG.passBonusClaim(); if (c) { MG.sfx("coin"); toast("Bonus tiers: " + coin("+" + c)); } go("pass"); };
 U.nav.pass = "pass";
 
 // ---- shop: the weekly ten, bundles, then packs ----
@@ -209,14 +211,14 @@ VIEW.shop = function(){
   }).join("") + '</div></section>' +
   '<section class="panel"><h3>Bundles <small>buyable soon</small></h3><div class="bund">' + MG.BUNDLES.map(function(b){ return '<div class="bd"><b>' + b[0] + '</b><p class="mute">' + b[1] + '</p><button class="btn gold sm" disabled>Buyable soon</button></div>'; }).join("") + '</div></section>' + h;
 };
-var TYPE = {kit: "Kit", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Emote", court: "Cage", boot: "Boots", wrap: "Wrap", sticker: "Sticker", banner: "Banner"};
+var TYPE = {kit: "Kit", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Emote", court: "Cage", boot: "Boots", wrap: "Wrap", sticker: "Sticker", banner: "Banner", hair: "Hair", scene: "Scene"};
 ACT.wbuy = function(d){ if (MG.shopBuy(d.id)) { MG.sfx("coin"); toast("Bought " + MG.ITEM[d.id].n + "."); } else toast("Not enough coins."); go("shop"); };
 MG.KINDS.splice(6, 0, ["boot", "Boots"], ["wrap", "Wraps"], ["sticker", "Stickers"], ["banner", "Banners"]);
 
 // ---- locker ----
 var stkSlot = 0;
 VIEW.locker = function(tab){
-  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["court", "Cages"], ["pre", "Presets"], ["me", "Player"]],
+  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["court", "Cages"], ["pre", "Presets"], ["me", "Player"]],
     list = MG.ITEMS.filter(function(it){ return it.t === t; }), own = list.filter(function(it){ return s.inv[it.id]; }).length, body;
   list.sort(function(a, b){ return (s.inv[b.id] ? 1 : 0) - (s.inv[a.id] ? 1 : 0) || a.r - b.r; });
   if (t === "me") body = U.VIEW._editor ? U.VIEW._editor() : "";
