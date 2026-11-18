@@ -311,7 +311,8 @@ function figure(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
 // turn an engine player into joint angles
 function poseOf(p, m, t){
   var q = pose0(), a = p.act, u = p.ad ? clamp(p.at / p.ad, 0, 1) : 0, sp = hyp(p.vx, p.vy), k = clamp(sp / 6.5, 0, 1), ph = p.stride * 3.9, s = Math.sin(ph), c = Math.cos(ph), A = 0.2 + 0.62 * k, w;
-  if (sp > 0.5) {
+  if (R.gait) R.gait(q, p, sp, t);
+  else if (sp > 0.5) {
     q.aL = A * s; q.aR = -A * s; q.bL = 0.15 + 1.15 * k * Math.max(0, c); q.bR = 0.15 + 1.15 * k * Math.max(0, -c);
     q.uL = -A * 0.9 * s; q.uR = A * 0.9 * s; q.eL = q.eR = 0.5 + 0.8 * k; q.lean = 0.08 + 0.28 * k;
   } else { w = Math.sin(t * 2.2 + p.i * 2); q.lean = 0.05 + 0.014 * w; q.eL = q.eR = 0.3 + 0.04 * w; }
@@ -626,7 +627,7 @@ V.under = function(m){
     g.fillStyle = "rgba(0,0,10,.3)"; g.beginPath(); g.ellipse(a.x, a.y, r, r * 0.36, 0, 0, TAU); g.fill();
     if (v.o.rings) {
       g.lineWidth = Math.max(2, a.s * 0.05); g.strokeStyle = v.sides[i].ring; g.globalAlpha = 0.28; g.beginPath(); g.ellipse(a.x, a.y, r * 1.35, r * 0.5, 0, 0, TAU); g.stroke();
-      g.globalAlpha = 0.95; g.beginPath(); g.ellipse(a.x, a.y, r * 1.35, r * 0.5, 0, -PI / 2, -PI / 2 + TAU * clamp(p.stam, 0.001, 1)); g.stroke(); g.globalAlpha = 1;
+      g.globalAlpha = 0.95; g.beginPath(); g.ellipse(a.x, a.y, r * 1.35, r * 0.5, 0, -PI / 2, -PI / 2 + TAU * clamp(p.en === undefined ? 1 : p.en, 0.001, 1)); g.stroke(); g.globalAlpha = 1;
     }
   }
   if (b.y > -GD) { a = v.pr(b.x, b.y, 0); r = VR * a.s * (1 + b.z * 0.1); g.fillStyle = "rgba(0,0,10," + (0.36 * (1 - Math.min(0.8, b.z / 7))).toFixed(3) + ")"; g.beginPath(); g.ellipse(a.x, a.y, r, r * 0.36, 0, 0, TAU); g.fill(); }
