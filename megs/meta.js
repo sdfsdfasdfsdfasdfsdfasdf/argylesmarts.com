@@ -1,7 +1,7 @@
 // MEGS meta: save data, coins and XP, Elo, quests, packs, the Ladder, cups and the simulated league. No DOM in here.
 (function(){
 "use strict";
-var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1, bt_std: 1, w_none: 1, bn0: 1, st0: 1, st1: 1, st2: 1, st3: 1};
+var MG = window.MG, KEY = "megs.save.v1", S = null, mem = {}, wc = null, FREE = {home: 1, away: 1, classic: 1, t_none: 1, f_conf: 1, c_street: 1, e_wave: 1, bt_std: 1, w_none: 1, bn0: 1, st0: 1, st1: 1, st2: 1, st3: 1, h_crop: 1, h_curly: 1, h_long: 1, h_mohawk: 1, h_buzz: 1, h_bald: 1, sc_night: 1, sc_street: 1};
 function ls(k, v){
   try { if (v === undefined) return window.localStorage.getItem(k); window.localStorage.setItem(k, v); }
   catch (e) { if (v === undefined) return mem[k] == null ? null : mem[k]; mem[k] = v; }
@@ -32,7 +32,8 @@ MG.load = function(){
   S = MG.S = d; S.set = merge(MG.SET0, S.set);
   if (!S.eq.emote) { S.eq.emote = "e_wave"; S.inv.e_wave = 1; }
   // season 1 slots: boots, wrap, banner and four stickers
-  ["bt_std", "w_none", "bn0", "st0", "st1", "st2", "st3"].forEach(function(k){ S.inv[k] = 1; });
+  ["bt_std", "w_none", "bn0", "st0", "st1", "st2", "st3", "h_crop", "h_curly", "h_long", "h_mohawk", "h_buzz", "h_bald", "sc_night", "sc_street"].forEach(function(k){ S.inv[k] = 1; });
+  if (!S.eq.hair) S.eq.hair = MG.HFREE ? MG.HFREE[(S.look.hair || 0) % 4] : "h_crop"; if (!S.eq.scene) S.eq.scene = "sc_night";
   if (!S.eq.boot) S.eq.boot = "bt_std"; if (!S.eq.wrap) S.eq.wrap = "w_none"; if (!S.eq.banner) S.eq.banner = "bn0"; if (!S.eq.stk) S.eq.stk = ["st0", "st1", "st2", "st3"];
   for (k in S.eq) if (typeof S.eq[k] === "string" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
@@ -59,9 +60,9 @@ MG.myStats = function(){ var b = MG.ARCH[S.arch][2], o = {}; MG.STATS.forEach(fu
 MG.points = function(){ var u = 0, k; for (k in S.al) u += S.al[k]; return S.lvl - 1 - u; };
 MG.spend = function(k){ if (MG.points() < 1 || MG.myStats()[k] >= 10) return false; S.al[k] = (S.al[k] || 0) + 1; MG.save(); return true; };
 MG.respec = function(a){ if (a != null) S.arch = a; S.al = {}; MG.save(); };
-MG.me = function(){ return {kit: S.eq.kit, cus: S.cus, look: S.look, trail: S.eq.trail, fx: S.eq.fx, emote: S.eq.emote, boot: S.eq.boot, wrap: S.eq.wrap, banner: S.eq.banner, name: S.name || "You", ring: "#3b6ef5", human: true}; };
+MG.me = function(){ return {kit: S.eq.kit, cus: S.cus, look: S.look, trail: S.eq.trail, fx: S.eq.fx, emote: S.eq.emote, boot: S.eq.boot, wrap: S.eq.wrap, hair: S.eq.hair, banner: S.eq.banner, name: S.name || "You", ring: "#3b6ef5", human: true}; };
 MG.equip = function(id){ var it = MG.ITEM[id]; if (!it || !S.inv[id]) return false; S.eq[it.t] = id; MG.save(); return true; };
-MG.addXp = function(x){ var up = 0; S.xp += x; while (S.xp >= MG.xpNeed(S.lvl)) { S.xp -= MG.xpNeed(S.lvl); S.lvl++; up++; S.coins += 50; } return up; };
+MG.addXp = function(x){ var up = 0; S.xp += x; while (S.xp >= MG.xpNeed(S.lvl)) { S.xp -= MG.xpNeed(S.lvl); S.lvl++; up++; } return up; };
 // hand out anything that has just been earned; returns the new items
 MG.unlocks = function(){
   var got = [];
@@ -86,7 +87,7 @@ MG.rival = function(i){
   var v = MG.RIVALS[i], r = MG.rng(hash(v[0])), st = {};
   MG.STATS.forEach(function(s, k){ st[s[0]] = v[2][k]; });
   return {id: -1 - i, name: v[0], elo: 0, lv: v[1] * 0.85, st: st, ball: v[4], line: v[5],
-    side: {kit: v[3], look: {skin: Math.floor(r() * 5), hair: Math.floor(r() * 4), hc: Math.floor(r() * 7), num: 1 + Math.floor(r() * 99)}, trail: i > 11 ? "t_flame" : i > 5 ? "t_line" : "t_none", fx: i > 14 ? "f_bolt" : i > 7 ? "f_shock" : "f_conf", name: v[0], ring: "#ff5d5d"}};
+    side: {kit: v[3], look: {skin: Math.floor(r() * 5), hair: Math.floor(r() * 22), hc: Math.floor(r() * 7), num: 1 + Math.floor(r() * 99)}, trail: i > 11 ? "t_flame" : i > 5 ? "t_line" : "t_none", fx: i > 14 ? "f_bolt" : i > 7 ? "f_shock" : "f_conf", name: v[0], ring: "#ff5d5d"}};
 };
 // a CPU at a chosen level, for quick matches and party seats
 MG.bot = function(lv, seed){
@@ -131,7 +132,7 @@ MG.finish = function(res){
   if (res.win && S.win1 !== MG.day()) { S.win1 = MG.day(); out.first = 1; out.coins += 100; }
   cnt = {goals: st.goals, twos: st.twos, megs: st.megs, perfect: st.perfect, wins: res.win ? 1 : 0, rwins: res.win && res.ranked ? 1 : 0, blocks: st.blocks, tackles: st.tackles, ankles: st.ankles, awins: res.win && res.arcade ? 1 : 0, fwins: res.win && res.mode === "field" ? 1 : 0};
   MG.quests().forEach(function(x){ if (!x.done) { x.q.p = Math.min(x.need, x.q.p + (cnt[x.key] || 0)); if (x.q.p >= x.need) out.quests.push(x.text); } });
-  S.coins += out.coins; out.lv = MG.addXp(out.xp);
+  out.pxb = out.coins; out.coins = 0; out.lv = MG.addXp(out.xp);   // coins come from the season pass: this becomes pass XP
   S.hist.unshift({m: res.mode, w: res.win ? 1 : 0, s: res.sc.join("-"), o: res.opp.name, d: out.elo}); if (S.hist.length > 14) S.hist.pop();
   out.items = MG.unlocks(); MG.save();
   return out;
@@ -147,7 +148,7 @@ MG.claim = function(id){
   var got = 0;
   MG.quests().forEach(function(x){ if (x.q.id === id && x.done && !x.q.c) { x.q.c = 1; got = x.coins; } });
   if (got && !S.q.bonus && S.q.list.every(function(q){ return q.c; })) { S.q.bonus = 1; got += 150; }
-  S.coins += got; MG.save(); return got;
+  if (got && MG.passAdd) MG.passAdd(got * 5); MG.save(); return got * 5;
 };
 
 // ---- packs and the shop ----
@@ -188,7 +189,7 @@ MG.freePack = function(){
   if (!MG.freeReady()) return null;
   S.free = MG.day(); it = MG.roll(MG.PACKS[0]); d = !!S.inv[it.id];
   if (d) S.coins += MG.DUPE[it.r]; else S.inv[it.id] = 1;
-  S.coins += 40; MG.save(); return [{it: it, dupe: d, back: d ? MG.DUPE[it.r] : 0}];
+  MG.save(); return [{it: it, dupe: d, back: d ? MG.DUPE[it.r] : 0}];
 };
 
 // ---- the Gauntlet: rivals one after another, each tougher, until you lose ----
@@ -196,7 +197,7 @@ MG.gauntLv = function(k){ return Math.min(10, 0.5 + k * 0.75); };
 MG.gauntFoe = function(k){ return MG.bot(MG.gauntLv(k), 7001 + k * 131 + (S.n.gruns || 0) * 17); };
 MG.gauntDone = function(win){
   var k = S.run ? S.run.k : 0, out = {k: k, coins: 0, end: !win};
-  if (win) { out.coins = 30 + 12 * k; S.coins += out.coins; S.run = {k: k + 1}; S.n.gaunt = Math.max(S.n.gaunt || 0, k + 1); }
+  if (win) { out.coins = 0; out.xp = 150 + 50 * k; if (MG.passAdd) MG.passAdd(out.xp); S.run = {k: k + 1}; S.n.gaunt = Math.max(S.n.gaunt || 0, k + 1); }
   else { S.run = null; S.n.gruns = (S.n.gruns || 0) + 1; }
   out.items = MG.unlocks(); MG.save(); return out;
 };
@@ -205,8 +206,7 @@ MG.gauntDone = function(win){
 MG.cupStart = function(kind){
   var f = [{me: 1}], near, i;
   if (S.cup) return true;
-  if (kind === "wknd" ? !MG.weekend() : S.coins < 100) return false;
-  if (kind !== "wknd") S.coins -= 100;
+  if (kind === "wknd" && !MG.weekend()) return false;
   near = MG.league().slice().sort(function(a, b){ return Math.abs(a.elo - S.elo) - Math.abs(b.elo - S.elo); }).slice(0, 26);
   for (i = 0; i < 7; i++) f.push({id: near.splice(Math.floor(Math.random() * near.length), 1)[0].id});
   S.cup = {kind: kind, round: 0, f: f, alive: [0, 1, 2, 3, 4, 5, 6, 7], log: []}; MG.save(); return true;
@@ -221,10 +221,10 @@ MG.cupDone = function(win, a, b){
     row.push([al[i], al[i + 1], w ? T : Math.floor(Math.random() * T), w ? Math.floor(Math.random() * T) : T]); next.push(w ? al[i] : al[i + 1]);
   }
   c.log.push(row);
-  if (!win) { out.end = true; out.prize = [0, 60, 150][c.round]; }
-  else if (c.round === 2) { out.end = out.champ = true; out.prize = c.kind === "wknd" ? 350 : 500; S.n.cups = (S.n.cups || 0) + 1; if (c.kind === "wknd") S.n.wknd = (S.n.wknd || 0) + 1; }
+  if (!win) { out.end = true; out.prize = [0, 240, 600][c.round]; }
+  else if (c.round === 2) { out.end = out.champ = true; out.prize = c.kind === "wknd" ? 1400 : 2000; S.n.cups = (S.n.cups || 0) + 1; if (c.kind === "wknd") S.n.wknd = (S.n.wknd || 0) + 1; }
   else { c.round++; c.alive = next; }
-  S.coins += out.prize; out.log = c.log; out.f = c.f;
+  if (out.prize && MG.passAdd) MG.passAdd(out.prize); out.log = c.log; out.f = c.f;
   if (out.end) S.cup = null;
   out.items = MG.unlocks(); MG.save();
   return out;
