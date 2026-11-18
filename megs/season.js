@@ -36,7 +36,7 @@ MG.campStars = function(){ var cp = MG.camp(), n = 0, k; for (k in cp) n += cp[k
 MG.campDone = function(match, res){
   var cp = MG.camp(), st = !res.win ? 0 : 1 + (res.sc[0] - res.sc[1] >= 2 ? 1 : 0) + (res.sc[1] === 0 ? 1 : 0), old = cp[match.id] || 0, out = {stars: st, first: 0, coins: 0, items: []};
   if (st > old) { cp[match.id] = st; MG.weekAdd({stars: st - old}); }
-  if (res.win && !old) { out.first = 1; out.coins = match.coins; S().coins += match.coins; if (match.boss) { S().n.camp = Math.max(S().n.camp || 0, match.ch + 1); } }
+  if (res.win && !old) { out.first = 1; out.pass = match.coins * 4; MG.passAdd(match.coins * 4); if (match.boss) { S().n.camp = Math.max(S().n.camp || 0, match.ch + 1); } }
   out.items = MG.unlocks(); MG.save(); return out;
 };
 MG.club = function(match){ var k = +match.id.slice(1); return {name: match.club, lv: match.lv, kit: match.kit, names: ["Keeper", "Back", "Back", "Wing", "Striker"].map(function(r, i){ return ["Ade", "Bruno", "Cole", "Dario", "Eli", "Femi", "Gus", "Hugo", "Ivo", "Jonas", "Kai", "Luca"][(k * 5 + i) % 12]; })}; };
@@ -48,15 +48,21 @@ MG.passTiers = function(){
   if (MG._pt) return MG._pt;
   var fr = bySrc("pass"), pr = bySrc("season"), n = MG.PASS_N, out = [], k, a, b;
   for (k = 0; k < n; k++) {
-    a = fr.slice(Math.floor(k * fr.length / n), Math.floor((k + 1) * fr.length / n));
+    // the free track: items on every other tier, coins on every fourth, and the rest left empty
+    var slot = k % 2 === 0 ? k / 2 : -1, ns = Math.ceil(n / 2);
+    a = slot >= 0 ? fr.slice(Math.floor(slot * fr.length / ns), Math.floor((slot + 1) * fr.length / ns)) : [];
     b = pr.slice(Math.floor(k * pr.length / n), Math.floor((k + 1) * pr.length / n));
-    out.push({k: k, free: a, coins: a.length ? 25 : 80 + k * 5, prem: b, pcoins: b.length ? 0 : 200 + k * 10});
+    out.push({k: k, free: a, coins: !a.length && (k % 4 === 3 || slot >= 0) ? 120 + k * 8 : 0, prem: b, pcoins: b.length ? 0 : 250 + k * 8});
   }
   return MG._pt = out;
 };
 MG.pass = function(){ var s = S(); if (!s.pass || s.pass.s !== MG.SEASON.n) s.pass = {s: MG.SEASON.n, xp: 0, got: {}}; return s.pass; };
 MG.passTier = function(){ return Math.min(MG.PASS_N, Math.floor(MG.pass().xp / MG.PASS_XP)); };
 MG.passAdd = function(x){ var b = MG.passTier(); MG.pass().xp += x; return MG.passTier() - b; };
+// after tier 50 every further 1000 pass XP is a bonus tier worth a few coins
+MG.BONUS = 150;
+MG.passBonus = function(){ var p = MG.pass(), n = Math.max(0, Math.floor(p.xp / MG.PASS_XP) - MG.PASS_N); return n - (p.bon || 0); };
+MG.passBonusClaim = function(){ var p = MG.pass(), n = MG.passBonus(); if (n <= 0) return 0; p.bon = (p.bon || 0) + n; S().coins += n * MG.BONUS; MG.save(); return n * MG.BONUS; };
 MG.passReady = function(){ var p = MG.pass(), t = MG.passTier(), n = 0, k; for (k = 0; k < t; k++) if (!p.got[k]) n++; return n; };
 MG.passClaim = function(k){
   var p = MG.pass(), t = MG.passTiers()[k], s = S(), got = [], back = 0;
@@ -85,8 +91,9 @@ var fin0 = MG.finish;
 MG.finish = function(res){
   var out = fin0(res), st = res.me || {}, px;
   if (res.party || res.practice) return out;
-  if (res.team) { out.coins += 60 + 10 * (st.goals || 0); S().coins += 60 + 10 * (st.goals || 0); out.lv += MG.addXp(120); out.xp += 120; }
-  px = Math.round(out.xp * (res.team ? 2 : 1.5)); out.pass = px; out.tiers = MG.passAdd(px);
+  if (res.team) { out.pxb = (out.pxb || 0) + 60 + 10 * (st.goals || 0); out.lv += MG.addXp(120); out.xp += 120; }
+  // coins only come from the season pass now: what a match used to pay in coins goes into pass XP instead
+  px = Math.round(out.xp * (res.team ? 2 : 1.5)) + (out.pxb || 0); out.pass = px; out.tiers = MG.passAdd(px);
   MG.weekAdd({goals: st.goals, wins: res.win ? 1 : 0, twins: res.win && res.team ? 1 : 0, megs: st.megs, tackles: st.tackles, pok: res.team ? st.pok : 0, rwins: res.win && res.ranked ? 1 : 0, twos: st.twos, games: 1, blocks: st.blocks});
   MG.save(); return out;
 };
