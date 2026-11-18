@@ -13,7 +13,7 @@ function S(){ return MG.S; }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
 function ic(n){ return '<svg class="ic" viewBox="0 0 24 24"><use href="#i-' + n + '"/></svg>'; }
 function coin(n){ return '<span class="coin">' + ic("coin") + n + '</span>'; }
-function tier(elo){ var t = MG.TIERS[MG.tier(elo)]; return '<span class="tier" style="--c:' + t.c + '">' + ic("shield") + t.n + '</span>'; }
+function tier(elo){ if (MG.rankHTML) return MG.rankHTML(elo); var t = MG.TIERS[MG.tier(elo)]; return '<span class="tier" style="--c:' + t.c + '">' + ic("shield") + t.n + '</span>'; }
 function reg(side){ REG.push(side); return REG.length - 1; }
 function head(t, sub){ return '<div class="vh"><button class="btn ghost sm" data-a="go" data-v="home">' + ic("back") + 'Back</button><div><h2>' + t + '</h2><p>' + (sub || "") + '</p></div></div>'; }
 function chips(list, on, act){ return '<div class="chips">' + list.map(function(x){ return '<button class="chip' + (x[0] === on ? " on" : "") + '" data-a="' + act + '" data-id="' + x[0] + '">' + x[1] + '</button>'; }).join("") + '</div>'; }
@@ -63,7 +63,7 @@ function loop(now){
 // ---- home ----
 function questRow(x){
   return '<div class="quest' + (x.q.c ? " done" : "") + '"><div><b>' + x.text + '</b><span class="bar"><i style="width:' + Math.round(x.q.p / x.need * 100) + '%"></i></span></div>' +
-    (x.q.c ? '<span class="mute">Claimed</span>' : x.done ? '<button class="btn gold sm" data-a="claim" data-id="' + x.q.id + '">Claim ' + x.coins + '</button>' : '<span class="mute">' + x.q.p + ' / ' + x.need + ' &middot; ' + coin(x.coins) + '</span>') + '</div>';
+    (x.q.c ? '<span class="mute">Claimed</span>' : x.done ? '<button class="btn gold sm" data-a="claim" data-id="' + x.q.id + '">Claim ' + x.coins * 5 + ' XP</button>' : '<span class="mute">' + x.q.p + ' / ' + x.need + ' &middot; +' + x.coins * 5 + ' XP</span>') + '</div>';
 }
 VIEW.home = function(){
   var s = S(), m = [["ladder", "The Ladder", s.ladder + " of 20 rivals beaten", "ladder", "#1f8a5b,#0f4f3a"], ["cups", "Cups", s.cup ? "Cup in progress" : "Eight players, three rounds", "trophy", "#b9791a,#6b3d0c"], ["party", "Party", "Friends on one keyboard", "users", "#a23bb5,#4f1f6b"],
@@ -72,7 +72,7 @@ VIEW.home = function(){
   return '<div class="hero"><canvas id="demo"></canvas><div class="heroT"><span class="kick">1v1 cage football</span><h2>Megs</h2><p>First to five. Long range counts double. Score and you keep the ball.</p>' +
     '<div class="row"><button class="btn big" data-a="ranked">' + ic("play") + 'Play Ranked</button><button class="btn ghost big" data-a="go" data-v="quick">Quick Match</button></div></div></div>' +
     '<div class="modes">' + m.map(function(x){ return '<button class="mode" style="--g:linear-gradient(135deg,' + x[4] + ')" data-a="' + (x[0] === "practice" || x[0] === "field" ? x[0] : "go") + '" data-v="' + x[0] + '">' + ic(x[3]) + '<b>' + x[1] + '</b><span>' + x[2] + '</span></button>'; }).join("") + '</div>' +
-    '<div class="cols"><section class="panel"><h3>Daily quests</h3>' + MG.quests().map(questRow).join("") + '<p class="mute">Finish all three for a 150 coin bonus. New quests every day.</p></section>' +
+    '<div class="cols"><section class="panel"><h3>Daily quests</h3>' + MG.quests().map(questRow).join("") + '<p class="mute">Finish all three for a 750 XP bonus. New quests every day.</p></section>' +
     '<section class="panel"><h3>Lobby <small>simulated</small></h3><div id="lobby"></div><p class="mute"><b>' + MG.lobby() + '</b> CPU players are hanging around the cage. Everyone in here is computer controlled.</p></section></div>';
 };
 AFTER.home = function(){
@@ -148,8 +148,8 @@ VIEW.result = function(a){
     (out.coins ? '<span class="pill">' + coin("+" + out.coins) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.elo ? '<span class="pill ' + (out.elo > 0 ? "up" : "dn") + '">' + (out.elo > 0 ? "+" : "") + out.elo + ' rating</span>' : "") +
     (out.lv ? '<span class="pill up">Level ' + s.lvl + ': a skill point to spend</span>' : "") + (out.first ? '<span class="pill">First win of the day +100</span>' : "") + (out.ladder ? '<span class="pill up">Ladder rival beaten</span>' : "") + '</div>';
   if (a.res.win) h += '<div class="center"><canvas class="emo" data-emote="' + (MG.ITEM[s.eq.emote] || {k: "wave"}).k + '" width="300" height="400"></canvas></div>';
-  if (a.gaunt) h += '<p class="got">' + (a.gaunt.end ? "The run ends in round " + (a.gaunt.k + 1) + ". Best run: " + (s.n.gaunt || 0) + "." : "Round " + (a.gaunt.k + 1) + " cleared. " + coin("+" + a.gaunt.coins)) + '</p>';
-  if (cup) h += '<p class="got">' + (cup.champ ? "Champions! The cup is yours. Prize " + coin(cup.prize) : cup.end ? "Knocked out in the " + rn[cup.round] + (cup.prize ? ". Prize " + coin(cup.prize) : ".") : "Through to the " + rn[cup.round + 1] + ".") + '</p>';
+  if (a.gaunt) h += '<p class="got">' + (a.gaunt.end ? "The run ends in round " + (a.gaunt.k + 1) + ". Best run: " + (s.n.gaunt || 0) + "." : "Round " + (a.gaunt.k + 1) + " cleared. +" + a.gaunt.xp + " pass XP") + '</p>';
+  if (cup) h += '<p class="got">' + (cup.champ ? "Champions! The cup is yours. +" + cup.prize + " pass XP" : cup.end ? "Knocked out in the " + rn[cup.round] + (cup.prize ? ". +" + cup.prize + " pass XP" : ".") : "Through to the " + rn[cup.round + 1] + ".") + '</p>';
   h += out.items.concat(cup ? cup.items : [], a.gaunt ? a.gaunt.items : []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + out.quests.map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("");
   h += '<div class="cmp"><b>You</b><span></span><b>' + esc(a.foe.name) + '</b>' + rows.map(function(r){ return '<b>' + me[r[1]] + '</b><span>' + r[0] + '</span><b>' + th[r[1]] + '</b>'; }).join("") + '<b>' + Math.round(me.poss / tot * 100) + '%</b><span>Possession</span><b>' + Math.round(th.poss / tot * 100) + '%</b></div>';
   if (cup) h += bracket(cup.f, cup.log, s.cup ? s.cup.alive : null, s.cup ? s.cup.round : 9);
@@ -173,7 +173,7 @@ VIEW.gauntlet = function(){
   var s = S(), k = s.run ? s.run.k : 0, f = MG.gauntFoe(k), b = MG.board("gaunt"), me = 0, i;
   for (i = 0; i < b.length; i++) if (b[i].me) me = i;
   return head("The Gauntlet", "Rivals one after another, each tougher than the last. Every game is first to 3. One loss ends the run.") + '<div class="cols"><section class="panel center"><span class="kick">' + (s.run ? "Run in progress" : "New run") + '</span><h2>Round ' + (k + 1) + '</h2>' +
-    '<canvas class="big" data-s="' + reg(f.side) + '" width="300" height="400"></canvas><p><b>' + esc(f.name) + '</b><br><span class="mute">' + MG.LEVELS[Math.round(f.lv)] + ' &middot; win pays ' + coin(30 + 12 * k) + '</span></p><div class="row center"><button class="btn big" data-a="gauntPlay">' + ic("play") + 'Play round ' + (k + 1) + '</button></div></section>' +
+    '<canvas class="big" data-s="' + reg(f.side) + '" width="300" height="400"></canvas><p><b>' + esc(f.name) + '</b><br><span class="mute">' + MG.LEVELS[Math.round(f.lv)] +  ' &middot; win: +' + (150 + 50 * k) + ' pass XP' + '</span></p><div class="row center"><button class="btn big" data-a="gauntPlay">' + ic("play") + 'Play round ' + (k + 1) + '</button></div></section>' +
     '<section class="panel"><h3>Best runs <small>simulated</small></h3><table class="tbl">' + b.slice(0, 8).map(function(x, n){ return '<tr class="' + (x.me ? "mine" : "") + '"><td>' + (n + 1) + '</td><td><b>' + esc(x.n) + '</b></td><td class="num">' + x.gaunt + '</td></tr>'; }).join("") +
     (me > 7 ? '<tr class="gap"><td colspan="3">&middot; &middot; &middot;</td></tr><tr class="mine"><td>' + (me + 1) + '</td><td><b>' + esc(b[me].n) + '</b></td><td class="num">' + b[me].gaunt + '</td></tr>' : "") + '</table><p class="mute">Your best run is ' + (s.n.gaunt || 0) + '. Clear 8 rounds in one run to earn the Survivor kit.</p></section></div>';
 };
@@ -207,8 +207,8 @@ function bracket(f, log, alive, round){
 VIEW.cups = function(){
   var s = S(), c = s.cup, rn = ["quarter-final", "semi-final", "final"];
   if (!c) return head("Cups", "Eight players, three knockout rounds. Lose once and you are out.") + '<div class="cols">' +
-    '<section class="panel"><h3>Street Cup</h3><p>Entry ' + coin(100) + ' and the winner takes ' + coin(500) + '. Quarter and semi-finals are first to 3, the final is first to 5.</p><button class="btn" data-a="cup" data-id="cup"' + (s.coins < 100 ? " disabled" : "") + '>Enter the cup</button></section>' +
-    '<section class="panel"><h3>Weekend Cup</h3><p>Free entry, Saturdays and Sundays only. The winner takes ' + coin(350) + ' and the Weekender kit.</p><button class="btn" data-a="cup" data-id="wknd"' + (MG.weekend() ? "" : " disabled") + '>' + (MG.weekend() ? "Enter the cup" : "Opens at the weekend") + '</button></section></div><p class="mute">Cups won so far: ' + (s.n.cups || 0) + '. Your first cup win opens the Kit Maker.</p>';
+    '<section class="panel"><h3>Street Cup</h3><p>Free entry. The winner takes 2000 season pass XP. Quarter and semi-finals are first to 3, the final is first to 5.</p><button class="btn" data-a="cup" data-id="cup">Enter the cup</button></section>' +
+    '<section class="panel"><h3>Weekend Cup</h3><p>Free entry, Saturdays and Sundays only. The winner takes 1400 season pass XP and the Weekender kit.</p><button class="btn" data-a="cup" data-id="wknd"' + (MG.weekend() ? "" : " disabled") + '>' + (MG.weekend() ? "Enter the cup" : "Opens at the weekend") + '</button></section></div><p class="mute">Cups won so far: ' + (s.n.cups || 0) + '. Your first cup win opens the Kit Maker.</p>';
   return head(c.kind === "wknd" ? "Weekend Cup" : "Street Cup", "You are in the " + rn[c.round] + ".") + bracket(c.f, c.log, c.alive, c.round) + '<div class="row center"><button class="btn big" data-a="cupPlay">' + ic("play") + 'Play the ' + rn[c.round] + '</button></div>';
 };
 ACT.cup = function(d){ if (MG.cupStart(d.id)) go("cups"); else toast("Not enough coins for the entry fee."); };
@@ -298,7 +298,7 @@ function editor(){
   var s = S(), st = MG.myStats(), pts = MG.points();
   function dots(list, k){ return '<div class="sws">' + list.map(function(c, i){ return '<button class="dot' + (s.look[k] === i ? " on" : "") + '" style="background:' + c + '" data-a="look" data-k="' + k + '" data-i="' + i + '" aria-label="Colour ' + (i + 1) + '"></button>'; }).join("") + '</div>'; }
   return '<section class="panel"><h3>Name and look</h3><div class="set"><div>Name</div><input type="text" maxlength="12" value="' + esc(s.name) + '" data-me="name"></div><div class="set"><div>Shirt number</div><input type="number" min="1" max="99" value="' + s.look.num + '" data-me="num"></div>' +
-    '<div class="set"><div>Skin</div>' + dots(MG.SKIN, "skin") + '</div><div class="set"><div>Hair</div>' + chips([["0", "Short"], ["1", "Curly"], ["2", "Long"], ["3", "Mohawk"]], String(s.look.hair), "hair") + '</div><div class="set"><div>Hair colour</div>' + dots(MG.HAIR, "hc") + '</div>' +
+    '<div class="set"><div>Skin</div>' + dots(MG.SKIN, "skin") + '</div><div class="set"><div>Hair</div>' + '<button class="btn sm" data-a="ltab" data-id="hair">Pick a hair style</button>' + '</div><div class="set"><div>Hair colour</div>' + dots(MG.HAIR, "hc") + '</div>' +
     '<div class="set"><div>Title<small>Earn more on the Profile page</small></div><select data-me="title">' + MG.titles().map(function(t){ return '<option' + (t[0] === s.title ? " selected" : "") + '>' + t[0] + '</option>'; }).join("") + '</select></div></section>' +
     '<section class="panel"><h3>Play style</h3><div class="arch">' + archBtns(s.arch, "arch") + '</div><h3>Skills <small>' + pts + (pts === 1 ? " point" : " points") + ' to spend. You earn one every level.</small></h3>' +
     MG.STATS.map(function(x){ return '<div class="stat"><span>' + x[1] + '</span><span class="bar"><i style="width:' + st[x[0]] * 10 + '%"></i></span><b>' + st[x[0]] + '</b><button class="btn sm" data-a="spend" data-id="' + x[0] + '"' + (pts > 0 && st[x[0]] < 10 ? "" : " disabled") + ' aria-label="Add a point">' + ic("plus") + '</button></div>'; }).join("") +
@@ -341,11 +341,11 @@ VIEW.shop = function(){
       '<p class="mute">A Legendary or better is guaranteed at least every ' + p.pity + ' packs (' + (s.pity[p.id] || 0) + ' opened since your last one). Duplicates pay coins back.</p><button class="btn gold big" data-a="pack" data-id="' + p.id + '"' + (s.coins < MG.packCost(p, kd) ? " disabled" : "") + '>Open for ' + coin(MG.packCost(p, kd)) + '</button></section>';
   }).join("") + '</div><section class="panel"><h3>Featured today</h3><div class="items">' + MG.featured().map(function(it){
     return '<div class="shopi">' + itemCard(it) + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="buy" data-id="' + it.id + '"' + (s.coins < MG.PRICE[it.r] ? " disabled" : "") + '>' + coin(MG.PRICE[it.r]) + '</button>') + '</div>';
-  }).join("") + '</div><p class="mute">Four different items every day. Coins come from matches, quests, cups and the Ladder. Nothing in this game costs real money.</p></section>';
+  }).join("") + '</div><p class="mute">Four different items every day. Coins come from season pass tiers, so spend them carefully.</p></section>';
 };
 var shopKind = "";
 ACT.kind = function(d){ shopKind = d.id || ""; go("shop"); };
-ACT.free = function(){ var got = MG.freePack(); if (got) reveal(got, "Daily crate: +40 coins"); };
+ACT.free = function(){ var got = MG.freePack(); if (got) reveal(got, "Daily crate"); };
 ACT.pack = function(d){
   var got = MG.openPack(d.id, shopKind);
   if (!got) return toast("Not enough coins.");
@@ -372,7 +372,7 @@ function reveal(got, title){
 }
 ACT.packDone = function(){ close(); go("shop"); };
 ACT.buy = function(d){ if (MG.buy(d.id)) { MG.sfx("coin"); toast("Bought " + MG.ITEM[d.id].n + ". It is in your locker."); go("shop"); } };
-ACT.claim = function(d){ var g = MG.claim(d.id); if (g) { MG.sfx("coin"); toast("Quest reward: " + coin("+" + g)); } go(cur, arg); };
+ACT.claim = function(d){ var g = MG.claim(d.id); if (g) { MG.sfx("coin"); toast("Quest reward: +" + g + " season pass XP"); } go(cur, arg); };
 
 // ---- ranks and profile ----
 VIEW.ranks = function(key){
