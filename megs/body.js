@@ -270,7 +270,7 @@ function head2(g, F, H3, HD, layer){
     g.globalAlpha = 1;
   }
 }
-// eyes, brows, nose and mouth sit on the sphere, so they slide round and shrink into the outline as the head turns
+// just eyes and a mouth; they sit on the sphere, so they slide round and shrink into the outline as the head turns
 function face(g, sp, vis, r, sd, t, nod){
   var k, p, v, a, b, m, e = sd.eyes, blink = (t * 0.37 % 1) > 0.97 ? 0.15 : 1;
   for (k = -1; k <= 1; k += 2) {
@@ -280,11 +280,8 @@ function face(g, sp, vis, r, sd, t, nod){
       else g.fillStyle = "#15151c";
       g.beginPath(); g.ellipse(p.x, p.y, r * 0.105 * Math.pow(v, 0.85) + 0.3, r * 0.15 * blink, 0, 0, TAU); g.fill(); g.shadowBlur = 0;
       if (!e && r > 14 && blink === 1) { g.fillStyle = "rgba(255,255,255,.85)"; g.beginPath(); g.arc(p.x - r * 0.03, p.y - r * 0.05, r * 0.035, 0, TAU); g.fill(); }
-      a = sp(k * 0.42 - 0.17, 0.3 - 0.1 * nod, 1.01); b = sp(k * 0.42 + 0.17, 0.3 - 0.1 * nod, 1.01);
-      g.globalAlpha = clamp(v * 3, 0, 1); g.strokeStyle = sd.hst === "bald" || sd.hst === "buzz" ? "rgba(40,24,16,.55)" : sd.hc; g.lineWidth = Math.max(1, r * 0.07); g.beginPath(); g.moveTo(a.x, a.y); g.quadraticCurveTo((a.x + b.x) / 2, (a.y + b.y) / 2 - r * 0.06, b.x, b.y); g.stroke(); g.globalAlpha = 1;
     }
   }
-  p = sp(0, -0.14, 1.02); v = vis(p); if (v > 0) { g.globalAlpha = 0.3 * v; g.strokeStyle = "#3a2018"; g.lineWidth = Math.max(1, r * 0.05); a = sp(0.12, -0.2, 1.02); g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(a.x, a.y); g.stroke(); g.globalAlpha = 1; }
   a = sp(-0.24, -0.42, 1); m = sp(0, -0.48, 1.01); b = sp(0.24, -0.42, 1);
   if (vis(m) > 0) { g.globalAlpha = clamp(vis(m) * 2.5, 0, 1); g.strokeStyle = "rgba(70,24,24,.75)"; g.lineWidth = Math.max(1, r * 0.06); g.beginPath(); g.moveTo(vis(a) > 0 ? a.x : m.x, vis(a) > 0 ? a.y : m.y); g.quadraticCurveTo(m.x, m.y + r * 0.04, vis(b) > 0 ? b.x : m.x, vis(b) > 0 ? b.y : m.y); g.stroke(); g.globalAlpha = 1; }
 }
