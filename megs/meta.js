@@ -15,7 +15,7 @@ MG.SET0 = {music: 0.35, vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 
   auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 1, dtap: 0,
   kv: 3,
   // k1: you against the computer. kp and k2: the two players in a party game on one keyboard
-  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftLeft"},
+  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "Space", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftLeft"},
   kp: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyR", a: "KeyT", b: "KeyY", c: "KeyF", d: "KeyG", sp: "ShiftLeft"},
   k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftRight"}};
 MG.LEVELS = ["Beginner", "Rookie", "Easy", "Casual", "Decent", "Solid", "Tough", "Hard", "Elite", "Brutal", "Unfair"];
@@ -37,6 +37,7 @@ MG.load = function(){
   if (!S.eq.boot) S.eq.boot = "bt_std"; if (!S.eq.wrap) S.eq.wrap = "w_none"; if (!S.eq.banner) S.eq.banner = "bn0"; if (!S.eq.stk) S.eq.stk = ["st0", "st1", "st2", "st3"];
   for (k in S.eq) if (typeof S.eq[k] === "string" && k !== "scene" && k !== "stadium" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
+  if (S.set.kv2 !== 1) { if (S.set.k1.sh === "KeyJ") S.set.k1.sh = "Space"; S.set.kv2 = 1; }   // shooting moved from J to the space bar
   // a blank or missing key would leave the player unable to move: put the default back
   ["k1", "kp", "k2"].forEach(function(m){ var d0 = MG.SET0[m], kk = S.set[m] = S.set[m] || {}, k; for (k in d0) if (typeof kk[k] !== "string" || !kk[k]) kk[k] = d0[k]; });
   MG.quests(); MG.unlocks();
@@ -132,7 +133,7 @@ MG.finish = function(res){
   if (res.win && S.win1 !== MG.day()) { S.win1 = MG.day(); out.first = 1; out.coins += 100; }
   cnt = {goals: st.goals, twos: st.twos, megs: st.megs, perfect: st.perfect, wins: res.win ? 1 : 0, rwins: res.win && res.ranked ? 1 : 0, blocks: st.blocks, tackles: st.tackles, ankles: st.ankles, awins: res.win && res.arcade ? 1 : 0, fwins: res.win && res.mode === "field" ? 1 : 0};
   MG.quests().forEach(function(x){ if (!x.done) { x.q.p = Math.min(x.need, x.q.p + (cnt[x.key] || 0)); if (x.q.p >= x.need) out.quests.push(x.text); } });
-  out.pxb = out.coins; out.coins = 0; out.lv = MG.addXp(out.xp);   // coins come from the season pass: this becomes pass XP
+  out.pxb = out.coins; out.coins = res.win ? 50 : 0; S.coins += out.coins; out.lv = MG.addXp(out.xp);   // a win pays 50 coins, a loss nothing; the rest becomes pass XP
   S.hist.unshift({m: res.mode, w: res.win ? 1 : 0, s: res.sc.join("-"), o: res.opp.name, d: out.elo}); if (S.hist.length > 14) S.hist.pop();
   out.items = MG.unlocks(); MG.save();
   return out;
