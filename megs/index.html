@@ -113,7 +113,11 @@ canvas.big{width:170px;max-width:60%;aspect-ratio:3/4;margin:.4rem auto;display:
 .pk{width:74px;height:74px;border-radius:20px;display:grid;place-items:center;margin:0 auto .5rem;background:linear-gradient(135deg,#3b6ef5,#7a4df5);color:#fff}
 .pack.pro .pk{background:linear-gradient(135deg,#ffb938,#ff4f7a)}
 .pack.elite .pk{background:linear-gradient(135deg,#38e1ff,#b266ff 55%,#f4f6ff)}
-.cols.packs{grid-template-columns:repeat(3,1fr)}
+.cols.packs{grid-template-columns:repeat(5,1fr);gap:.6rem;align-items:stretch}.cols.packs .pack{padding:.8rem .6rem;display:flex;flex-direction:column}.cols.packs .pack h2{font-size:1.12rem}.cols.packs .pack .btn{margin-top:auto;white-space:nowrap;align-self:center}.cols.packs .odds span{font-size:.7rem}
+@media(max-width:1150px){.cols.packs{grid-template-columns:repeat(3,1fr)}}
+.pack.champ .pk{background:linear-gradient(135deg,#ffd23b,#ff8a1f 55%,#c8361f)}.pack.galaxy .pk{background:radial-gradient(circle at 30% 30%,#fff,#c88aff 30%,#3a0c8a 70%,#05010f)}
+.pack.champ{border-color:#a8781f;background:linear-gradient(180deg,rgba(255,180,40,.14),transparent 60%)}.pack.galaxy{border-color:#8a4dff;background:linear-gradient(180deg,rgba(160,90,255,.22),transparent 60%);box-shadow:0 0 30px -12px #a05aff}
+.pkb{color:#ffd23b;font-weight:700;font-size:.82rem}.pkx{display:block;color:#c9b6ff;font-weight:600;margin-top:.15rem}
 @media(max-width:900px){.cols.packs{grid-template-columns:1fr}}
 .daily{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.8rem;flex-wrap:wrap}
 .daily h3,.daily p{margin:0}
@@ -466,7 +470,7 @@ kbd{display:inline-block;font:inherit;font-weight:800;font-size:.8em;background:
 <script src="ui2.js?v=10"></script>
 <script src="scene.js?v=9"></script>
 <script src="stadium.js?v=2"></script>
-<script src="rules.js?v=2"></script>
-<script src="pass.js?v=1"></script>
+<script src="rules.js?v=3"></script>
+<script src="pass.js?v=2"></script>
 </body>
 </html>
