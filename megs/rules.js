@@ -144,6 +144,7 @@ waitUi(function(){
     }
     U.top && U.top(); setTimeout(next, 60);
   }
+  MG.packSpin = spin; MG.grant = grant;
   // a Celestial you have not built: how close you are
   var item0 = ACT.item;
   ACT.item = function(d){
