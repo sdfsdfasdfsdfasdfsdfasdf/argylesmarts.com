@@ -240,7 +240,7 @@ MG.MODES = {
   far: {n: "Long Shots", d: "Only goals from outside the arc count, and they count double. First to 6.", cfg: {target: 6, far: true}, arc: 1},
   moon: {n: "Moon Ball", d: "Low gravity and big bounces. First to 5.", cfg: {grav: 0.38, boun: 1.3}, arc: 1},
   blitz: {n: "Blitz 90", d: "Ninety seconds. Most goals wins.", cfg: {target: 0, clock: 90, sc: 8}, arc: 1},
-  field: {n: "Full Field", d: "A whole pitch with a goal at each end. You attack the far one. First to 5.", cfg: {field: true, two: false, sc: 0}, arc: 1},
+  field: {n: "1v1", d: "A whole pitch with a goal at each end. You attack the far one. First to 5.", cfg: {field: true, two: false, sc: 0}, arc: 1},
   megmania: {n: "Meg Mania", d: "Every nutmeg is worth a goal. First to 5.", cfg: {megpt: true}, arc: 1},
   turbo: {n: "Turbo", d: "Everyone is faster and nobody gets tired. First to 5.", cfg: {pace: 1.28, tire: 0, pw: 1.1}, arc: 1},
   ice: {n: "Ice Cage", d: "The floor is ice. Good luck stopping. First to 3.", cfg: {grip: 0.3, roll: 0.25, target: 3}, arc: 1},
