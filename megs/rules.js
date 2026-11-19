@@ -22,6 +22,9 @@ MG.DUPE[MG.CEL] = 400;
 // ---- packs: one item a pull ----
 var PK = {street: [100, [50, 28, 14, 6, 1.9, 0, 0, 0.1], 60], pro: [500, [0, 30, 38, 22, 9.5, 0, 0, 0.5], 20], elite: [1000, [0, 0, 28, 46, 24, 0, 0, 2], 6]};
 MG.PACKS.forEach(function(p){ var o = PK[p.id]; if (o) { p.cost = o[0]; p.odds = o[1]; p.pity = o[2]; } });
+// a pack of one kind: small things are much cheaper, kits and stadiums cost a quarter more
+MG.KIND_X = {boot: 0.3, sticker: 0.25, trail: 0.35, emote: 0.4, ball: 0.45, wrap: 0.5, hair: 0.5, fx: 0.8, court: 1, kit: 1.25, stadium: 1.25};
+MG.packCost = function(pk, kind){ return Math.max(10, Math.round(pk.cost * (kind ? MG.KIND_X[kind] || 1 : 1) / 10) * 10); };
 // the two big packs pay out more than an item: Celestial blueprints and season pass XP on every pull
 MG.PACKS.push({id: "champ", n: "Champion Pack", cost: 2000, odds: [0, 0, 0, 52, 44, 0, 0, 4], pity: 3, bonus: {bp: 1, xp: 250}},
   {id: "galaxy", n: "Galaxy Pack", cost: 5000, odds: [0, 0, 0, 0, 88, 0, 0, 12], pity: 1, bonus: {bp: 2, xp: 1000}});
@@ -117,9 +120,19 @@ waitUi(function(){
   // the shop: packs are pulls now
   var shop0 = VIEW.shop;
   VIEW.shop = function(){
-    return shop0().replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ") +
+    return what(shop0()).replace(/A pack of one kind costs a quarter more\./, "Picking one kind changes the price: boots, stickers, trails, emotes, balls, wraps and hair are much cheaper; kits and stadiums cost a quarter more.").replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ") +
       '<section class="panel"><h3>Celestial items</h3><p class="mute">A Celestial from a pack is only discovered. To build it you also need ' + MG.BP_N + ' of its blueprints (wins drop them at random) and ' + coin(MG.BP_COST) + '. Your progress is in the Locker under Blueprints.</p></section>';
   };
+  // under every buy button: what you are getting
+  var GET = {kit: "the full outfit: shirt, shorts and socks", wrap: "a pattern that goes over whatever kit you wear", boot: "a pair of boots", ball: "a match ball for your games", trail: "a trail behind the ball when you strike it",
+    fx: "a goal celebration effect", emote: "an emote your player can do", sticker: "a sticker to send in matches with keys 1 to 4", banner: "a banner for your profile", hair: "a hairstyle", scene: "a backdrop for the menus", stadium: "a stadium for your 5-a-side games", court: "a cage for your 1v1 games"};
+  function what(h){
+    h = h.replace(/<div class="shopi">([\s\S]*?data-id="([^"]+)"[\s\S]*?)<\/div>/g, function(x, inner, id){ var it = MG.ITEM[id]; if (!it) return x; return '<div class="shopi">' + inner + '<small class="get">You get <b>' + esc(it.n) + '</b>: ' + (GET[it.t] || "this item") + '. Yours to keep.</small></div>'; });
+    return h.replace(/(<section class="panel pack (\w+)">[\s\S]*?<\/button>)(<\/section>)/g, function(x, inner, id, end){
+      var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], kd = U.shopKind ? U.shopKind() : "", kn = kd ? (MG.KINDS.filter(function(k){ return k[0] === kd; })[0] || ["", "item"])[1].toLowerCase() : "";
+      return inner + '<small class="get">You get one random ' + (kn ? kn.replace(/s$/, "") : "item") + ' per pull, with the odds above' + (pk && pk.bonus ? ', plus ' + pk.bonus.bp + (pk.bonus.bp > 1 ? " blueprints" : " blueprint") + ' and ' + pk.bonus.xp + ' pass XP' : "") + '. Celestials count as discovered.</small>' + end;
+    });
+  }
   ACT.pack = function(d){
     var pk = MG.PACKS.filter(function(p){ return p.id === d.id; })[0], kind = U.shopKind ? U.shopKind() : "", c = MG.packCost(pk, kind), s = S();
     modal('<h2 class="center">' + esc(pk.n) + '</h2><p class="center mute">Each pull is one item, revealed one at a time.</p><div class="row center">' + [1, 3, 10].map(function(n){
@@ -157,6 +170,28 @@ waitUi(function(){
     U.top && U.top(); setTimeout(next, 60);
   }
   MG.packSpin = spin; MG.grant = grant;
+  // ---- promo codes: type 1 2 3 4 5 6 7 8 9 on a menu screen. Only hashes of the codes are kept here ----
+  var CODES = {"3b1fef17630831146ce458069b3a2c539f0c6fe21fe4ec05c4fe9249e3611962": "all", "97b9ebd519ecf14a27ab2e90924ef7f6f44c7325a172c6693807e14a0f04ec20": "coins"}, seq = 0;
+  window.addEventListener("keydown", function(e){
+    var c = e.code || "", m = /^(Digit|Numpad)([1-9])$/.exec(c), el = document.activeElement;
+    if (document.body.classList.contains("playing") || (el && /INPUT|TEXTAREA|SELECT/.test(el.tagName))) return;
+    if (!m) { seq = 0; return; }
+    seq = +m[2] === seq + 1 ? seq + 1 : +m[2] === 1 ? 1 : 0;
+    if (seq === 9) { seq = 0; modal('<h2>Promo code</h2><p class="mute">Got a code? Type it here.</p><input type="text" id="pcode" maxlength="24" autocomplete="off" aria-label="Promo code" placeholder="CODE"><div class="row center"><button class="btn gold" data-a="pcRedeem">Redeem</button><button class="btn ghost" data-a="close">Close</button></div>'); setTimeout(function(){ var i = document.getElementById("pcode"); if (i) i.focus(); }, 30); }
+  });
+  ACT.pcRedeem = function(){
+    var i = document.getElementById("pcode"), raw = i ? i.value.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+    if (!raw || !window.crypto || !crypto.subtle) return toast("That code did not work.");
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode("megs:" + raw)).then(function(b){
+      var hx = Array.prototype.map.call(new Uint8Array(b), function(x){ return (x < 16 ? "0" : "") + x.toString(16); }).join(""), k = CODES[hx], s = store();
+      if (!k) return toast("That code did not work.");
+      s.codes = s.codes || {}; if (s.codes[hx]) return toast("You already used that code.");
+      s.codes[hx] = 1;
+      if (k === "all") { I.forEach(function(it){ s.inv[it.id] = 1; if (it.cel) { s.seen[it.id] = 1; s.bp[it.id] = MG.BP_N; } }); toast("Code redeemed: every item is now in your locker."); }
+      else if (k === "coins") { s.coins += 50000; toast("Code redeemed: " + coin("+50000")); }
+      MG.save(); MG.sfx("rare", 7); close(); if (U.top) U.top(); go(U.cur(), U.arg());
+    });
+  };
   // a Celestial you have not built: how close you are
   var item0 = ACT.item;
   ACT.item = function(d){
