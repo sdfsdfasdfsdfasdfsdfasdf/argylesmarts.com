@@ -217,7 +217,7 @@ waitUi(function(){
     [].forEach.call(document.querySelectorAll("canvas[data-hair],canvas[data-scn],canvas[data-rk]"), function(c){
       var it = MG.ITEM[c.dataset.hair || c.dataset.scn || ""];
       if (c._done) return; c._done = 1;
-      if (c.dataset.scn || (c.dataset.rk && +c.dataset.rk >= 3) || (it && (it.fx || c.classList.contains("big")))) { LV.push(c); if (!on) { on = 1; requestAnimationFrame(tick); } }
+      if ((c.dataset.scn || (c.dataset.rk && +c.dataset.rk >= 3) || (it && (it.fx || c.classList.contains("big")))) && !MG.still(c)) { LV.push(c); if (!on) { on = 1; requestAnimationFrame(tick); } }
       else draw(c, 1.4);
     });
   };
