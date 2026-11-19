@@ -216,17 +216,20 @@ V.back = function(m){
     for (i = 0; i < 4; i++) { q = v.pr(bx - 2.2 + i * 1.45, -H - 1.8, 0.7); s = Math.max(1.2, q.s * 0.42); g.fillStyle = i & 1 ? T.board[1] : T.board[2]; g.fillRect(q.x - s / 2, q.y - s, s, s); g.fillStyle = SKIN[i % SKIN.length]; g.fillRect(q.x - s * 0.3, q.y - s * 1.55, s * 0.6, s * 0.55); }
   });
 };
+// the crowd: thousands of small rectangles, gathered by colour and filled in a handful of calls instead of one each
 function crowd(v, T, list, t, cheer){
-  var g = v.g, w = v.w, i, c, q, s, b;
+  var g = v.g, w = v.w, i, c, q, s, b, k, a, B = {}, H = {}, top = {};
+  function put(o, col, x, y, ww, hh){ (o[col] || (o[col] = [])).push(x, y, ww, hh); }
   for (i = 0; i < list.length; i++) {
     c = list[i]; b = Math.max(0, Math.sin(t * 6 + c[4])) * cheer * 0.5 + Math.sin(t * 1.3 + c[4] * 3) * 0.04;
     q = v.pr(c[0], c[1], c[2] + b);
     if (q.x < -6 || q.x > w + 6 || q.y < -6 || q.y > v.h + 6) continue;
-    s = Math.max(1.2, q.s * 0.42); g.fillStyle = c[3]; g.fillRect(q.x - s / 2, q.y - s, s, s);
-    if (s > 1.6) { g.fillStyle = c[5]; g.fillRect(q.x - s * 0.3, q.y - s * 1.55, s * 0.6, s * 0.55); }
-    if (cheer > 0.3 && c[6] < 0.25) { g.fillStyle = T.flag[Math.floor(c[6] * 40) % T.flag.length]; g.fillRect(q.x - s * 0.9, q.y - s * (2.1 + 0.3 * Math.sin(t * 9 + c[4])), s * 1.8, s * 0.35); }   // scarves up
-    if (c[6] > 0.985 && Math.sin(t * 3 + c[4] * 9) > 0.97) { g.fillStyle = "#fff"; g.fillRect(q.x - s * 0.6, q.y - s * 1.6, s * 1.2, s * 1.2); }   // camera flashes
+    s = Math.max(1.2, q.s * 0.42); put(B, c[3], q.x - s / 2, q.y - s, s, s);
+    if (s > 2) put(H, c[5], q.x - s * 0.3, q.y - s * 1.55, s * 0.6, s * 0.55);
+    if (cheer > 0.3 && c[6] < 0.25) put(top, T.flag[Math.floor(c[6] * 40) % T.flag.length], q.x - s * 0.9, q.y - s * (2.1 + 0.3 * Math.sin(t * 9 + c[4])), s * 1.8, s * 0.35);   // scarves up
+    if (c[6] > 0.985 && Math.sin(t * 3 + c[4] * 9) > 0.97) put(top, "#fff", q.x - s * 0.6, q.y - s * 1.6, s * 1.2, s * 1.2);   // camera flashes
   }
+  [B, H, top].forEach(function(o){ for (k in o) { a = o[k]; g.fillStyle = k; g.beginPath(); for (i = 0; i < a.length; i += 4) g.rect(a[i], a[i + 1], a[i + 2], a[i + 3]); g.fill(); } });
 }
 // the boards behind each goal stand on the grass, so they go on after the pitch and before the nets
 var pitch0 = V.pitch;
@@ -243,7 +246,7 @@ V.pitch = function(){
 // weather in front of everything: snow or embers
 var draw0 = V.draw;
 V.draw = function(m, dt){
-  draw0.call(this, m, dt);
+  R.LO = 1; try { draw0.call(this, m, dt); } finally { R.LO = 0; }   // players on the big pitch are small: draw them in low detail
   var v = this, T = T0(v), g = v.g, i, x, y, r, n;
   if (!T.snow && !T.embers) return;
   g.setTransform(v.dpr, 0, 0, v.dpr, 0, 0); r = MG.rng(17); n = Math.round(v.w * v.h / 9000);
