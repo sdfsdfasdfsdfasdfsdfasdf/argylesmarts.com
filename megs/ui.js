@@ -29,9 +29,11 @@ function emoTick(){
   ANIM.forEach(function(c){ R.portrait(c, MG.me(), t, {emote: c.dataset.emote, zoom: 3}); });
   if (ANIM.length) requestAnimationFrame(emoTick); else ticking = 0;
 }
+// in the shop and the locker the item cards stay still; only the big preview of the item you tapped moves
+MG.still = function(c){ return (cur === "shop" || cur === "locker" || cur === "pass") && !c.classList.contains("big") && !c.classList.contains("emo") && !c.closest(".prev") && !c.closest("#modal"); };
 function paint(){
   if (MG.paintX) MG.paintX();
-  [].forEach.call(document.querySelectorAll("canvas[data-emote]"), function(c){ if (c._done) return; c._done = 1; ANIM.push(c); if (!ticking) { ticking = 1; requestAnimationFrame(emoTick); } });
+  [].forEach.call(document.querySelectorAll("canvas[data-emote]"), function(c){ if (c._done) return; c._done = 1; if (MG.still(c)) { R.portrait(c, MG.me(), 1.2, {emote: c.dataset.emote, zoom: 3}); return; } ANIM.push(c); if (!ticking) { ticking = 1; requestAnimationFrame(emoTick); } });
   [].forEach.call(document.querySelectorAll("canvas[data-s],canvas[data-kit],canvas[data-ball]"), function(c){
     var d = c.dataset;
     if (c._done) return;
@@ -145,15 +147,15 @@ VIEW.result = function(a){
     rows = [["Shots", "shots"], ["In the green", "green"], ["Perfect", "perfect"], ["Megs", "megs"], ["Ankles broken", "ankles"], ["Tackles", "tackles"], ["Blocks", "blocks"]], h;
   resA = a;
   h = '<div class="res ' + (w ? "win" : "loss") + '"><span class="kick">' + esc(a.o.name) + '</span><h2>' + (res.quit ? "Forfeit" : w ? "You win" : "You lose") + '</h2><div class="score"><b>' + res.sc[0] + '</b><i>-</i><b>' + res.sc[1] + '</b></div><p class="mute">against ' + esc(a.foe.name) + '</p><div class="rw">' +
-    (out.coins ? '<span class="pill">' + coin("+" + out.coins) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.elo ? '<span class="pill ' + (out.elo > 0 ? "up" : "dn") + '">' + (out.elo > 0 ? "+" : "") + out.elo + ' rating</span>' : "") +
+    (out.coins ? '<span class="pill">' + coin("+" + out.coins) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.pass ? '<span class="pill up">+' + out.pass + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (out.elo ? '<span class="pill ' + (out.elo > 0 ? "up" : "dn") + '">' + (out.elo > 0 ? "+" : "") + out.elo + ' rating</span>' : "") +
     (out.lv ? '<span class="pill up">Level ' + s.lvl + ': a skill point to spend</span>' : "") + (out.first ? '<span class="pill">First win of the day +100</span>' : "") + (out.ladder ? '<span class="pill up">Ladder rival beaten</span>' : "") + '</div>';
   if (a.res.win) h += '<div class="center"><canvas class="emo" data-emote="' + (MG.ITEM[s.eq.emote] || {k: "wave"}).k + '" width="300" height="400"></canvas></div>';
   if (a.gaunt) h += '<p class="got">' + (a.gaunt.end ? "The run ends in round " + (a.gaunt.k + 1) + ". Best run: " + (s.n.gaunt || 0) + "." : "Round " + (a.gaunt.k + 1) + " cleared. +" + a.gaunt.xp + " pass XP") + '</p>';
   if (cup) h += '<p class="got">' + (cup.champ ? "Champions! The cup is yours. +" + cup.prize + " pass XP" : cup.end ? "Knocked out in the " + rn[cup.round] + (cup.prize ? ". +" + cup.prize + " pass XP" : ".") : "Through to the " + rn[cup.round + 1] + ".") + '</p>';
-  h += out.items.concat(cup ? cup.items : [], a.gaunt ? a.gaunt.items : []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + out.quests.map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("");
+  h += out.items.concat(cup ? cup.items : [], a.gaunt ? a.gaunt.items : []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + out.quests.map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("") + (out.notes || []).map(function(q){ return '<p class="got bpn">' + q + '</p>'; }).join("");
   h += '<div class="cmp"><b>You</b><span></span><b>' + esc(a.foe.name) + '</b>' + rows.map(function(r){ return '<b>' + me[r[1]] + '</b><span>' + r[0] + '</span><b>' + th[r[1]] + '</b>'; }).join("") + '<b>' + Math.round(me.poss / tot * 100) + '%</b><span>Possession</span><b>' + Math.round(th.poss / tot * 100) + '%</b></div>';
   if (cup) h += bracket(cup.f, cup.log, s.cup ? s.cup.alive : null, s.cup ? s.cup.round : 9);
-  return h + '<div class="row center">' + (cup ? (cup.end ? "" : '<button class="btn big" data-a="go" data-v="cups">Next round</button>') : '<button class="btn big" data-a="again">' + ic("play") + (a.gaunt ? (a.gaunt.end ? "New run" : "Next rival") : a.o.ranked ? "Next match" : "Play again") + '</button>') + '<button class="btn ghost big" data-a="go" data-v="' + (a.o.back || "home") + '">Done</button></div></div>';
+  return h + '<div class="row center">' + (cup ? (cup.end ? "" : '<button class="btn big" data-a="go" data-v="cups">Next round</button>') : '<button class="btn big" data-a="again">' + ic("play") + (a.gaunt ? (a.gaunt.end ? "New run" : "Next rival") : a.o.ranked ? "Next match" : "Play again") + '</button>') + (w ? '<button class="btn gold big" data-a="go" data-v="pass">' + ic("star") + 'Season pass</button>' : "") + '<button class="btn ghost big" data-a="go" data-v="' + (a.o.back || "home") + '">Done</button></div></div>';
 };
 ACT.again = function(){ var a = resA; if (a && a.o.again) a.o.again(); };
 
@@ -341,7 +343,7 @@ VIEW.shop = function(){
       '<p class="mute">A Legendary or better is guaranteed at least every ' + p.pity + ' packs (' + (s.pity[p.id] || 0) + ' opened since your last one). Duplicates pay coins back.</p><button class="btn gold big" data-a="pack" data-id="' + p.id + '"' + (s.coins < MG.packCost(p, kd) ? " disabled" : "") + '>Open for ' + coin(MG.packCost(p, kd)) + '</button></section>';
   }).join("") + '</div><section class="panel"><h3>Featured today</h3><div class="items">' + MG.featured().map(function(it){
     return '<div class="shopi">' + itemCard(it) + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="buy" data-id="' + it.id + '"' + (s.coins < MG.PRICE[it.r] ? " disabled" : "") + '>' + coin(MG.PRICE[it.r]) + '</button>') + '</div>';
-  }).join("") + '</div><p class="mute">Four different items every day. Coins come from season pass tiers, so spend them carefully.</p></section>';
+  }).join("") + '</div><p class="mute">Four different items every day. Coins come from wins (50 a win) and season pass tiers.</p></section>';
 };
 var shopKind = "";
 ACT.kind = function(d){ shopKind = d.id || ""; go("shop"); };
@@ -422,7 +424,7 @@ VIEW.settings = function(){
     '<h3>Camera</h3>' + rg("zoom", "Zoom", -1, 1, 0.1) + rg("pan", "Follow the ball sideways", 0, 1.5, 0.1) + '</section>' +
     '<section class="panel"><h3>On screen</h3>' + tg("meter", "Shot meter") + tg("aim", "Shot lines", "A dashed line shows where every shot is aimed, yours and theirs") + tg("pops", "Callouts", "PERFECT, MEGS and the rest") + tg("banner", "Goal banners") + tg("names", "Name tags") + tg("rings", "Sprint rings", "The ring under your player empties as you sprint") + tg("hints", "Control hints") + tg("cb", "Colour-blind meter", "Blue and white in place of green") + rg("hud", "Scoreboard size", 0.8, 1.4, 0.05) +
     '<h3>Quick Match and Party rules</h3>' + sl("target", "First to", [[3, "3 goals"], [5, "5 goals"], [7, "7 goals"], [11, "11 goals"]]) + sl("clock", "Match clock", [[0, "Off"], [60, "60 seconds"], [90, "90 seconds"], [180, "3 minutes"]], "With a clock on, most goals wins") + tg("two", "Long range counts double") + tg("take", "Scorer keeps the ball") + sl("sc", "Possession clock", [[0, "Off"], [8, "8 seconds"], [12, "12 seconds"], [20, "20 seconds"]]) + '</section></div>' +
-    '<div class="cols"><section class="panel"><h3>Your keys <small>against the computer</small></h3>' + keyRows("k1") + '</section><section class="panel"><h3>Party: player 1</h3>' + keyRows("kp") + '</section></div><div class="cols"><section class="panel"><h3>Party: player 2</h3>' + keyRows("k2") + '</section><section class="panel"><h3>Sharing a keyboard</h3><p class="mute">In a party game player 1 has W A S D with R T Y F G and left Shift to sprint, and player 2 has the arrow keys with J K L I O and right Shift. On your own you get W A S D with J K L I O, and left Shift to sprint. Sprinting empties the ring under your player; let it fill back up.</p></section></div>' +
+    '<div class="cols"><section class="panel"><h3>Your keys <small>against the computer</small></h3>' + keyRows("k1") + '</section><section class="panel"><h3>Party: player 1</h3>' + keyRows("kp") + '</section></div><div class="cols"><section class="panel"><h3>Party: player 2</h3>' + keyRows("k2") + '</section><section class="panel"><h3>Sharing a keyboard</h3><p class="mute">In a party game player 1 has W A S D with R T Y F G and left Shift to sprint, and player 2 has the arrow keys with J K L I O and right Shift. On your own you get W A S D to move, Space to shoot, K L I O for the moves and left Shift to sprint. Sprinting empties the ring under your player; let it fill back up.</p></section></div>' +
     '<div class="cols"><section class="panel"><h3>Gamepad and touch</h3>' + tg("pad", "Gamepads", "Stick to move, A shoot, X cut, B drag, Y burst, bumpers megs") + rg("tsize", "Touch button size", 0.7, 1.4, 0.05) + rg("top", "Touch button opacity", 0.3, 1, 0.05) + "" + tg("lefty", "Left-handed touch layout") + tg("buzz", "Vibration") +
     '<div class="row"><button class="btn ghost sm" data-a="keysReset">Reset the keys</button><button class="btn ghost sm" data-a="setReset">Reset every setting</button></div></section>' +
     '<section class="panel"><h3>Save data</h3><p class="mute">Your progress is stored in this browser only.</p><div class="row"><button class="btn ghost sm" data-a="export">Copy my save</button><button class="btn ghost sm" data-a="import">Load a save</button><button class="btn red sm" data-a="wipe">Reset my progress</button></div></section></div>';
@@ -486,7 +488,7 @@ function onInput(e){
 document.addEventListener("input", onInput); document.addEventListener("change", onInput);
 VIEW._editor = editor; VIEW._maker = maker;
 MG.ui = {go: go, toast: toast, VIEW: VIEW, ACT: ACT, AFTER: AFTER, modal: modal, close: close, coin: coin, ic: ic, esc: esc, reg: reg, head: head, chips: chips, itemCard: itemCard, vis: vis, paint: paint, start: start, top: top, tier: tier,
-  tick: function(f){ tick.push(f); }, cur: function(){ return cur; }, arg: function(){ return arg; }, nav: NAVOF, resA: function(a){ resA = a; }, pend: function(f){ pend = f; }};
+  tick: function(f){ tick.push(f); }, shopKind: function(){ return shopKind; }, cur: function(){ return cur; }, arg: function(){ return arg; }, nav: NAVOF, resA: function(a){ resA = a; }, pend: function(f){ pend = f; }};
 // started from the last script, once every screen has been added
 MG.boot = function(){ MG.load(); MG.applySet(); go("home"); requestAnimationFrame(loop); if (!S().name) welcome(); };
 })();
