@@ -396,7 +396,8 @@ R.fig2 = function(g, prj, x, y, z0, fa, q, sd, tcx, tcy, t){
     Jo.push({h: pj(J[i].h), k: pj(J[i].n), f: pj(J[i].a), t: P(a[3] + 0.19, a[4], hip + a[5] + 0.015), s: pj(J[i].s), e: pj(J[i].e), w: pj(J[i].w)});
   }
   parts = [[Jo[0].k.d, 0], [Jo[1].k.d, 1]].sort(function(m, n){ return n[0] - m[0]; }).concat([[Jo[0].e.d, 2], [Jo[1].e.d, 3], [(HC.d + NK.d) / 2, 4], [HD.d - 0.03, 5]].sort(function(m, n){ return n[0] - m[0]; }));
-  if (sd.glow) { g.shadowColor = sd.glow; g.shadowBlur = s * 0.07; }
+  // a soft glow behind the body (a blurred outline round every limb was far too slow)
+  if (sd.glow && /^#[0-9a-f]{6}$/i.test(sd.glow)) { var gq = P(0, 0, hip + 0.3), gg = g.createRadialGradient(gq.x, gq.y, 0, gq.x, gq.y, s * 0.7); gg.addColorStop(0, hexA(sd.glow, 0.3)); gg.addColorStop(1, hexA(sd.glow, 0)); g.fillStyle = gg; g.fillRect(gq.x - s * 0.7, gq.y - s * 0.7, s * 1.4, s * 1.4); }
   if (sd.hd) R.hbody(g, P, Jo, NK, sh, hip, s, sd.hd, c, t, 0);
   if (R.flair && sd.tier >= 5) R.flair(g, P, Jo, HD, hip, s, sd, c, sg, t, 0);
   extras(0);
@@ -485,6 +486,13 @@ R.hairPreview = function(cv, it, t, look){
   R.portrait(cv, {kit: "home", hair: it.id, look: look || {skin: 1, hair: 0, hc: 0, num: 10}}, t, {bust: 1, turn: 0.5 * Math.sin(t * 0.7)});
 };
 
+// players never use canvas blur: it is by far the slowest thing a canvas can draw, and with several glowing parts
+// a single top-rarity skin could halve the frame rate. The first time a canvas draws a player its blur is switched off.
+var fig2 = R.fig2;
+R.fig2 = function(g){
+  if (!g.__nb) { try { Object.defineProperty(g, "shadowBlur", {configurable: true, get: function(){ return 0; }, set: function(){}}); } catch (e) {} g.__nb = 1; }
+  return fig2.apply(this, arguments);
+};
 // ---- how players move: a walk that rolls through the foot, a run with knee drive, heel kick and arm drive,
 // leaning into turns, and small steps on the spot when turning while standing ----
 R.gait = function(q, p, sp, t){
