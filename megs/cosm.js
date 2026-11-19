@@ -269,19 +269,17 @@ R.flair = function(g, P, J, HD, hip, s, sd, c, sg, t, phase){
   function front(pt){ return pt.d < ctr.d; }
   // Mythic: a pulsing ring of light at the feet and sparks rising round the body
   if (phase === 0) {
-    a = 0.5 + 0.5 * Math.sin(t * 3); g.globalAlpha = 0.35 + 0.25 * a; g.strokeStyle = f; g.lineWidth = Math.max(1.5, s * 0.035); g.shadowColor = f; g.shadowBlur = s * 0.2;
-    g.beginPath(); for (i = 0; i <= 24; i++) { p = P(Math.cos(i * TAU / 24) * (0.42 + 0.06 * a), Math.sin(i * TAU / 24) * (0.42 + 0.06 * a), 0.01); g.lineTo(p.x, p.y); } g.stroke();
+    a = 0.5 + 0.5 * Math.sin(t * 3); g.globalAlpha = 0.35 + 0.25 * a; g.strokeStyle = f; g.lineWidth = Math.max(1.5, s * 0.035); g.beginPath(); for (i = 0; i <= 24; i++) { p = P(Math.cos(i * TAU / 24) * (0.42 + 0.06 * a), Math.sin(i * TAU / 24) * (0.42 + 0.06 * a), 0.01); g.lineTo(p.x, p.y); } g.stroke();
   }
   n = tier >= 7 ? 10 : 7;
   for (i = 0; i < n; i++) {
     u = (t * 0.55 + i / n) % 1; a = i * 2.4 + t * 0.6; p = P(Math.cos(a) * 0.38, Math.sin(a) * 0.38, 0.15 + u * 2.1);
     if (front(p) !== !!phase) continue;
-    g.globalAlpha = Math.sin(u * PI) * 0.9; g.fillStyle = i & 1 ? "#ffffff" : f; g.shadowColor = f; g.shadowBlur = s * 0.12;
-    R.star(g, p.x, p.y, Math.max(1.4, s * 0.035), 4, t + i); g.fill();
+    g.globalAlpha = Math.sin(u * PI) * 0.9; g.fillStyle = i & 1 ? "#ffffff" : f; R.star(g, p.x, p.y, Math.max(1.4, s * 0.035), 4, t + i); g.fill();
   }
   // Exotic: two ribbons of energy wrapping round the body
   if (tier >= 6) {
-    g.shadowColor = f; g.shadowBlur = s * 0.18; g.lineWidth = Math.max(1.5, s * 0.03);
+    g.lineWidth = Math.max(1.5, s * 0.03);
     for (k = 0; k < 2; k++) {
       for (i = 0; i < 28; i++) {
         a = t * (k ? -2.1 : 1.7) + i * 0.16; h = hip + 0.15 + k * 0.5 + 0.22 * Math.sin(a * 1.5 + k);
@@ -291,23 +289,19 @@ R.flair = function(g, P, J, HD, hip, s, sd, c, sg, t, phase){
       }
     }
   }
-  // Celestial: rays of light behind, a halo, and stars in orbit
+  // Celestial: a halo and stars in orbit (no rays behind: they were too big and too slow)
   if (tier >= 7) {
-    if (phase === 0) {
-      q = P(0, 0, hip + 0.75); g.shadowBlur = 0;
-      for (i = 0; i < 12; i++) { a = t * 0.35 + i * TAU / 12; g.globalAlpha = 0.12 + 0.06 * Math.sin(t * 2 + i); g.fillStyle = i & 1 ? "#fff6d6" : f; g.beginPath(); g.moveTo(q.x, q.y); g.lineTo(q.x + Math.cos(a - 0.08) * s * 1.6, q.y + Math.sin(a - 0.08) * s * 1.6); g.lineTo(q.x + Math.cos(a + 0.08) * s * 1.6, q.y + Math.sin(a + 0.08) * s * 1.6); g.fill(); }
-      a = g.createRadialGradient(q.x, q.y, 0, q.x, q.y, s * 1.1); a.addColorStop(0, hexA(f, 0.35)); a.addColorStop(1, "rgba(0,0,0,0)"); g.globalAlpha = 1; g.fillStyle = a; g.fillRect(q.x - s * 1.1, q.y - s * 1.1, s * 2.2, s * 2.2);
-    }
-    g.shadowColor = "#fff6d6"; g.shadowBlur = s * 0.25; g.lineWidth = Math.max(1.5, s * 0.03); g.strokeStyle = "#ffe9a8";
+    g.lineWidth = Math.max(1.5, s * 0.03); g.strokeStyle = "#ffe9a8";
     for (i = 0; i < 20; i++) {
       p = P(Math.cos(i * TAU / 20) * 0.2, Math.sin(i * TAU / 20) * 0.2, hip + 1.32 + 0.03 * Math.sin(t * 2)); q = P(Math.cos((i + 1) * TAU / 20) * 0.2, Math.sin((i + 1) * TAU / 20) * 0.2, hip + 1.32 + 0.03 * Math.sin(t * 2));
       if (front(p) !== !!phase) continue;
-      g.globalAlpha = 0.95; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
+      g.globalAlpha = 0.25; g.lineWidth = Math.max(3, s * 0.08); g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
+      g.globalAlpha = 0.95; g.lineWidth = Math.max(1.5, s * 0.03); g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
     }
     for (i = 0; i < 3; i++) {
       a = t * 1.3 + i * TAU / 3; p = P(Math.cos(a) * 0.72, Math.sin(a) * 0.72, hip + 0.4 + 0.35 * Math.sin(a * 2 + i));
       if (front(p) !== !!phase) continue;
-      g.globalAlpha = 1; g.fillStyle = "#ffffff"; g.shadowColor = f; g.shadowBlur = s * 0.3; R.star(g, p.x, p.y, Math.max(2.5, s * 0.07), 4, t * 2 + i); g.fill();
+      g.globalAlpha = 1; g.fillStyle = "#ffffff"; R.star(g, p.x, p.y, Math.max(2.5, s * 0.07), 4, t * 2 + i); g.fill();
     }
   }
   g.restore();
