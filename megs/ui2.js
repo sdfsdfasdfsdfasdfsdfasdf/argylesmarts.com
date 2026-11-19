@@ -49,7 +49,7 @@ MG.paintX = function(){
     var it = MG.ITEM[c.dataset.boot || c.dataset.wrap || c.dataset.stk || c.dataset.bn || ""];
     if (c._done) return; c._done = 1;
     if (c.dataset.live) { LIVE.push(c); if (!liveOn) { liveOn = 1; requestAnimationFrame(liveTick); } return; }
-    if (it && (it.r >= 5 || it.t === "sticker" || c.classList.contains("big"))) { LIVE.push(c); if (!liveOn) { liveOn = 1; requestAnimationFrame(liveTick); } }
+    if (it && (it.r >= 5 || it.t === "sticker" || c.classList.contains("big")) && !MG.still(c)) { LIVE.push(c); if (!liveOn) { liveOn = 1; requestAnimationFrame(liveTick); } }
     else draw(c, 1.2);
   });
 };
@@ -147,9 +147,9 @@ VIEW.tres = function(a){
     (out.coins ? '<span class="pill">' + coin("+" + (out.coins + (x && x.coins || 0))) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.pass || x && x.pass ? '<span class="pill up">+' + ((out.pass || 0) + (x && x.pass || 0)) + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (out.lv ? '<span class="pill up">Level ' + s.lvl + '</span>' : "") + '</div>';
   if (x && x.stars != null) h += '<p class="stars">' + [1, 2, 3].map(function(k){ return star(k <= x.stars); }).join("") + '</p><p class="mute">Win for one star, win by two for two, win without conceding for three.</p>';
   if (w) h += '<div class="center"><canvas class="emo" data-emote="' + (MG.ITEM[s.eq.emote] || {k: "wave"}).k + '" width="300" height="400"></canvas></div>';
-  h += (out.items || []).concat(x && x.items || []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + (out.quests || []).map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("");
+  h += (out.items || []).concat(x && x.items || []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + (out.quests || []).map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("") + (out.notes || []).map(function(q){ return '<p class="got bpn">' + q + '</p>'; }).join("");
   h += '<div class="cmp"><b>You</b><span></span><b>' + esc(a.o.foe.name) + '</b>' + rows.map(function(r){ return '<b>' + me[r[1]] + '</b><span>' + r[0] + '</span><b>' + th[r[1]] + '</b>'; }).join("") + '<b>' + Math.round(me.poss / tot * 100) + '%</b><span>Possession</span><b>' + Math.round(th.poss / tot * 100) + '%</b></div>';
-  return h + '<div class="row center">' + (a.o.next ? '<button class="btn big" data-a="tnext">' + ic("play") + 'Next match</button>' : "") + '<button class="btn ' + (a.o.next ? "ghost " : "") + 'big" data-a="again">' + ic("play") + (w ? "Play again" : "Try again") + '</button><button class="btn ghost big" data-a="go" data-v="' + (a.o.back || "home") + '">Done</button></div></div>';
+  return h + '<div class="row center">' + (a.o.next ? '<button class="btn big" data-a="tnext">' + ic("play") + 'Next match</button>' : "") + '<button class="btn ' + (a.o.next ? "ghost " : "") + 'big" data-a="again">' + ic("play") + (w ? "Play again" : "Try again") + '</button>' + (w ? '<button class="btn gold big" data-a="go" data-v="pass">' + ic("star") + 'Season pass</button>' : "") + '<button class="btn ghost big" data-a="go" data-v="' + (a.o.back || "home") + '">Done</button></div></div>';
 };
 ACT.tnext = function(){ var o = MG.ui.lastRes && MG.ui.lastRes.o; if (o && o.next) o.next(); };
 U.nav.tres = "home"; U.nav.team = "home"; U.nav.campaign = "home";
@@ -178,9 +178,9 @@ VIEW.tres = function(a){ MG.ui.lastRes = a; if (a.o.next && !(a.res.win)) a.o = 
 // ---- season pass ----
 VIEW.pass = function(){
   var p = MG.pass(), t = MG.passTier(), tiers = MG.passTiers(), into = p.xp % MG.PASS_XP;
-  return '<div class="phead"><div><span class="kick">Season ' + MG.SEASON.n + ' &middot; runs until Season ' + (MG.SEASON.n + 1) + ' is released</span><h2>' + MG.SEASON.name + ' Pass</h2><p class="mute">Earn pass XP from every match, daily quests and weekly challenges. Coins only come from pass tiers. Tier ' + t + ' of 50.</p>' +
+  return '<div class="phead"><div><span class="kick">Season ' + MG.SEASON.n + ' &middot; runs until Season ' + (MG.SEASON.n + 1) + ' is released</span><h2>' + MG.SEASON.name + ' Pass</h2><p class="mute">Earn pass XP from every match, daily quests and weekly challenges. Coins come from wins and pass tiers. The free track has 10 items; the premium track has the rest, including every Mythic and Exotic. Tier ' + t + ' of 50.</p>' +
     '<div class="pbar"><i style="width:' + (t >= 50 ? 100 : Math.round(into / MG.PASS_XP * 100)) + '%"></i><span>' + (t >= 50 ? "Complete" : into + " / " + MG.PASS_XP + " XP to tier " + (t + 1)) + '</span></div></div>' +
-    '<div class="prem"><b>Premium track</b><p class="mute">Season signature kits, wraps, emotes and banners.</p><button class="btn gold" disabled>Buyable soon</button></div></div>' +
+    '<div class="prem"><b>Premium track</b><p class="mute">Every Mythic and Exotic item, the banners and the scenes.</p><button class="btn gold" disabled>Buyable soon</button></div></div>' +
     (MG.passReady() ? '<div class="row"><button class="btn gold" data-a="pclaimall">Claim all (' + MG.passReady() + ')</button></div>' : "") +
     (t >= 50 ? '<section class="panel"><h3>Bonus tiers</h3><p class="mute">Every 1000 pass XP after tier 50 is a bonus tier worth ' + coin(MG.BONUS) + '.</p>' + (MG.passBonus() ? '<button class="btn gold" data-a="pbonus">Claim ' + MG.passBonus() + ' bonus ' + (MG.passBonus() === 1 ? "tier" : "tiers") + '</button>' : '<span class="mute">Next bonus tier in ' + (MG.PASS_XP - into) + ' XP</span>') + '</section>' : "") +
     '<div class="tiers">' + tiers.map(function(x){
@@ -205,7 +205,7 @@ var shop0 = VIEW.shop;
 VIEW.shop = function(){
   var s = S(), h = shop0(), cut = h.indexOf('<section class="panel"><h3>Featured today'), left = 7 - ((MG.day() + 3) % 7);
   if (cut > 0) h = h.slice(0, cut);
-  return '<section class="panel"><h3>This week&#39;s shop <small>resets in ' + left + (left === 1 ? " day" : " days") + '</small></h3><p class="mute">Ten items you can buy outright, no packs. One Mythic and two Legendary every week.</p><div class="items wk">' + MG.weekShop().filter(function(it){ return it.t !== "stadium"; }).map(function(it){
+  return '<section class="panel"><h3>This week&#39;s shop <small>resets in ' + left + (left === 1 ? " day" : " days") + '</small></h3><p class="mute">Ten items you can buy outright, no packs. Three Legendary every week.</p><div class="items wk">' + MG.weekShop().filter(function(it){ return it.t !== "stadium"; }).map(function(it){
     var p = MG.shopPrice(it);
     return '<div class="shopi">' + U.itemCard(it) + '<small class="ty">' + TYPE[it.t] + '</small>' + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="wbuy" data-id="' + it.id + '"' + (s.coins < p ? " disabled" : "") + '>' + coin(p) + '</button>') + '</div>';
   }).join("") + '</div></section>' + (MG.weekStadiums ? '<section class="panel"><h3>Stadiums this week</h3><p class="mute">The ground your 5-a-side games are played in. Three new ones every week.</p><div class="items wk">' + MG.weekStadiums().map(function(it){
@@ -221,12 +221,14 @@ MG.KINDS.splice(6, 0, ["boot", "Boots"], ["wrap", "Wraps"], ["sticker", "Sticker
 // ---- locker ----
 var stkSlot = 0;
 VIEW.locker = function(tab){
-  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["stadium", "Stadiums"], ["court", "Cages"], ["pre", "Presets"], ["me", "Player"]],
-    list = MG.ITEMS.filter(function(it){ return it.t === t; }), own = list.filter(function(it){ return s.inv[it.id]; }).length, body;
-  list.sort(function(a, b){ return (s.inv[b.id] ? 1 : 0) - (s.inv[a.id] ? 1 : 0) || a.r - b.r; });
+  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["stadium", "Stadiums"], ["court", "Cages"], ["bp", "Blueprints"], ["pre", "Presets"], ["me", "Player"]],
+    all = MG.ITEMS.filter(function(it){ return it.t === t; }), list = all.filter(function(it){ return s.inv[it.id]; }), own = list.length, body;
+  // only what you own is shown, so the locker stays quick however big the catalogue gets
+  list.sort(function(a, b){ return a.r - b.r || (a.n < b.n ? -1 : 1); });
   if (t === "me") body = U.VIEW._editor ? U.VIEW._editor() : "";
   else if (t === "pre") body = presets();
-  else body = (t === "sticker" ? stickerSlots() : "") + '<p class="mute">' + own + ' of ' + list.length + ' collected. Tap an item you own to use it' + (t === "sticker" ? " in the selected slot" : "") + '.</p><div class="items' + (t === "banner" ? " wide" : "") + '">' + list.map(U.itemCard).join("") + '</div>' + (t === "kit" && s.inv.custom ? VIEW._maker() : "");
+  else if (t === "bp") body = MG.bpView ? MG.bpView() : "";
+  else body = (t === "sticker" ? stickerSlots() : "") + '<p class="mute">' + own + ' of ' + all.length + ' collected. Tap one to use it' + (t === "sticker" ? " in the selected slot" : "") + '. Find the rest in the shop, packs and the season pass.</p><div class="items' + (t === "banner" ? " wide" : "") + '">' + list.map(U.itemCard).join("") + '</div>' + (t === "kit" && s.inv.custom ? VIEW._maker() : "");
   return '<div class="lock"><section class="panel prev"><canvas id="pv" width="440" height="560"></canvas><canvas id="pvb" width="140" height="140"></canvas><canvas class="pbn" data-bn="' + s.eq.banner + '" data-live="1" width="360" height="120"></canvas><div class="eq">' +
     ["kit", "wrap", "boot", "ball", "trail", "fx", "emote", "court"].map(function(k){ var it = MG.ITEM[s.eq[k]] || MG.ITEM.home; return '<div><span>' + TYPE[k] + '</span><b style="color:' + RAR(it).c + '">' + it.n + '</b></div>'; }).join("") + '</div></section>' +
     '<div>' + chips(tabs, t, "ltab") + body + '</div></div>';
