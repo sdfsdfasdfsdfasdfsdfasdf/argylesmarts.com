@@ -100,13 +100,13 @@ MG.finish = function(res){
 var claim0 = MG.claim;
 MG.claim = function(id){ var g = claim0(id); if (g) { MG.passAdd(300); MG.save(); } return g; };
 
-// ---- the weekly shop: ten guaranteed items, one Mythic and two Legendary every week ----
+// ---- the weekly shop: ten guaranteed items, three of them Legendary. Anything rarer only comes from the season pass ----
 MG.SHOPP = [400, 700, 1200, 2400, 5000, 10000, 16000, 25000];
-var SLOTS = [5, 4, 4, 3, 3, 3, 2, 2, 1, 1], WS = {w: -1, list: []};
+var SLOTS = [4, 4, 4, 3, 3, 3, 2, 2, 1, 1], WS = {w: -1, list: []};
 MG.weekShop = function(){
   var w = MG.week(), r, pool, used = {}, out = [];
   if (WS.w === w) return WS.list;
-  r = MG.rng(w * 7919 + 13); pool = MG.ITEMS.filter(function(it){ return it.src === "shop" && it.t !== "stadium"; });   // stadiums have their own shelf
+  r = MG.rng(w * 7919 + 13); pool = MG.ITEMS.filter(function(it){ return it.src === "shop" && it.t !== "stadium" && it.t !== "banner" && it.t !== "scene" && it.r <= MG.LEG; });   // stadiums have their own shelf
   SLOTS.forEach(function(q){
     var d, c;
     for (d = 0; d < 8; d++) {
