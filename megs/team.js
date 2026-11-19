@@ -98,7 +98,7 @@ M.step = function(){
   m.control(dt);
   for (i = 0; i < 10; i++) { p = m.p[i]; if (m.ctl[p.tm] === i && m.cfg.human[p.tm]) m.human(p, dt); else m.think(p, dt, 0); }
   for (i = 0; i < 10; i++) m.move(m.p[i], dt, 0);
-  m.collide(); m.contest(dt); m.ball(dt); m.pick();
+  m.collide(); m.crease(); m.contest(dt); m.ball(dt); m.pick();
 };
 M.full = function(){ var m = this, w = m.score[0] > m.score[1] ? 0 : m.score[1] > m.score[0] ? 1 : -1; m.phase = "over"; m.win = w; m.emit("over", {win: w}); };
 
@@ -383,6 +383,22 @@ M.lines = function(){
   }
   if (Math.abs(b.y) > H) m.restart("throw", 1 - (b.lt < 0 ? 0 : b.lt), clamp(b.x, 1, L - 1), b.y > 0 ? H - 0.3 : -H + 0.3);
 };
+// the six-yard box is closed to an outfield player on the ball, so nobody can just walk it past the keeper into the net.
+// bz: 0 clear, 1 close (yellow), 2 at the box (red, "BACK UP!"); bzg: which end
+M.crease = function(){
+  var m = this, b = m.b, p, gx, dx, ay, ex, ey, s, d, z = 0;
+  if (b.own >= 0 && m.phase === "live" && m.p[b.own].role) {
+    p = m.p[b.own]; gx = m.gx(p.tm); s = gx ? -1 : 1; dx = (b.x - gx) * s; ay = Math.abs(b.y);
+    if (dx < 4.5 && ay < SMALL) {
+      ex = 4.5 - dx; ey = SMALL - ay;
+      if (ex <= ey) { p.x += s * ex; b.x += s * ex; if (p.vx * s < 0) p.vx = 0; } else { d = b.y < 0 ? -1 : 1; p.y += d * ey; b.y += d * ey; if (p.vy * d < 0) p.vy = 0; }
+      z = 2;
+    } else { d = Math.hypot(Math.max(0, dx - 4.5), Math.max(0, ay - SMALL)); z = d < 0.08 ? 2 : d < 0.5 ? 1 : 0; }
+    m.bzi = b.own; m.bzg = gx;
+  }
+  if (z === 2) m.bzT = m.t;
+  m.bz = z === 2 || m.t - (m.bzT || -9) < 0.3 ? 2 : z;
+};
 M.netIn = function(){
   var b = this.b, gx = b.net === 2 ? L : 0, s = b.net === 2 ? 1 : -1;
   if ((b.x - gx) * s > GD) { b.x = gx + s * GD; b.vx *= -0.2; this.emit("net", {v: 4}); }
@@ -448,6 +464,9 @@ V.event = function(m, e){
   else if (k === "tackle" || k === "steal") v.pop(b.x, b.y, 2.4, k === "tackle" ? "TACKLE" : "STOLEN", "#d6ff3b", 0);
   else if (k === "block") v.pop(b.x, b.y, 2.4, "BLOCKED", "#ffffff", 0);
   else if (k === "post") { v.pop(b.x, b.y, 2.6, "POST!", "#ffffff", 0); v.shake = 0.2; }
+  else if (k === "over" && e.win >= 0 && m.cfg.human[e.win]) {   // a win: confetti over the winners
+    for (i = 0; i < 220 * v.o.fx; i++) v.parts.push({x: L / 2 + (Math.random() - 0.5) * 50, y: (Math.random() - 0.5) * 30, z: 6 + Math.random() * 6, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, vz: Math.random() * 3, l: 3 + Math.random() * 2, m: 5, c: ["#ffd23b", "#ff4f7a", "#5ee6a8", "#5ee6ff", "#ffffff"][i % 5], s: 0.12});
+  }
   else if (k === "kick" && e.pw > 0.8) { v.shake = Math.max(v.shake, 0.12); for (i = 0; i < 8; i++) v.parts.push({x: b.x, y: b.y, z: 0.1, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, vz: 1 + Math.random() * 2, l: 0.5, m: 0.5, c: "#cfe6c0", s: 0.06}); }
 };
 V.pop = function(x, y, z, txt, col, big){ if (this.o.pops) this.pops.push({x: x, y: y, z: z, txt: txt, col: col, l: big ? 1.6 : 1, m: big ? 1.6 : 1, big: big}); };
@@ -498,6 +517,13 @@ V.pitch = function(){
     v.poly([x0 + d * SPOT - 0.15, -0.15, 0, x0 + d * SPOT + 0.15, -0.15, 0, x0 + d * SPOT + 0.15, 0.15, 0, x0 + d * SPOT - 0.15, 0.15, 0], c);
   });
 };
+V.crease = function(m){
+  var v = this, x0, d;
+  if (!m.bz || m.bzg == null) return;
+  x0 = m.bzg; d = x0 ? -1 : 1;
+  v.poly([x0, -SMALL, 0, x0 + d * 4.5, -SMALL, 0, x0 + d * 4.5, SMALL, 0, x0, SMALL, 0], m.bz === 2 ? "rgba(255,59,74,.3)" : "rgba(255,210,59,.22)");
+  v.line([x0, -SMALL, 0, x0 + d * 4.5, -SMALL, 0, x0 + d * 4.5, SMALL, 0, x0, SMALL, 0], 0.18, m.bz === 2 ? "#ff3b4a" : "#ffd23b");
+};
 V.goalBack = function(x0, d){
   var v = this, g = v.g, i, col = "rgba(240,244,255,.38)", b = x0 + d * GD;
   for (i = 0; i <= 12; i++) v.line([x0, -GW + i * GW / 6, GH, b, -GW + i * GW / 6, GH * 0.8, b, -GW + i * GW / 6, 0], 0.025, col);
@@ -514,7 +540,7 @@ V.draw = function(m, dt){
   c.x += (tx - c.x) * Math.min(1, dt * 2.6); c.y += (ty - c.y) * Math.min(1, dt * 1.8);
   g.setTransform(v.dpr, 0, 0, v.dpr, 0, 0); g.lineCap = g.lineJoin = "round";
   if (v.shake > 0 && v.o.shake) { v.shake -= dt; g.translate((Math.random() - 0.5) * v.shake * 14, (Math.random() - 0.5) * v.shake * 14); }
-  v.back(m); v.pitch();
+  v.back(m); v.pitch(); v.crease(m);
   v.goalBack(L, 1); v.goalBack(0, -1);
   // shadows
   for (i = 0; i < 10; i++) { p = m.p[i]; q = v.pr(p.x, p.y, 0); g.fillStyle = "rgba(0,10,0,.3)"; g.beginPath(); g.ellipse(q.x + q.s * 0.25, q.y, q.s * 0.42, q.s * 0.13, 0, 0, TAU); g.fill(); }
@@ -541,6 +567,10 @@ V.draw = function(m, dt){
   v.goalFront(L); v.goalFront(0);
   // floodlight glow and a soft vignette, like a TV picture
   gr = g.createRadialGradient(v.w / 2, v.h * 0.35, v.h * 0.2, v.w / 2, v.h * 0.5, v.w * 0.75); gr.addColorStop(0, "rgba(255,248,220,.07)"); gr.addColorStop(0.6, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,12,.38)"); g.fillStyle = gr; g.fillRect(0, 0, v.w, v.h);
+  if (m.bz === 2 && m.p[m.bzi] && m.cfg.human[m.p[m.bzi].tm] && m.ctl[m.p[m.bzi].tm] === m.bzi) {
+    p = m.p[m.bzi]; q = v.pr(p.x, p.y, 3.8); s = Math.max(14, q.s * 0.7); g.font = "900 " + Math.round(s) + "px " + R.FONT; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineWidth = Math.max(3, s * 0.2); g.strokeStyle = "rgba(8,9,22,.85)"; g.strokeText("BACK UP!", q.x, q.y); g.fillStyle = "#ff3b4a"; g.fillText("BACK UP!", q.x, q.y);
+  }
   // the player each human is steering: an arrow and a name
   for (k = 0; k < 2; k++) {
     if (!m.cfg.human[k] || m.ctl[k] < 0) continue; p = m.p[m.ctl[k]]; q = v.pr(p.x, p.y, 2.35);
