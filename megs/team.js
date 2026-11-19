@@ -441,7 +441,8 @@ function TV(cv){
 }
 var V = TV.prototype;
 V.resize = function(){
-  var v = this, cv = v.cv, d = Math.min(2, window.devicePixelRatio || 1), w = Math.max(240, cv.clientWidth || 960), h = Math.max(150, cv.clientHeight || 540);
+  // a sharp-enough picture: full retina resolution costs four times the drawing
+  var v = this, cv = v.cv, d = Math.min(1.25, window.devicePixelRatio || 1), w = Math.max(240, cv.clientWidth || 960), h = Math.max(150, cv.clientHeight || 540);
   if (v.w !== w || v.h !== h || v.dpr !== d || cv.width !== Math.round(w * d)) { v.w = w; v.h = h; v.dpr = d; cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
 };
 // o: {sides: [[5 sides], [5 sides]], ball, home (colour for the side's marker), names}
