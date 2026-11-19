@@ -126,7 +126,7 @@ M.human = function(p, dt){
   if (l > 0.12) { p.tx = p.x + x / l * 5; p.ty = p.y + y / l * 5; p.tv = sp * Math.min(1, l); }
   else { p.tx = p.x; p.ty = p.y; p.tv = 0; }
   if (has && (p.act === "" || p.act === "wind")) {
-    if (inp.sh) { if (p.wind < 0) { p.wind = 0; p.act = "wind"; p.at = 0; p.ad = 99; } p.wind += dt; if (p.wind > 3.5) m.shoot(p, m.sweep(p)); }
+    if (inp.sh) { if (p.wind < 0) { p.wind = 0; p.act = "wind"; p.at = 0; p.ad = 99; } p.wind += dt; if (p.wind >= 1.24) m.shoot(p, m.r() * 2 - 1); }   // held through a whole sweep and back: it goes off anywhere
     else if (p.wind >= 0) m.shoot(p, m.sweep(p));
     else if (inp.a && !pr.a) m.pass(p, x, y, 0);
     else if (inp.d && !pr.d) m.pass(p, x, y, 1);
@@ -140,12 +140,16 @@ M.spd = function(p, has){ return (has ? 5.6 : 6.3) * (0.86 + 0.14 * p.sk) * (p.w
 
 // ---- shooting: a marker sweeps across the aim bar while shoot is held; the goal is the green part ----
 M.range = function(p){ var d = hyp(this.gx(p.tm) - this.b.x, this.b.y); return Math.max(GW + 0.8, d * 0.42); };
-M.green = function(p){ return clamp((GW - 0.3) / this.range(p), 0.06, 0.85); };
+// the green zone is small and centred: its middle is a perfect strike, the rest of it a little off the aim, outside it well off
+M.green = function(p){ return clamp(0.55 * (GW - 0.3) / this.range(p), 0.05, 0.4); };
 M.sweep = function(p){ var u; if (p.ai.shotX != null && !(this.cfg.human[p.tm] && this.ctl[p.tm] === p.i)) return p.ai.shotX; u = p.wind / 0.62 % 2; return u < 1 ? -1 + 2 * u : 3 - 2 * u; };
+// where the shooter aims: the corner the stick points to, otherwise the corner further from the keeper
+M.aimY = function(p){ var m = this, k = m.p[(1 - p.tm) * 5], inp = m.inp[p.tm], my = m.cfg.human[p.tm] && m.ctl[p.tm] === p.i && inp ? inp.my || 0 : 0, side = Math.abs(my) > 0.4 ? (my < 0 ? -1 : 1) : (k.y > m.b.y ? -1 : 1); return side * (GW - 0.55); };
+M.dev = function(p, x){ var gw = this.green(p), a = Math.abs(x), s = x < 0 ? -1 : 1; return s * (a <= gw ? 0.5 * Math.pow(a / gw, 1.5) : 0.5 + (a - gw) / (1 - gw) * this.range(p) * 1.1); };
 M.meter = function(p){ return p.wind >= 0 && this.b.own === p.i ? {m: this.sweep(p) * (p.tm ? -1 : 1), gw: this.green(p)} : null; };
-M.target = function(p){ var m = this; return {x: m.gx(p.tm), y: clamp(m.sweep(p) * m.range(p), -H, H), z: 1}; };
+M.target = function(p){ var m = this; return {x: m.gx(p.tm), y: clamp(m.aimY(p) + m.dev(p, m.sweep(p)) * (p.tm ? -1 : 1), -H, H), z: 1}; };
 M.shoot = function(p, sx){
-  var m = this, b = m.b, r = m.r, gx = m.gx(p.tm), gw = m.green(p), q = Math.abs(sx) >= gw * 0.62 && Math.abs(sx) <= gw * 0.96 ? 2 : Math.abs(sx) <= gw ? 1 : 0, ty = sx * m.range(p), d = hyp(gx - b.x, ty - b.y),
+  var m = this, b = m.b, r = m.r, gx = m.gx(p.tm), gw = m.green(p), q = Math.abs(sx) <= gw * 0.3 ? 2 : Math.abs(sx) <= gw ? 1 : 0, ty = m.aimY(p) + m.dev(p, sx) * (p.tm ? -1 : 1), d = hyp(gx - b.x, ty - b.y),
     v = (21 + 4 * p.sk) * (q === 2 ? 1.12 : 1), T, tz = 0.35 + r() * 1.25, err = (q === 2 ? 0.004 : 0.01 + 0.03 * (1 - p.sk)) * (q ? 1 : 1.6), a;
   if (q === 2) tz = 0.5 + r() * 1.3;
   a = Math.atan2(ty - b.y, gx - b.x) + gauss(r) * err; T = d / v;
@@ -205,7 +209,7 @@ M.think = function(p, dt, frozen){
     d = hyp(gx - b.x, b.y); o = m.nearOpp(p, b.x, b.y);
     if (a.must) { a.must = 0; if (m.pass(p, 0, 0, 0)) return; }
     if (d < 13 + 10 * sk && Math.abs(b.y) < 16 && (d < 10 || m.lane(p) > 1.1 || m.r() < 0.05) && m.r() < (1.8 + 3 * sk) * dt * (d < 13 ? 3 : 1)) {
-      a.shotX = clamp((m.p[(1 - p.tm) * 5].y > b.y ? -1 : 1) * m.green(p) * (0.45 + 0.35 * m.r()) + gauss(m.r) * (0.12 + 0.4 * (1 - sk)), -1, 1);
+      a.shotX = clamp(gauss(m.r) * (m.green(p) * 0.45 + 0.4 * (1 - sk)), -1, 1);
       a.rel = 0.25 + m.r() * 0.2; p.wind = 0; p.act = "wind"; p.at = 0; p.ad = 99; return;
     }
     if (a.t <= 0) {
@@ -592,8 +596,8 @@ V.bar = function(m, p){
   var v = this, g = v.g, q = m.meter(p), Wd = 140, hh = 12, a = v.pr(p.x, p.y, 2.6), x = clamp(a.x - Wd / 2, 6, v.w - Wd - 6), y = Math.max(8, a.y - 34), gw = q.gw, mm = q.m, cb = v.o.cb;
   g.fillStyle = "rgba(8,9,22,.85)"; g.fillRect(x - 3, y - 3, Wd + 6, hh + 6); g.fillStyle = "#a8323e"; g.fillRect(x, y, Wd, hh);
   g.fillStyle = cb ? "#2f7fe0" : "#27b36f"; g.fillRect(x + Wd / 2 * (1 - gw), y, Wd * gw, hh);
-  // perfect strikes are the strips just inside each post; the dark tick is where the keeper stands
-  g.fillStyle = cb ? "#d7ecff" : "#b9ffdc"; g.fillRect(x + Wd / 2 * (1 - gw * 0.96), y, Wd / 2 * gw * 0.34, hh); g.fillRect(x + Wd / 2 * (1 + gw * 0.62), y, Wd / 2 * gw * 0.34, hh);
+  // the perfect strike is the bright middle of the green; the dark tick is where the keeper stands
+  g.fillStyle = cb ? "#d7ecff" : "#b9ffdc"; g.fillRect(x + Wd / 2 * (1 - gw * 0.3), y, Wd * gw * 0.3, hh);
   a = m.p[(1 - p.tm) * 5].y / m.range(p) * (p.tm ? -1 : 1); g.fillStyle = "rgba(8,9,22,.85)"; g.fillRect(x + Wd / 2 * (1 + clamp(a, -1, 1)) - 2, y - 2, 4, hh + 4);
   g.fillStyle = "#fff"; g.fillRect(x + Wd / 2 * (1 - gw) - 1, y - 3, 2, hh + 6); g.fillRect(x + Wd / 2 * (1 + gw) - 1, y - 3, 2, hh + 6);
   a = x + Wd / 2 * (1 + clamp(mm, -1, 1)); g.fillStyle = "rgba(8,9,22,.9)"; g.fillRect(a - 4, y - 6, 8, hh + 12); g.fillStyle = "#fff"; g.fillRect(a - 2.5, y - 5, 5, hh + 10);
