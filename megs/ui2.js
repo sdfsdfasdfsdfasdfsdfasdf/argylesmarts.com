@@ -75,8 +75,8 @@ setInterval(MG.music, 1500);
 var home0 = VIEW.home;
 VIEW.home = function(){
   var s = S(), cs = MG.campStars(), pt = MG.passTier(), rd = MG.passReady(), h = home0(), card;
-  card = '<div class="season"><button class="sbig camp" data-a="go" data-v="campaign"><span class="kick">Campaign</span><b>Road to the Galaxy Cup</b><span>' + cs + ' of 108 stars &middot; 6 chapters of 5-a-side</span>' + ic("trophy") + '</button>' +
-    '<button class="sbig team" data-a="go" data-v="team"><span class="kick">New</span><b>5-a-side</b><span>A full-size pitch, four team-mates, two halves</span>' + ic("users") + '</button>' +
+  card = '<div class="season"><button class="sbig camp" data-a="go" data-v="campaign"><span class="kick">Campaign</span><b>Road to the Galaxy Cup</b><span>' + cs + ' of 108 stars &middot; 6 chapters of 5v5</span>' + ic("trophy") + '</button>' +
+    '<button class="sbig team" data-a="go" data-v="team"><span class="kick">New</span><b>5v5</b><span>A full-size pitch, four team-mates, two halves</span>' + ic("users") + '</button>' +
     '<button class="sbig pass" data-a="go" data-v="pass"><span class="kick">Season ' + MG.SEASON.n + ': ' + MG.SEASON.name + '</span><b>Season Pass</b><span>Tier ' + pt + ' of 50' + (rd ? ' &middot; <i class="hot">' + rd + ' to claim</i>' : "") + '</span><span class="bar"><i style="width:' + Math.round((MG.pass().xp % MG.PASS_XP) / MG.PASS_XP * 100) + '%"></i></span>' + ic("star") + '</button>' +
     '<button class="sbig online" data-a="online"><span class="kick">Coming soon</span><b>Online</b><span>Play real people. Pick your position now: ' + ({gk: "Keeper", def: "Defender", fwd: "Striker"}[s.pos] || "Anywhere") + '</span>' + ic("bolt") + '</button></div>';
   h = h.replace('<div class="modes">', card + '<div class="modes">').replace('1v1 cage football</span>', 'Season ' + MG.SEASON.n + ': ' + MG.SEASON.name + '</span>');
@@ -91,7 +91,7 @@ function weeklyPanel(){
   }).join("") + '<p class="mute">New challenges every Monday.</p></section>';
 }
 ACT.wclaim = function(d){ var x = MG.weekClaim(d.id); if (x) { MG.sfx("coin"); toast("+" + x + " season pass XP"); } go(U.cur(), U.arg()); };
-ACT.online = function(){ modal('<h2>Online is coming soon</h2><p>Matches against real people are on the way. Until then every match, lobby and leaderboard in Megs is played by computer players.</p><div class="row center"><button class="btn" data-a="go" data-v="team">Play 5-a-side</button><button class="btn ghost" data-a="close">Close</button></div>'); };
+ACT.online = function(){ modal('<h2>Online is coming soon</h2><p>Matches against real people are on the way. Until then every match, lobby and leaderboard in Megs is played by computer players.</p><div class="row center"><button class="btn" data-a="go" data-v="team">Play 5v5</button><button class="btn ghost" data-a="close">Close</button></div>'); };
 
 // ---- 5-a-side matches ----
 MG.ITEM.gk_a = {id: "gk_a", t: "kit", r: 0, p: "fade", c: ["#ffd23b", "#17171c", "#17171c"], num: 1};
@@ -126,7 +126,7 @@ function teamGo(o){
 }
 MG.teamGo = teamGo;
 VIEW.team = function(){
-  return head("5-a-side", "Five a side on a full-size pitch with two halves. You steer whoever is nearest the ball; your team-mates and the other side are computer players.") +
+  return head("5v5", "Five against five on a full-size pitch with two halves. You steer whoever is nearest the ball; your team-mates and the other side are computer players.") +
     '<div class="cols"><section class="panel"><h3>Opponent strength</h3>' + chips(TEAMLV, tset.lv, "tlv") + '<h3>Half length</h3>' + chips([["90", "1.5 min"], ["150", "2.5 min"], ["240", "4 min"], ["360", "6 min"]], tset.half, "thalf") +
     '<div class="row"><button class="btn big" data-a="teamPlay">' + ic("play") + 'Kick off</button></div></section>' + controls() + '</div>';
 };
@@ -136,7 +136,7 @@ function controls(){
 }
 ACT.tlv = function(d){ tset.lv = d.id; go("team"); };
 ACT.thalf = function(d){ tset.half = d.id; go("team"); };
-ACT.teamPlay = function(){ var f = randClub(+tset.lv); teamGo({name: "5-a-side", sub: "Two halves of " + Math.round(+tset.half / 60 * 10) / 10 + " minutes", foe: f, half: +tset.half, mate: 6.5, back: "team"}); };
+ACT.teamPlay = function(){ var f = randClub(+tset.lv); teamGo({name: "5v5", sub: "Two halves of " + Math.round(+tset.half / 60 * 10) / 10 + " minutes", foe: f, half: +tset.half, mate: 6.5, back: "team"}); };
 
 // ---- the result of a team match ----
 VIEW.tres = function(a){
@@ -157,7 +157,7 @@ U.nav.tres = "home"; U.nav.team = "home"; U.nav.campaign = "home";
 // ---- campaign ----
 VIEW.campaign = function(){
   var cp = MG.camp();
-  return head("Campaign", "Six chapters, thirty-six clubs, 5-a-side on the big pitch. Earn up to three stars a match and a unique kit for every chapter.") + MG.CAMP.map(function(ch, c){
+  return head("Campaign", "Six chapters, thirty-six clubs, 5v5 on the big pitch. Earn up to three stars a match and a unique kit for every chapter.") + MG.CAMP.map(function(ch, c){
     var open = MG.campOpen(c, 0), rw = MG.ITEM[ch.reward], got = S().inv[ch.reward], n = 0;
     ch.m.forEach(function(x){ n += cp[x.id] || 0; });
     return '<section class="panel chap' + (open ? "" : " off") + '"><div class="chh"><div><span class="kick">Chapter ' + (c + 1) + '</span><h2>' + ch.n + '</h2><p class="mute">' + ch.d + '</p><p>' + n + ' / 18 ' + star(1) + '</p></div><div class="rwd">' + U.vis(rw, "") + '<small>' + (got ? "Won: " : "Win the chapter for: ") + '<b style="color:' + MG.RAR[rw.r].c + '">' + rw.n + '</b></small></div></div><div class="cm">' +
@@ -208,7 +208,7 @@ VIEW.shop = function(){
   return '<section class="panel"><h3>This week&#39;s shop <small>resets in ' + left + (left === 1 ? " day" : " days") + '</small></h3><p class="mute">Ten items you can buy outright, no packs. Three Legendary every week.</p><div class="items wk">' + MG.weekShop().filter(function(it){ return it.t !== "stadium"; }).map(function(it){
     var p = MG.shopPrice(it);
     return '<div class="shopi">' + U.itemCard(it) + '<small class="ty">' + TYPE[it.t] + '</small>' + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="wbuy" data-id="' + it.id + '"' + (s.coins < p ? " disabled" : "") + '>' + coin(p) + '</button>') + '</div>';
-  }).join("") + '</div></section>' + (MG.weekStadiums ? '<section class="panel"><h3>Stadiums this week</h3><p class="mute">The ground your 5-a-side games are played in. Three new ones every week.</p><div class="items wk">' + MG.weekStadiums().map(function(it){
+  }).join("") + '</div></section>' + (MG.weekStadiums ? '<section class="panel"><h3>Stadiums this week</h3><p class="mute">The ground your 5v5 games are played in. Three new ones every week.</p><div class="items wk">' + MG.weekStadiums().map(function(it){
     var p = MG.shopPrice(it);
     return '<div class="shopi">' + U.itemCard(it) + '<small class="ty">Stadium</small>' + (s.inv[it.id] ? '<span class="mute">Owned</span>' : '<button class="btn gold sm" data-a="wbuy" data-id="' + it.id + '"' + (s.coins < p ? " disabled" : "") + '>' + coin(p) + '</button>') + '</div>';
   }).join("") + '</div></section>' : "") +
