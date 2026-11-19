@@ -511,7 +511,7 @@ M.step = function(){
   fl = m.L && m.off === 1; if (fl) m.flip();
   if (live) for (i = 0; i < 2; i++) { p = m.p[i]; if (p.ai) think(m, p); m.press(p); }
   for (i = 0; i < 2; i++) m.move(m.p[i], dt, !live);
-  m.collide(); if (fl) m.flip();
+  m.collide(); m.crease(); if (fl) m.flip();
   m.ball(dt);
   for (i = 0; i < 2; i++) cp(m.p[i].prev, m.p[i].inp);
   if (m.phase === "live") {
@@ -533,6 +533,23 @@ M.step = function(){
   }
   else if (m.phase === "goal") { if (m.pt > 2.4) { if (m.win >= 0) { m.phase = "over"; m.emit("over", {win: m.win}); } else m.check(m.next); } }
   else if (m.phase === "dead") { if (m.pt > 1.3) m.check(m.next); }
+};
+
+// the box in front of the goal is closed to whoever has the ball, so nobody can just walk it into the net.
+// bz: 0 clear, 1 close to the box (yellow), 2 at the box (red, "BACK UP!"). Runs while the attacker's goal is at y = 0.
+M.crease = function(){
+  var m = this, b = m.b, p, x, ex, ey, s, d, z = 0;
+  if (b.own >= 0 && m.phase === "live") {
+    p = m.p[b.own]; x = Math.abs(b.x);
+    if (x < 3.2 && b.y < 2.4) {
+      ex = 3.2 - x; ey = 2.4 - b.y;
+      if (ey <= ex) { p.y += ey; b.y += ey; if (p.vy < 0) p.vy = 0; } else { s = b.x < 0 ? -1 : 1; p.x += s * ex; b.x += s * ex; if (p.vx * s < 0) p.vx = 0; }
+      z = 2;
+    } else { d = Math.hypot(Math.max(0, x - 3.2), Math.max(0, b.y - 2.4)); z = d < 0.06 ? 2 : d < 0.4 ? 1 : 0; }
+    m.bzi = b.own;
+  }
+  if (z === 2) m.bzT = m.t;
+  m.bz = z === 2 || m.t - (m.bzT || -9) < 0.3 ? 2 : z;   // red holds a moment so it does not flicker
 };
 
 // ---- rival AI: it only presses the same buttons a player has ----
@@ -599,7 +616,7 @@ function think(m, p){
         else if (p.stam > 0.3) inp.c = 1;
       }
     }
-    tx = clamp(p.x * 0.3, -1, 1) - p.x; ty = (m.cfg.far ? 9.4 : 1.8) - p.y; u = hyp(tx, ty) || 1; tx /= u; ty /= u;
+    tx = clamp(p.x * 0.3, -1, 1) - p.x; ty = (m.cfg.far ? 9.4 : 3) - p.y; u = hyp(tx, ty) || 1; tx /= u; ty /= u;
     if (dd < 2.7 && o.y < p.y + 0.3 && !down) { qx = -ty * a.side; ty = ty * 0.5 + tx * a.side * 0.9; tx = tx * 0.5 + qx * 0.9; u = hyp(tx, ty) || 1; tx /= u; ty /= u; }
     inp.mx = tx; inp.my = ty; inp.sp = (down || o.y > p.y || (m.cfg.sc && m.sc < 4)) && p.en > 0.35 ? 1 : 0;
     return;
