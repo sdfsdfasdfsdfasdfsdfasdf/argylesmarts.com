@@ -120,6 +120,11 @@ canvas.big{width:170px;max-width:60%;aspect-ratio:3/4;margin:.4rem auto;display:
 .it.hi,.rc.hi{animation:hi 2.2s ease-in-out infinite alternate}
 @keyframes hi{from{box-shadow:0 0 10px -4px var(--r)}to{box-shadow:0 0 22px 0 var(--r)}}
 .it.hi.on{animation:none}
+.bpb{display:inline-flex;gap:3px;vertical-align:middle}.bpb i{width:14px;height:8px;border-radius:3px;background:#2a2d55}.bpb i.on{background:#f4f6ff;box-shadow:0 0 6px #b9d6ff}
+.bpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.5rem;margin-top:.6rem}.bpi{background:#1b1e3a;border:2px solid var(--r);border-radius:12px;padding:.55rem;color:#f2f2f7;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:.3rem}.bpi small{color:#9aa0c8}.bpi.own{opacity:.6}.bpst{margin:.6rem 0}.pkw{max-height:220px;overflow:auto}
+.items .it.hi,.items .rc.hi{animation:none;box-shadow:0 0 14px -4px var(--r)}
+/* shop cards: every item the same size whatever its picture */
+.shopi .it{flex:1;display:flex;flex-direction:column;align-items:center}.shopi .it canvas,.shopi .it .sw{width:100%!important;height:auto!important;aspect-ratio:3/4!important;object-fit:contain;border-radius:10px;background:#15172e}.shopi .it .n{min-height:2.5em;display:flex;align-items:center;justify-content:center;line-height:1.2}
 .reel{position:relative;overflow:hidden;border:1px solid #22243f;border-radius:12px;background:#0c0d1c;margin:.5rem 0 .2rem;height:118px}
 .reel>i{position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:#ffd23b;box-shadow:0 0 12px #ffd23b;z-index:2}
 .reel:before,.reel:after{content:"";position:absolute;top:0;bottom:0;width:70px;z-index:1;pointer-events:none}
@@ -448,18 +453,19 @@ kbd{display:inline-block;font:inherit;font-weight:800;font-size:.8em;background:
 <div id="modal" hidden></div>
 <div id="toasts"></div>
 
-<script src="engine.js?v=9"></script>
+<script src="engine.js?v=10"></script>
 <script src="data.js?v=8"></script>
-<script src="render.js?v=9"></script>
+<script src="render.js?v=10"></script>
 <script src="cosm.js?v=9"></script>
-<script src="body.js?v=9"></script>
-<script src="meta.js?v=10"></script>
-<script src="season.js?v=9"></script>
-<script src="team.js?v=9"></script>
+<script src="body.js?v=10"></script>
+<script src="meta.js?v=11"></script>
+<script src="season.js?v=10"></script>
+<script src="team.js?v=10"></script>
 <script src="play.js?v=9"></script>
-<script src="ui.js?v=9"></script>
-<script src="ui2.js?v=9"></script>
-<script src="scene.js?v=8"></script>
-<script src="stadium.js?v=1"></script>
+<script src="ui.js?v=10"></script>
+<script src="ui2.js?v=10"></script>
+<script src="scene.js?v=9"></script>
+<script src="stadium.js?v=2"></script>
+<script src="rules.js?v=1"></script>
 </body>
 </html>
