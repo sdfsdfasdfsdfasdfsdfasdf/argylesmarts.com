@@ -76,7 +76,9 @@ function frame(A, B, ra, rb){ var dx = B.x - A.x, dy = B.y - A.y, l = hyp(dx, dy
 function patOf(g, src){ var m = src._pm || (src._pm = []), i, p; for (i = 0; i < m.length; i++) if (m[i][0] === g) return m[i][1]; p = g.createPattern(src, "repeat"); m.push([g, p]); if (m.length > 30) m.shift(); return p; }
 // the cloth of a kit: the lower part of the shirt texture, below the crest and number, repeated along a sleeve or a leg
 function clothOf(sd){ var t = sd.tex[0], c, x; if (t._cl) return t._cl; c = document.createElement("canvas"); c.width = 80; c.height = 50; x = c.getContext("2d"); x.drawImage(t, 0, 50, 80, 50, 0, 0, 80, 50); return t._cl = c; }
+// R.LO: low detail for players drawn small (the 5v5 pitch): no shading or cloth patterns, which are most of the cost
 function shadeLimb(g, A, F){
+  if (R.LO) return;
   var gr = g.createLinearGradient(A.x - F.nx * F.r, A.y - F.ny * F.r, A.x + F.nx * F.r, A.y + F.ny * F.r);
   gr.addColorStop(0, "rgba(0,0,14,.32)"); gr.addColorStop(0.3, "rgba(255,255,255,.12)"); gr.addColorStop(0.55, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,14,.36)");
   g.fillStyle = gr; g.fill();
@@ -92,6 +94,7 @@ function solid(g, A, B, ra, rb, col){ capsule(g, A, B, ra, rb); g.lineWidth = 2;
 function garment(g, A, B, ra, rb, o){
   var F = frame(A, B, ra, rb), k, p, i, b, x0, x1, w;
   capsule(g, A, B, ra, rb); g.lineWidth = 2.2; g.strokeStyle = OUT; g.stroke(); g.fillStyle = o.c; g.fill();
+  if (R.LO) return;
   g.save(); g.clip();
   if (o.pat) { k = 2 * F.r / 40; p = patOf(g, o.pat); if (p && p.setTransform) { p.setTransform(new DOMMatrix([F.nx * k, F.ny * k, F.ux * k, F.uy * k, A.x - F.nx * (F.r + k * (o.off || 0)), A.y - F.ny * (F.r + k * (o.off || 0))])); g.fillStyle = p; g.fillRect(Math.min(A.x, B.x) - F.r * 2, Math.min(A.y, B.y) - F.r * 2, Math.abs(B.x - A.x) + F.r * 4, Math.abs(B.y - A.y) + F.r * 4); } }
   if (o.mat && R.mat) { g.save(); g.transform(F.nx * 2 * F.r / 80, F.ny * 2 * F.r / 80, F.ux * F.l / 100, F.uy * F.l / 100, A.x - F.nx * F.r, A.y - F.ny * F.r); R.mat(g, o.mat, o.t); g.restore(); }
@@ -186,7 +189,7 @@ function head2(g, F, H3, HD, layer){
     if (st === "flat") vols.push({d: HD.d - RH * 0.1, f: function(){ var c = [], top = [], a, b, u; for (a = -1; a <= 1; a += 2) for (b = -1; b <= 1; b += 2) for (u = 0; u < 2; u++) { (u ? top : c).push(lp(a * 0.8, b * 0.8, u ? 1.08 : 0.4)); } poly(g, hull(c.concat(top))); g.lineWidth = 1.8; g.strokeStyle = OUT; g.stroke(); hairFill(); poly(g, hull(top)); g.fillStyle = "rgba(0,0,0,.12)"; g.fill(); }});
     if (st === "pony") { p = [sp(PI, 0.32, 1.02)]; for (i = 1; i < 5; i++) p.push(lp(-1.05 - i * 0.12, 0.08 * Math.sin(t * 3.5 - i), 0.32 - i * 0.42)); chain(p, r * 0.24, r * 0.12, 1); }
     if (st === "braids") [-1, 1].forEach(function(k){ var q = [sp(k * 1.95, -0.05, 1.0)], i; for (i = 1; i < 6; i++) q.push(lp(-0.25 + i * 0.07, k * (0.95 + i * 0.02), -0.15 - i * 0.36)); chain(q, r * 0.2, r * 0.13, 1); });
-    if (st === "long") hang.push({d: HD.d + RH * 0.7, f: function(){
+    if (st === "long") hang.push({d: lp(-1.05, 0, -1.1).d - HD.d < -0.3 * RH ? lp(-1.05, 0, -1.1).d : HD.d + RH * 0.7, f: function(){   // seen from behind it hangs over the shirt; otherwise it stays behind the head
       var top = [], bot = [], a, i, th;
       for (i = 0; i <= 12; i++) { th = lerp(PI / 2 - 0.45, PI * 1.5 + 0.45, i / 12); top.push(sp(th, 0.05, 1.05)); bot.push(P(H3[0] + Math.cos(th) * RH * 1.12, H3[1] + Math.sin(th) * RH * 1.18, H3[2] - RH * (2.6 + 0.15 * Math.cos(th * 3)))); }
       poly(g, top.concat(bot.reverse())); g.lineWidth = 2; g.strokeStyle = OUT; g.stroke(); hairFill();
