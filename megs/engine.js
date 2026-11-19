@@ -117,7 +117,7 @@ M.flip = function(){
 // run f with the attacked goal at the origin
 M.af = function(f){ var m = this, fl = m.L && m.off === 1, r; if (fl) m.flip(); r = f(); if (fl) m.flip(); return r; };
 // where a wound-up shot is aimed, in pitch coordinates
-M.target = function(p){ var m = this, fl = m.L && m.off === 1, x = m.af(function(){ return clamp(m.sweep(p) * m.range(), -W + 0.3, W - 0.3); }); return {x: fl ? -x : x, y: fl ? m.L : 0, z: p.aimH > 0 ? 1.45 : p.aimH < 0 ? 0.22 : 0.9}; };
+M.target = function(p){ var m = this, fl = m.L && m.off === 1, x = m.af(function(){ return clamp(m.aim(p, p.aimX) + m.dev(p, m.sweep(p)), -W + 0.3, W - 0.3); }); return {x: fl ? -x : x, y: fl ? m.L : 0, z: p.aimH > 0 ? 1.45 : p.aimH < 0 ? 0.22 : 0.9}; };
 // check ball: attacker at the top with the ball, defender between it and the goal
 M.check = function(att){
   var m = this, b = m.b, a = m.p[att], d = m.p[1 - att], i, p;
@@ -138,12 +138,16 @@ M.pressure = function(p){
   if (o.act === "jump" || o.jock) pr = Math.min(1, pr * 1.2);
   return pr;
 };
-// half width of the green zone on the shot meter
-// the aim bar. While shoot is held a marker sweeps left and right; where it stops is where the ball goes.
-// The bar covers a fixed angle, so the goal (the green part) fills less of it the further out you are.
+// the shot meter. You aim with the stick (a corner, or the open side if you hold nothing); while shoot is held a marker
+// sweeps across the bar, and where you let go decides how far the ball strays from your aim: the middle of the small green
+// zone is spot on, the rest of the green a little off, outside it a lot. If the marker goes all the way across and back
+// without you letting go, the shot goes off on its own, anywhere.
 M.range = function(){ var b = this.b; return Math.max(1.9, hyp(b.x, b.y) * 0.45); };   // metres either side of the middle of the goal
-M.green = function(p){ return clamp((GW - 0.22) / this.range(), 0.06, 0.8); };
-M.sweep = function(p){ var u = p.wind / (0.66 * (1 + 0.035 * (p.st.shot - 5))) % 2; if (p.ai && p.ai.shotX != null) return p.ai.shotX; return u < 1 ? -1 + 2 * u : 3 - 2 * u; };
+M.green = function(p){ return clamp(0.55 * (GW - 0.22) / this.range(), 0.05, 0.4); };
+M.per = function(p){ return 0.66 * (1 + 0.035 * (p.st.shot - 5)); };   // one sweep across the bar
+M.sweep = function(p){ var u = p.wind / this.per(p) % 2; if (p.forceX != null) return p.forceX; if (p.ai && p.ai.shotX != null) return p.ai.shotX; return u < 1 ? -1 + 2 * u : 3 - 2 * u; };
+// how far (metres, across the goal) the ball strays from the aim for a release at x on the bar
+M.dev = function(p, x){ var gw = this.green(p), a = Math.abs(x), s = x < 0 ? -1 : 1; return s * (a <= gw ? 0.34 * Math.pow(a / gw, 1.5) : 0.34 + (a - gw) / (1 - gw) * this.range() * 1.1); };
 M.meter = function(p){ var m = this, fl = m.L && m.off === 1; return p.act === "wind" ? m.af(function(){ return {m: (fl ? -1 : 1) * m.sweep(p), gw: m.green(p)}; }) : null; };
 // where a shot goes: the corner you hold, otherwise the side the defender leaves open
 M.aim = function(p, ax){
@@ -153,14 +157,14 @@ M.aim = function(p, ax){
   return clamp(-b.x * 0.1, -0.6, 0.6);
 };
 M.shoot = function(p, w){
-  var m = this, b = m.b, r = m.r, c = m.cfg, x = m.sweep(p), gw = m.green(p), ae = Math.abs(x), q = ae <= gw * 0.35 ? 2 : ae <= gw ? 1 : 0, mm = (m.L && m.off === 1 ? -1 : 1) * x;
-  var sig = 0.004 + 0.02 * m.pressure(p), h = p.aimH, tx = clamp(x * m.range(), -W + 0.3, W - 0.3), pw = (0.9 + 0.02 * p.st.power) * (q === 2 ? 1.07 : 1);
+  var m = this, b = m.b, r = m.r, c = m.cfg, x = m.sweep(p), gw = m.green(p), ae = Math.abs(x), q = ae <= gw * 0.3 ? 2 : ae <= gw ? 1 : 0, mm = (m.L && m.off === 1 ? -1 : 1) * x;
+  var sig = 0.004 + 0.02 * m.pressure(p), h = p.aimH, tx = clamp(m.aim(p, p.aimX) + m.dev(p, x), -W + 0.3, W - 0.3), pw = (0.9 + 0.02 * p.st.power) * (q === 2 ? 1.07 : 1);
   var spd = (h < 0 ? 22 : 19.5) * pw * c.pw, tz = h > 0 ? 1.45 : h < 0 ? 0.22 : 0.85 + r() * 0.2, spin = 0;
   var v = solve(b.x, b.y, BR, tx, tz, spd, h > 0, spin, 9.8 * c.grav), yaw = gauss(r) * sig, el = gauss(r) * sig * 0.7, ke = 1;
   var cs = Math.cos(yaw), sn = Math.sin(yaw), vx = v.vx * cs - v.vy * sn, vy = v.vx * sn + v.vy * cs, vh = hyp(vx, vy) || 1, nh = (vh * Math.cos(el) - v.vz * Math.sin(el)) * ke / vh;
   b.own = -1; b.last = p.i; b.nop[p.i] = 0.3; b.z = BR + 0.02; b.vx = vx * nh; b.vy = vy * nh; b.vz = (vh * Math.sin(el) + v.vz * Math.cos(el)) * ke; b.spin = spin;
   b.shot = {by: p.i, two: c.two && hyp(b.x, b.y) > ARC, q: q, megs: 0, hit: "", blk: 0};
-  p.wind = -1; act(p, "kick", 0.24); p.rel = {m: mm, gw: gw, q: q, t: m.t};
+  p.wind = -1; p.forceX = null; act(p, "kick", 0.24); p.rel = {m: mm, gw: gw, q: q, t: m.t};
   p.stats.shots++; if (q) p.stats.green++; if (q === 2) p.stats.perfect++;
   m.emit("kick", {by: p.i, q: q, pw: spd, h: h});
 };
@@ -326,7 +330,7 @@ M.move = function(p, dt, frz){
       else {
         p.wind += dt; tvx *= 0.12; tvy *= 0.12;
         p.aimX = mx > 0.4 ? 1 : mx < -0.4 ? -1 : 0; p.aimH = my < -0.4 ? 1 : my > 0.4 ? -1 : 0;
-        if (p.wind >= 3.2) m.shoot(p, p.wind);
+        if (p.wind >= 2 * m.per(p)) { p.forceX = m.r() * 2 - 1; m.shoot(p, p.wind); }   // held through a whole sweep and back: it goes off anywhere
       }
     }
     else if (a === "cut") { if (p.at < 0.16) { tvx = p.ax * 7.4 * p.cb; tvy = p.ay * 7.4 * p.cb; acc = 90; } }
@@ -602,7 +606,7 @@ function think(m, p){
     else if (p.act === "") {
       need = 0.66 - 0.16 * a.t + (dd < 1.9 && !down ? 0.35 * a.skill : 0);   // a close defender can still spread and block
       if ((ln.c > need && (m.cfg.far ? d > ARC + 0.3 && d < 11.5 : d < a.range && (d < 6.2 || r() < 1.2 * DT))) || (m.cfg.sc && m.sc < 1.5) || (down && d < 8.5 && ln.c > 0.45)) {
-        a.aimX = ln.s; a.aimH = dd < 2.4 && ln.c < need && d > 3.5 ? 1 : r() < 0.3 ? -1 : 0; a.rel = 0.3 + r() * 0.25; a.shotX = clamp(ln.s * m.green(p) * 0.62 + gauss(r) * (0.05 + a.err * 2.4), -1, 1); inp.sh = 1; return;
+        a.aimX = ln.s; a.aimH = dd < 2.4 && ln.c < need && d > 3.5 ? 1 : r() < 0.3 ? -1 : 0; a.rel = 0.3 + r() * 0.25; a.shotX = clamp(gauss(r) * (m.green(p) * 0.45 + a.err * 2.4), -1, 1); inp.sh = 1; return;
       }
       if (a.fk && t > a.fk) { a.fk = 0; if (o.act === "jump" || o.act === "lunge") inp.c = 1; }
       else if (dd < 1.5 && o.act === "tackle" && o.at < 0.06 && r() < a.skill * 0.8) { if (a.lv >= 3 && r() < 0.3) inp.d = 1; else inp.a = 1; }
