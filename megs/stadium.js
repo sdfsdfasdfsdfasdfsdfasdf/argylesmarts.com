@@ -267,6 +267,50 @@ R.stadPreview = function(c, id, t){
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); g.drawImage(PV.cv, 0, 0);
 };
 
+// ---- the home screen backdrop: your stadium from pitch level at night, with moving lights over it ----
+// the stadium itself is drawn into a cached picture a few times a second; the lights, beams and flashes move every frame
+var HS = null;
+R.homeStadium = function(g, w, h, t, id){
+  var c, v, gr, i, x, y, k, r, a, T;
+  if (!HS) { c = document.createElement("canvas"); HS = {cv: c, v: new MG.TeamView(c), t: -9, w: 0, h: 0, id: ""}; }
+  id = id || (MG.S && MG.S.eq && MG.S.eq.stadium) || "sd_classic"; T = BY[id] && BY[id].t === "stadium" ? BY[id] : BY.sd_classic;
+  v = HS.v;
+  if (HS.w !== w || HS.h !== h || HS.id !== T.id || t - HS.t > 0.35) {
+    if (HS.cv.width !== Math.round(w) || HS.cv.height !== Math.round(h)) { HS.cv.width = Math.round(w); HS.cv.height = Math.round(h); }
+    v.w = w; v.h = h; v.dpr = 1; v.stad = T.id; v.t = t; v.cheer = 0.14 + 0.12 * Math.sin(t * 0.7);
+    v.cam = {x: L / 2, y: H + 19, z: 4.2, a: 0.075, f: 1150 * Math.max(0.75, h / w * 1.2)};
+    v.g.setTransform(1, 0, 0, 1, 0, 0); v.g.lineCap = v.g.lineJoin = "round";
+    v.back(null); v.pitch(); v.goalBack(L, 1); v.goalBack(0, -1); v.goalFront(L); v.goalFront(0);
+    HS.w = w; HS.h = h; HS.id = T.id; HS.t = t;
+  }
+  g.drawImage(HS.cv, 0, 0, w, h);
+  // sweeping floodlight beams from the corners
+  g.save(); g.globalCompositeOperation = "lighter";
+  [[0.06, 1], [0.94, -1], [0.3, 1], [0.7, -1]].forEach(function(b, j){
+    x = w * b[0]; y = h * 0.05; a = Math.PI / 2 + b[1] * (0.35 + 0.22 * Math.sin(t * 0.33 + j * 1.7));
+    gr = g.createLinearGradient(x, y, x + Math.cos(a) * h, y + Math.sin(a) * h); gr.addColorStop(0, "rgba(255,248,225," + (T.day ? 0.08 : 0.18) + ")"); gr.addColorStop(1, "rgba(255,248,225,0)");
+    g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a - 0.09) * h * 1.3, y + Math.sin(a - 0.09) * h * 1.3); g.lineTo(x + Math.cos(a + 0.09) * h * 1.3, y + Math.sin(a + 0.09) * h * 1.3); g.fill();
+  });
+  // lens flares where the lights are, gently breathing
+  [0.06, 0.3, 0.7, 0.94].forEach(function(fx, j){
+    x = w * fx; y = h * 0.05; k = 0.75 + 0.25 * Math.sin(t * 1.3 + j);
+    gr = g.createRadialGradient(x, y, 0, x, y, h * 0.16 * k); gr.addColorStop(0, "rgba(255,250,235,.55)"); gr.addColorStop(0.25, "rgba(255,240,200,.16)"); gr.addColorStop(1, "rgba(255,240,200,0)");
+    g.fillStyle = gr; g.fillRect(x - h * 0.2, y - h * 0.2, h * 0.4, h * 0.4);
+  });
+  // camera flashes in the crowd and a little confetti drifting down
+  r = MG.rng(Math.floor(t * 3));
+  for (i = 0; i < 7; i++) { x = r() * w; y = h * (0.18 + r() * 0.3); k = r(); if (k < 0.6) continue; g.fillStyle = "rgba(255,255,255," + (0.5 + 0.5 * r()) + ")"; g.beginPath(); g.arc(x, y, 1.5 + r() * 2.5, 0, TAU); g.fill(); }
+  g.restore();
+  r = MG.rng(5);
+  for (i = 0; i < 46; i++) {
+    x = (r() * w + Math.sin(t * 0.6 + i) * 30) % w; y = ((r() * h + t * (18 + r() * 26)) % (h * 1.1)) - h * 0.05; k = t * (1 + r() * 2) + i;
+    g.fillStyle = T.flag[i % T.flag.length]; g.globalAlpha = 0.75; g.save(); g.translate(x, y); g.rotate(k); g.fillRect(-3, -1.5 * Math.abs(Math.cos(k)), 6, 3 * Math.abs(Math.cos(k)) + 0.5); g.restore();
+  }
+  g.globalAlpha = 1;
+  // a soft vignette so the menus stay readable
+  gr = g.createRadialGradient(w / 2, h * 0.45, h * 0.2, w / 2, h * 0.5, Math.max(w, h) * 0.8); gr.addColorStop(0, "rgba(6,7,20,0)"); gr.addColorStop(1, "rgba(6,7,20,.55)"); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+};
+
 // ---- the shop sells three stadiums a week, on their own shelf ----
 var SW = {w: -1, n: 0, list: []};
 MG.weekStadiums = function(){
