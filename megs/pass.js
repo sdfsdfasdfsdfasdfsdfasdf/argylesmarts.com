@@ -32,7 +32,7 @@ MG.passClaim = function(k){
   var p = MG.pass(), t = MG.passTiers()[k], s = S(), got = [], back = 0, pulls = [], pk, i;
   if (!t || p.got[k] || MG.passTier() <= k) return null;
   p.got[k] = 1;
-  t.free.forEach(function(it){ if (s.inv[it.id]) back += MG.DUPE[it.r]; else { s.inv[it.id] = 1; got.push(it); } });
+  t.free.forEach(function(it){ s.inv[it.id] = s.inv[it.id] ? (+s.inv[it.id] || 1) + 1 : 1; got.push(it); });   // duplicates stack for trading
   if (t.pack) { pk = MG.PACKS.filter(function(x){ return x.id === t.pack.id; })[0]; for (i = 0; i < t.pack.n; i++) pulls.push(MG.grant(MG.roll(pk))); }
   s.coins += t.coins + back; MG.save();
   return {items: got, coins: t.coins + back, pulls: pulls};
