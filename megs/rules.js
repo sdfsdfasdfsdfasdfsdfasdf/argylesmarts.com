@@ -36,7 +36,7 @@ function bonusBp(s){
   it = pool[Math.floor(Math.random() * pool.length)]; s.bp[it.id] = (s.bp[it.id] || 0) + 1; return "Blueprint: " + it.n + " (" + s.bp[it.id] + "/" + MG.BP_N + ")";
 }
 function store(){ var s = S(); if (!s.seen) s.seen = {}; if (!s.bp) s.bp = {}; return s; }
-// what a pull gives you: a normal item goes in your locker (a duplicate pays coins back); a Celestial is only discovered
+// what a pull gives you: a normal item goes in your locker (a duplicate stacks as x2, x3...); a Celestial is only discovered
 function grant(it){
   var s = store(), d, first;
   if (it.cel && !s.inv[it.id]) {
@@ -44,8 +44,9 @@ function grant(it){
     if (!first) s.bp[it.id] = Math.min(MG.BP_N, (s.bp[it.id] || 0) + 1);   // found again: that counts as a blueprint
     return {it: it, cel: 1, first: first, bp: s.bp[it.id] || 0};
   }
-  d = !!s.inv[it.id]; if (d) s.coins += MG.DUPE[it.r]; else s.inv[it.id] = 1;
-  return {it: it, dupe: d, back: d ? MG.DUPE[it.r] : 0};
+  // a duplicate is kept, not turned into coins: the locker shows x2, x3... ready for trading once that arrives online
+  d = !!s.inv[it.id]; s.inv[it.id] = d ? (+s.inv[it.id] || 1) + 1 : 1;
+  return {it: it, dupe: d, n: s.inv[it.id]};
 }
 MG.openPack = function(id, kind, n){
   var s = store(), pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], out = [], i, it, c;
@@ -120,12 +121,12 @@ waitUi(function(){
   // the shop: packs are pulls now
   var shop0 = VIEW.shop;
   VIEW.shop = function(){
-    return what(shop0()).replace(/A pack of one kind costs a quarter more\./, "Picking one kind changes the price: boots, stickers, trails, emotes, balls, wraps and hair are much cheaper; kits and stadiums cost a quarter more.").replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ") +
+    return what(shop0()).replace(/A pack of one kind costs a quarter more\./, "Picking one kind changes the price: boots, stickers, trails, emotes, balls, wraps and hair are much cheaper; kits and stadiums cost a quarter more.").replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ").replace(/Duplicates pay coins back\./g, "Duplicates stack up (x2, x3) so you can trade them later.") +
       '<section class="panel"><h3>Celestial items</h3><p class="mute">A Celestial from a pack is only discovered. To build it you also need ' + MG.BP_N + ' of its blueprints (wins drop them at random) and ' + coin(MG.BP_COST) + '. Your progress is in the Locker under Blueprints.</p></section>';
   };
   // under every buy button: what you are getting
   var GET = {kit: "the full outfit: shirt, shorts and socks", wrap: "a pattern that goes over whatever kit you wear", boot: "a pair of boots", ball: "a match ball for your games", trail: "a trail behind the ball when you strike it",
-    fx: "a goal celebration effect", emote: "an emote your player can do", sticker: "a sticker to send in matches with keys 1 to 4", banner: "a banner for your profile", hair: "a hairstyle", scene: "a backdrop for the menus", stadium: "a stadium for your 5-a-side games", court: "a cage for your 1v1 games"};
+    fx: "a goal celebration effect", emote: "an emote your player can do", sticker: "a sticker to send in matches with keys 1 to 4", banner: "a banner for your profile", hair: "a hairstyle", scene: "a backdrop for the menus", stadium: "a stadium for your 5v5 games", court: "a cage for your 1v1 games"};
   function what(h){
     h = h.replace(/<div class="shopi">([\s\S]*?data-id="([^"]+)"[\s\S]*?)<\/div>/g, function(x, inner, id){ var it = MG.ITEM[id]; if (!it) return x; return '<div class="shopi">' + inner + '<small class="get">You get <b>' + esc(it.n) + '</b>: ' + (GET[it.t] || "this item") + '. Yours to keep.</small></div>'; });
     return h.replace(/(<section class="panel pack (\w+)">[\s\S]*?<\/button>)(<\/section>)/g, function(x, inner, id, end){
@@ -145,7 +146,7 @@ waitUi(function(){
   function spin(got, title){
     var pool = I.filter(function(it){ return !it.need && it.src === "pack"; }), N = 26, WIN = 21, i = 0, dur = got.length >= 10 ? 0.85 : 1.25, timer = null, done = false;
     function card(it){ return '<div class="rl" style="--r:' + rar(it).c + '">' + (it.t === "emote" ? '<span class="sw" style="background:#22264a"></span>' : U.vis(it, "")) + '<b>' + esc(it.n) + '</b></div>'; }
-    function line(g){ var r = rar(g.it); return '<p class="won show" style="--r:' + r.c + '"><b>' + r.n + ': ' + esc(g.it.n) + '</b> ' + (g.cel ? (g.first ? "Discovered! Build it with " + MG.BP_N + " blueprints" : "Found again: +1 blueprint (" + g.bp + " of " + MG.BP_N + ")") : g.dupe ? "Duplicate: " + coin("+" + g.back) : "New") + (g.extra ? '<small class="pkx">' + g.extra.map(esc).join(" &middot; ") + '</small>' : "") + '</p>'; }
+    function line(g){ var r = rar(g.it); return '<p class="won show" style="--r:' + r.c + '"><b>' + r.n + ': ' + esc(g.it.n) + '</b> ' + (g.cel ? (g.first ? "Discovered! Build it with " + MG.BP_N + " blueprints" : "Found again: +1 blueprint (" + g.bp + " of " + MG.BP_N + ")") : g.dupe ? "Duplicate: you now have x" + g.n + " (keep it for trading)" : "New") + (g.extra ? '<small class="pkx">' + g.extra.map(esc).join(" &middot; ") + '</small>' : "") + '</p>'; }
     modal('<h2 class="center">' + (title || "Opening " + got.length) + ' <small class="mute" id="pkn"></small></h2><div class="reel"><div class="strip" id="pks"></div><i></i></div><div id="pkw" class="pkw"></div><div class="row center"><button class="btn ghost" data-a="pkSkip" id="pkskip">Skip</button><button class="btn big" data-a="packDone" id="rdone" disabled>Opening...</button></div>', "wide");
     function finish(){ done = true; clearTimeout(timer); var w = document.getElementById("pkw"); if (w) w.innerHTML = got.map(line).join(""); var b = document.getElementById("rdone"); if (b) { b.disabled = false; b.textContent = "Nice"; } var k = document.getElementById("pkskip"); if (k) k.remove(); U.paint && U.paint(); }
     ACT.pkSkip = finish;
