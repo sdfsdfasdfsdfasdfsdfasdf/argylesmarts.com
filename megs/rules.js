@@ -20,8 +20,18 @@ I.forEach(function(it){
 MG.DUPE[MG.CEL] = 400;
 
 // ---- packs: one item a pull ----
-var PK = {street: [100, [50, 28, 14, 6, 1.9, 0, 0, 0.1], 60], pro: [250, [0, 34, 38, 20, 7.6, 0, 0, 0.4], 25], elite: [600, [0, 0, 30, 46, 22.5, 0, 0, 1.5], 8]};
+var PK = {street: [100, [50, 28, 14, 6, 1.9, 0, 0, 0.1], 60], pro: [500, [0, 30, 38, 22, 9.5, 0, 0, 0.5], 20], elite: [1000, [0, 0, 28, 46, 24, 0, 0, 2], 6]};
 MG.PACKS.forEach(function(p){ var o = PK[p.id]; if (o) { p.cost = o[0]; p.odds = o[1]; p.pity = o[2]; } });
+// the two big packs pay out more than an item: Celestial blueprints and season pass XP on every pull
+MG.PACKS.push({id: "champ", n: "Champion Pack", cost: 2000, odds: [0, 0, 0, 52, 44, 0, 0, 4], pity: 3, bonus: {bp: 1, xp: 250}},
+  {id: "galaxy", n: "Galaxy Pack", cost: 5000, odds: [0, 0, 0, 0, 88, 0, 0, 12], pity: 1, bonus: {bp: 2, xp: 1000}});
+MG.packBonus = function(pk){ var b = pk.bonus; return b ? "Every pull also gives " + b.bp + (b.bp > 1 ? " Celestial blueprints" : " Celestial blueprint") + " and " + b.xp + " season pass XP" + (b.xp >= MG.PASS_XP ? " (a whole tier)" : "") + "." : ""; };
+// a bonus blueprint goes to a random Celestial you have not built; with none left it pays 300 coins instead
+function bonusBp(s){
+  var pool = MG.celList().filter(function(x){ return !s.inv[x.id] && (s.bp[x.id] || 0) < MG.BP_N; }), it;
+  if (!pool.length) { s.coins += 300; return "+300 coins"; }
+  it = pool[Math.floor(Math.random() * pool.length)]; s.bp[it.id] = (s.bp[it.id] || 0) + 1; return "Blueprint: " + it.n + " (" + s.bp[it.id] + "/" + MG.BP_N + ")";
+}
 function store(){ var s = S(); if (!s.seen) s.seen = {}; if (!s.bp) s.bp = {}; return s; }
 // what a pull gives you: a normal item goes in your locker (a duplicate pays coins back); a Celestial is only discovered
 function grant(it){
@@ -42,7 +52,9 @@ MG.openPack = function(id, kind, n){
   for (i = 0; i < n; i++) {
     s.pity[id] = (s.pity[id] || 0) + 1;
     it = MG.roll(pk, s.pity[id] >= pk.pity, kind); if (it.r >= MG.LEG) s.pity[id] = 0;
-    out.push(grant(it));
+    var g = grant(it);
+    if (pk.bonus) { g.extra = []; for (var j = 0; j < pk.bonus.bp; j++) g.extra.push(bonusBp(s)); MG.passAdd(pk.bonus.xp); g.extra.push("+" + pk.bonus.xp + " pass XP"); }
+    out.push(g);
   }
   MG.save(); return out;
 };
@@ -105,7 +117,7 @@ waitUi(function(){
   // the shop: packs are pulls now
   var shop0 = VIEW.shop;
   VIEW.shop = function(){
-    return shop0().replace(/Three items in every pack\./g, "One item a pull. Open 1, 3 or 10 at once.").replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/>Open for /g, ">Open from ") +
+    return shop0().replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ") +
       '<section class="panel"><h3>Celestial items</h3><p class="mute">A Celestial from a pack is only discovered. To build it you also need ' + MG.BP_N + ' of its blueprints (wins drop them at random) and ' + coin(MG.BP_COST) + '. Your progress is in the Locker under Blueprints.</p></section>';
   };
   ACT.pack = function(d){
@@ -120,7 +132,7 @@ waitUi(function(){
   function spin(got, title){
     var pool = I.filter(function(it){ return !it.need && it.src === "pack"; }), N = 26, WIN = 21, i = 0, dur = got.length >= 10 ? 0.85 : 1.25, timer = null, done = false;
     function card(it){ return '<div class="rl" style="--r:' + rar(it).c + '">' + (it.t === "emote" ? '<span class="sw" style="background:#22264a"></span>' : U.vis(it, "")) + '<b>' + esc(it.n) + '</b></div>'; }
-    function line(g){ var r = rar(g.it); return '<p class="won show" style="--r:' + r.c + '"><b>' + r.n + ': ' + esc(g.it.n) + '</b> ' + (g.cel ? (g.first ? "Discovered! Build it with " + MG.BP_N + " blueprints" : "Found again: +1 blueprint (" + g.bp + " of " + MG.BP_N + ")") : g.dupe ? "Duplicate: " + coin("+" + g.back) : "New") + '</p>'; }
+    function line(g){ var r = rar(g.it); return '<p class="won show" style="--r:' + r.c + '"><b>' + r.n + ': ' + esc(g.it.n) + '</b> ' + (g.cel ? (g.first ? "Discovered! Build it with " + MG.BP_N + " blueprints" : "Found again: +1 blueprint (" + g.bp + " of " + MG.BP_N + ")") : g.dupe ? "Duplicate: " + coin("+" + g.back) : "New") + (g.extra ? '<small class="pkx">' + g.extra.map(esc).join(" &middot; ") + '</small>' : "") + '</p>'; }
     modal('<h2 class="center">' + (title || "Opening " + got.length) + ' <small class="mute" id="pkn"></small></h2><div class="reel"><div class="strip" id="pks"></div><i></i></div><div id="pkw" class="pkw"></div><div class="row center"><button class="btn ghost" data-a="pkSkip" id="pkskip">Skip</button><button class="btn big" data-a="packDone" id="rdone" disabled>Opening...</button></div>', "wide");
     function finish(){ done = true; clearTimeout(timer); var w = document.getElementById("pkw"); if (w) w.innerHTML = got.map(line).join(""); var b = document.getElementById("rdone"); if (b) { b.disabled = false; b.textContent = "Nice"; } var k = document.getElementById("pkskip"); if (k) k.remove(); U.paint && U.paint(); }
     ACT.pkSkip = finish;
