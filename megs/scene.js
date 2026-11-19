@@ -233,7 +233,7 @@ waitUi(function(){
   ACT.online = function(){
     var s = S(), p = s.pos || "any";
     modal('<h2>Online is coming soon</h2><p>When it arrives, matchmaking will put you in a team with people who picked the other spots, so every side has a keeper, defenders and strikers. Pick yours now and it will be ready.</p><div class="pos">' +
-      MG.POS.map(function(o){ return '<button class="chip big' + (o[0] === p ? " on" : "") + '" data-a="pos" data-id="' + o[0] + '"><b>' + o[1] + '</b><small>' + o[2] + '</small></button>'; }).join("") + '</div><div class="row center"><button class="btn" data-a="go" data-v="team">Play 5-a-side</button><button class="btn ghost" data-a="close">Close</button></div>');
+      MG.POS.map(function(o){ return '<button class="chip big' + (o[0] === p ? " on" : "") + '" data-a="pos" data-id="' + o[0] + '"><b>' + o[1] + '</b><small>' + o[2] + '</small></button>'; }).join("") + '</div><div class="row center"><button class="btn" data-a="go" data-v="team">Play 5v5</button><button class="btn ghost" data-a="close">Close</button></div>');
   };
   MG.KINDS.push(["hair", "Hair"], ["scene", "Scenes"]);
   if (U.cur && U.cur()) U.go(U.cur(), U.arg());
