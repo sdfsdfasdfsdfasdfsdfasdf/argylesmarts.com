@@ -272,7 +272,7 @@ var SW = {w: -1, n: 0, list: []};
 MG.weekStadiums = function(){
   var w = MG.week(), r, pool, out = [], i;
   if (SW.w === w && SW.n === I.length) return SW.list;
-  r = MG.rng(w * 4423 + 71); pool = LIST.filter(function(it){ return it.src === "shop"; });
+  r = MG.rng(w * 4423 + 71); pool = LIST.filter(function(it){ return it.src === "shop" && it.r <= MG.LEG; });
   for (i = 0; i < 3 && pool.length; i++) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
   SW = {w: w, n: I.length, list: out}; return out;
 };
