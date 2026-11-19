@@ -428,6 +428,8 @@ V.floor = function(m){
     v.mir = k ? m.L : 0; v.poly(ARCP, th.in1);
     if (th.glow) { v.line(ARCP, 0.34, th.line, 0.16); v.line(BOX, 0.3, th.line, 0.16); }
     v.line(BOX, 0.08, th.line, 0.85); v.line(ARCP, 0.09, th.line, 0.9);
+    // the box lights up yellow when the man on the ball gets close, red when he reaches it
+    if (m.bz && k === (m.L ? m.off || 0 : 0)) { v.poly(BOX, m.bz === 2 ? "rgba(255,59,74,.28)" : "rgba(255,210,59,.2)"); v.line(BOX, 0.14, m.bz === 2 ? "#ff3b4a" : "#ffd23b", 0.95); }
   }
   v.mir = 0;
   if (m.L) { cc = []; for (i = 0; i <= 28; i++) cc.push(Math.cos(i * TAU / 28) * 2.2, L / 2 + Math.sin(i * TAU / 28) * 2.2, 0); v.line(cc, 0.08, th.line, 0.85); v.line([-W, L / 2, 0, W, L / 2, 0], 0.09, th.line, 0.9); }
@@ -542,6 +544,7 @@ V.event = function(m, e){
     else if (e.s === "wallpass") v.pop(p.x, p.y, 2.3, "ONE-TWO", "#d6ff3b");
   }
   else if (k === "goal") { v.gm = e.g ? m.L : 0; v.cele(m, e); v.gm = 0; }
+  else if (k === "over" && e.win >= 0 && v.sides[e.win] && v.sides[e.win].human) { [0.5, 1.4].forEach(function(d){ v.at(d, function(){ v.cele(m, {by: e.win, x: (Math.random() - 0.5) * 2, z: 1.4}); }); }); }   // a win: your celebration plays again
 };
 // the scorer's goal celebration
 V.cele = function(m, e){
@@ -694,9 +697,14 @@ V.draw = function(m, dt){
   v.goalB(m); v.aimLine(m, 0); v.aimLine(m, 1);
   v.fxDraw(dt);
   if (o.meter) { v.meter(m, 0); v.meter(m, 1); }
+  if (m.bz === 2 && m.p[m.bzi] && !m.p[m.bzi].ai) v.backUp(m.p[m.bzi]);
   if (v.flash > 0) { if (o.flash) { g.fillStyle = "rgba(255,255,255," + Math.min(0.7, v.flash).toFixed(3) + ")"; g.fillRect(0, 0, v.w, v.h); } v.flash -= dt * 1.6; }
 };
 
+V.backUp = function(p){
+  var v = this, g = v.g, q = v.pr(p.x, p.y, 2.7), s = Math.max(13, q.s * 0.4);
+  g.font = "900 " + Math.round(s) + "px " + FONT; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = Math.max(3, s * 0.2); g.strokeStyle = "rgba(8,9,22,.85)"; g.strokeText("BACK UP!", q.x, q.y); g.fillStyle = "#ff3b4a"; g.fillText("BACK UP!", q.x, q.y);
+};
 // ---- previews for the menus ----
 // winning emotes: each one poses the figure for time t and may turn or shift it
 var EMOTE = R.EMOTE = {
