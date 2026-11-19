@@ -659,7 +659,7 @@ V.meter = function(m, i){
   mm = q ? q.m : rl.m; gw = q ? q.gw : rl.gw; a = v.pr(p.x, p.y, 2.25); if (a.d < 1.6) return; x = clamp(a.x - Wd / 2, 6, v.w - Wd - 6); y = Math.max(8, a.y - 30);
   g.fillStyle = "rgba(8,9,22,.85)"; g.fillRect(x - 3, y - 3, Wd + 6, hh + 6); g.fillStyle = "#a8323e"; g.fillRect(x, y, Wd, hh);
   g.fillStyle = cb ? "#2f7fe0" : "#27b36f"; g.fillRect(x + Wd / 2 * (1 - gw), y, Wd * gw, hh);   // the goal
-  g.fillStyle = cb ? "#d7ecff" : "#b9ffdc"; g.fillRect(x + Wd / 2 * (1 - gw * 0.35), y, Wd * gw * 0.35, hh);
+  g.fillStyle = cb ? "#d7ecff" : "#b9ffdc"; g.fillRect(x + Wd / 2 * (1 - gw * 0.3), y, Wd * gw * 0.3, hh);
   g.fillStyle = "#ffffff"; g.fillRect(x + Wd / 2 * (1 - gw) - 1, y - 3, 2, hh + 6); g.fillRect(x + Wd / 2 * (1 + gw) - 1, y - 3, 2, hh + 6);   // the posts
   a = x + Wd / 2 * (1 + clamp(mm, -1, 1));
   g.fillStyle = "rgba(8,9,22,.9)"; g.fillRect(a - 4, y - 6, 8, hh + 12);
