@@ -229,7 +229,7 @@ waitUi(function(){
   VIEW.home = function(a){
     var s = S(), h = home1(a), sc = MG.ITEM[s.eq.scene] || MG.ITEM.sc_night;
     return '<section class="stage0"><canvas id="hero" width="300" height="400"></canvas><div class="st0t"><span class="kick">' + esc(sc.n) + '</span><b>' + esc(s.name || "You") + '</b>' + MG.rankHTML(s.elo) +
-      '<span class="mute">' + esc(s.title) + ' &middot; Level ' + s.lvl + '</span><div class="row"><button class="btn sm ghost" data-a="go" data-v="locker" data-arg="scene">Change scene</button><button class="btn sm ghost" data-a="go" data-v="locker">Locker</button></div></div></section>' + h;
+      '<span class="mute">' + esc(s.title) + ' &middot; ' + s.elo + ' rank points</span><div class="row"><button class="btn sm ghost" data-a="go" data-v="locker" data-arg="scene">Change scene</button><button class="btn sm ghost" data-a="go" data-v="locker">Locker</button></div></div></section>' + h;
   };
   // where you want to play once online matches arrive
   MG.POS = [["any", "Anywhere", "Put me wherever a team needs a player"], ["gk", "Keeper", "Stand in goal and stop shots"], ["def", "Defender", "Win the ball and start attacks"], ["fwd", "Striker", "Stay up top and score"]];
