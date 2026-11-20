@@ -128,7 +128,7 @@ MG.teamGo = teamGo;
 VIEW.team = function(){
   return head("5v5", "Five against five on a full-size pitch with two halves. You steer whoever is nearest the ball; your team-mates and the other side are computer players.") +
     '<div class="cols"><section class="panel"><h3>Opponent strength</h3>' + chips(TEAMLV, tset.lv, "tlv") + '<h3>Half length</h3>' + chips([["90", "1.5 min"], ["150", "2.5 min"], ["240", "4 min"], ["360", "6 min"]], tset.half, "thalf") +
-    '<div class="row"><button class="btn big" data-a="teamPlay">' + ic("play") + 'Kick off</button></div></section>' + controls() + '</div>';
+    '<div class="row kickbar"><button class="btn big" data-a="teamPlay">' + ic("play") + 'Kick off</button></div></section>' + controls() + '</div>';
 };
 function controls(){
   var k = S().set.k1, n = MG.keyName;
