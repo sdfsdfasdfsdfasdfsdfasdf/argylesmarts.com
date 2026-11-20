@@ -4,11 +4,13 @@
 "use strict";
 var MG = window.MG, R = MG.R;
 var KEY = "megs.online", WS_URL = (function(){ try { return localStorage.getItem("megs.ws") || ""; } catch (e) { return ""; } })() || "wss://online.argylesmarts.com/ws";
+MG.guestName = function(){ return "Guest" + (1000 + Math.floor(Math.random() * 9000)); };
 var N = MG.net = {on: false, busy: false, me: null, friends: [], reqs: [], sent: [], party: {leader: null, members: []}, invites: [], found: null, tab: "friends", err: ""};
 var ws = null, tries = 0, timer = 0, lastLook = "", pend = null, dirty = false, synced = false, SAVE_KEY = "megs.save.v1";
 var LOOK_KEYS = ["kit", "cus", "look", "trail", "fx", "emote", "boot", "wrap", "hair", "banner"], ITEM_KEYS = ["kit", "trail", "fx", "emote", "boot", "wrap", "hair", "banner"];
 
-function acct(){ try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
+// you stay logged in on this device with a session token (never your passcode). Old account codes no longer work.
+function acct(){ var a = null; try { a = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {} if (a && !a.tok) { keep(null); N.oldOut = true; a = null; } return a; }
 function keep(a){ try { if (a) localStorage.setItem(KEY, JSON.stringify(a)); else localStorage.removeItem(KEY); } catch (e) {} }
 function send(o){ if (ws && ws.readyState === 1) { ws.send(JSON.stringify(o)); return true; } return false; }
 N.send = send;
@@ -33,7 +35,7 @@ function connect(){
   ws.onopen = function(){
     tries = 0; N.on = true; N.busy = false;
     var a = acct();
-    if (a) send({t: "hello", id: a.id, key: a.key});
+    if (a) send({t: "hello", id: a.id, tok: a.tok});
     else if (pend) { send(pend); pend = null; }
     changed();
   };
@@ -63,6 +65,8 @@ function gotSave(m){
 }
 function gotGifts(m){
   var S = MG.S, U = MG.ui, got = [];
+  // gifts now land straight in your wallet on the server; this only says what arrived
+  if (m.applied) { m.list.forEach(function(g){ got.push(g.kind === "coins" ? g.val + " coins" : (MG.ITEM[g.val] || {}).n || g.val); }); if (U && got.length) { U.toast("A gift from the Megs team: " + U.esc(got.join(", ")) + "."); if (MG.sfx) MG.sfx("rare", 5); } return; }
   m.list.forEach(function(g){
     if (g.kind === "coins") { S.coins += +g.val || 0; got.push((+g.val) + " coins"); }
     else if (g.kind === "item" && MG.ITEM[g.val]) { S.inv[g.val] = S.inv[g.val] ? (+S.inv[g.val] || 1) + 1 : 1; got.push(MG.ITEM[g.val].n); }
@@ -83,13 +87,18 @@ function recv(m){
   var U = MG.ui;
   if (m.t === "me") {
     N.me = m; N.err = "";
-    if (m.key) { keep({id: m.id, key: m.key}); if (MG.S) { MG.S.name = m.name; MG.save(); } }
+    if (m.tok) keep({id: m.id, tok: m.tok});
+    if (MG.S && MG.S.name !== m.name) { MG.S.name = m.name; MG.save(); if (U && U.top) U.top(); }
+    if (U && document.getElementById("accm") && m.tok) { U.close(); U.toast("Welcome, " + U.esc(m.name) + "."); }
+    if (U && U.cur() === "locker" && document.getElementById("modal").hidden) U.go("locker", U.arg && U.arg());
     if (MG.S && !!MG.S.admin !== !!m.admin) { MG.S.admin = !!m.admin; MG.save(); if (MG.adminSync) MG.adminSync(); }
     N.pushLook();
   } else if (m.t === "save") gotSave(m);
   else if (m.t === "gift") gotGifts(m);
   else if (m.t === "err") {
-    if (m.c === "banned") { N.banned = true; N.err = m.msg; if (U) U.toast(m.msg); }
+    if (m.c === "banned") { N.banned = true; N.err = m.msg; keep(null); if (U) U.toast(m.msg); }
+    else if (m.c === "auth" && m.out) { keep(null); N.me = null; synced = false; if (U) U.toast(U.esc(m.msg)); }
+    else if (document.getElementById("accMsg") && (m.c === "auth" || m.c === "name" || m.c === "pass")) document.getElementById("accMsg").textContent = m.msg;
     else if (m.c === "auth" || m.c === "name") N.err = m.msg; else if (U) U.toast(U.esc(m.msg));
   } else if (m.t === "friends") { N.friends = m.list; N.reqs = m.reqs; N.sent = m.sent; }
   else if (m.t === "party") {
@@ -107,6 +116,10 @@ function recv(m){
     else if (m.c === "kicked") U.toast("You were removed from the party.");
     else if (m.c === "admin") { U.toast("You are now an admin. Your admin skins are in your locker."); if (U.cur() === "home") U.go("home"); }
     else if (m.c === "reported") U.toast("Thanks. An admin will take a look.");
+    else if (m.c === "pass") { U.close(); U.toast("Passcode changed."); }
+    else if (m.c === "namereq") { U.close(); if (U.cur() === "locker") U.go("locker", U.arg && U.arg()); U.toast("Name change requested. An admin will look at it."); }
+    else if (m.c === "nameok") U.toast("Your name is now " + U.esc(m.name) + ".");
+    else if (m.c === "nameno") U.toast("Your name change to " + U.esc(m.name) + " was turned down.");
   } else if (m.t === "search") N.found = m;
   (N.hooks[m.t] || []).forEach(function(f){ f(m); });
   changed();
@@ -125,7 +138,7 @@ function badge(){
   var b = document.querySelector('.rlb[data-a="friends"] small'), on, n;
   if (!b) return;
   on = N.friends.filter(function(f){ return f.on; }).length; n = N.reqs.length;
-  b.innerHTML = !N.me ? (acct() ? "Connecting..." : "Make a username to add friends") : on + " online" + (n ? ' &middot; <i class="hot">' + n + ' request' + (n > 1 ? "s" : "") + '</i>' : "");
+  b.innerHTML = !N.me ? (acct() ? "Connecting..." : "Log in or sign up to add friends") : on + " online" + (n ? ' &middot; <i class="hot">' + n + ' request' + (n > 1 ? "s" : "") + '</i>' : "");
 }
 function invites(){
   var box = document.getElementById("invc"), U = MG.ui, now = Date.now();
@@ -146,7 +159,7 @@ function slots(){
     if (el.getAttribute("data-k") === key) return;
     el.setAttribute("data-k", key);
     el.innerHTML = p ? '<button class="rlF" data-a="onlMember" data-id="' + p.id + '"><canvas data-pid="' + p.id + '" width="240" height="320"></canvas><span class="rlFn' + (p.admin ? " adm" : "") + '"><b>' + U.esc(p.name) + '</b>' + (p.admin ? '<span class="admB">ADMIN</span>' : "") + '<small>' + (p.id === N.party.leader ? "Party leader" : p.on ? "In your party" : "Reconnecting...") + '</small></span></button>'
-      : '<button class="rlS" data-a="rlInvite">' + U.ic("users") + '<b>Invite a friend</b><small>' + (N.me ? "Pick from your friends" : "Make a username first") + '</small></button>';
+      : '<button class="rlS" data-a="rlInvite">' + U.ic("users") + '<b>Invite a friend</b><small>' + (N.me ? "Pick from your friends" : "Sign up first") + '</small></button>';
   });
   if (more) more.innerHTML = o.length > 2 ? "+" + (o.length - 2) + " more in your party: " + o.slice(2).map(function(p){ return U.esc(p.name); }).join(", ") : "";
 }
@@ -167,11 +180,9 @@ function panel(){
   if (!el) return;
   if (!N.me) {
     if (a && (N.busy || N.on) && !N.err) { el.innerHTML = '<h2>Friends</h2><p class="mute">Connecting to the Megs server...</p>'; return; }
-    h = '<h2>Make your username</h2><p class="mute">Friends find you by this name. Letters, numbers and _ only, 3 to 16 long. Use a made-up name, not your real one.</p>' +
-      '<div class="row"><input id="onlName" maxlength="16" autocomplete="off" value="' + esc(((MG.S.name || "") + "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 16)) + '"><button class="btn" data-a="onlSignup">Create</button></div>' +
-      '<p class="onlMsg">' + esc(N.err) + '</p><p class="mute">Your coins, items and pass are saved to your username, so you can carry on from any device.</p>' +
-      '<details class="onlAlt"><summary>Already have an account on another device?</summary><p class="mute">Paste the account code from Friends on that device. The progress saved to that account replaces what is on this device.</p><div class="row"><input id="onlCode" autocomplete="off" placeholder="Account code"><button class="btn ghost" data-a="onlCode">Sign in</button></div></details>' +
-      (!N.on && !N.busy ? '<p class="mute">Can\'t reach the server right now. <button class="lnk" data-a="onlRetry">Try again</button></p>' : "");
+    h = '<h2>Friends</h2><p class="mute">Log in or sign up to add friends, party up and keep your coins and items safe on your account.</p>' +
+      '<div class="row center"><button class="btn gold" data-a="acc" data-v="signup">Sign up</button><button class="btn" data-a="acc" data-v="login">Log in</button></div>' +
+      (!N.on && !N.busy && a ? '<p class="mute">Can\'t reach the server right now. <button class="lnk" data-a="onlRetry">Try again</button></p>' : "");
     el.innerHTML = h;
     return;
   }
@@ -199,8 +210,7 @@ function panel(){
   }
   h += '</div>';
   if (N.inParty()) h += '<div class="row"><button class="btn ghost sm" data-a="onlLeave">Leave party</button></div>';
-  h += '<details class="onlAlt"><summary>Your account code</summary><p class="mute">This code is your account. Use it to sign in on another device. Anyone who has it can use your account, so keep it private.</p><div class="row"><input id="onlMy" readonly value="' + (a ? esc(a.id + "." + a.key) : "") + '"><button class="btn ghost sm" data-a="onlCopy">Copy</button></div></details>' +
-    '<div class="row"><button class="btn ghost sm" data-a="onlOut">Sign out</button></div>';
+  h += '<div class="row"><button class="btn ghost sm" data-a="onlOut">Log out</button></div>';
   var keepQ = document.activeElement && document.activeElement.id === "onlQ", pos = keepQ ? document.activeElement.selectionStart : 0;
   el.innerHTML = h;
   var q = document.getElementById("onlQ");
@@ -213,18 +223,25 @@ waitUi(function(){
   ACT.friends = function(){ U.modal('<div id="onl"></div><div class="row center"><button class="btn ghost" data-a="close">Close</button></div>', "wide onlc"); if (!ws) connect(); panel(); };
   ACT.rlInvite = function(){ N.tab = "friends"; ACT.friends(); };
   ACT.onlRetry = function(){ tries = 0; connect(); };
-  ACT.onlSignup = function(){
-    var v = (document.getElementById("onlName") || {}).value || "";
-    N.err = ""; pend = {t: "signup", name: v.trim(), look: myLook()};
-    if (ws && ws.readyState === 1) { send(pend); pend = null; } else connect();
+  // ---- log in and sign up: a username and a passcode ----
+  ACT.acc = function(d){
+    var up = d.v === "signup";
+    U.modal('<div id="accm"><h2>' + (up ? "Sign up" : "Log in") + '</h2><p class="mute">' + (up ? "Pick a username (letters, numbers and _, 3 to 16 long; a made-up name, not your real one) and a passcode only you know. Your coins, items and pass are saved to it." : "Your username and passcode. What is saved on your account comes with you.") + '</p>' +
+      '<div class="accf"><input id="accN" maxlength="16" autocomplete="username" placeholder="Username"><input id="accP" type="password" maxlength="64" autocomplete="' + (up ? "new-password" : "current-password") + '" placeholder="Passcode">' +
+      (up ? '<input id="accP2" type="password" maxlength="64" autocomplete="new-password" placeholder="Passcode again">' : "") + '</div><p class="onlMsg" id="accMsg"></p>' +
+      '<div class="row center"><button class="btn gold" data-a="accGo" data-v="' + d.v + '">' + (up ? "Sign up" : "Log in") + '</button><button class="btn ghost" data-a="acc" data-v="' + (up ? "login" : "signup") + '">' + (up ? "I have an account" : "Make an account") + '</button><button class="btn ghost" data-a="close">Cancel</button></div></div>', "onlc");
+    setTimeout(function(){ var i = document.getElementById("accN"); if (i) i.focus(); }, 50);
   };
-  ACT.onlCode = function(){
-    var v = ((document.getElementById("onlCode") || {}).value || "").trim(), p = v.split(".");
-    if (p.length !== 2 || !/^[0-9a-f]{16}$/.test(p[0]) || !/^[0-9a-f]{48}$/.test(p[1])) { N.err = "That does not look like an account code."; panel(); return; }
-    keep({id: p[0], key: p[1]}); N.err = "";
-    if (ws && ws.readyState === 1) send({t: "hello", id: p[0], key: p[1]}); else connect();
+  ACT.accGo = function(d){
+    var n = (document.getElementById("accN") || {}).value || "", p = (document.getElementById("accP") || {}).value || "", p2 = document.getElementById("accP2"), msg = document.getElementById("accMsg");
+    n = n.trim();
+    if (!n || !p) { msg.textContent = "Type your username and passcode."; return; }
+    if (p2 && p2.value !== p) { msg.textContent = "The two passcodes don't match."; return; }
+    msg.textContent = d.v === "signup" ? "Making your account..." : "Logging in...";
+    N.err = ""; pend = d.v === "signup" ? {t: "signup", name: n, pass: p} : {t: "login", name: n, pass: p};
+    if (ws && ws.readyState === 1 && !N.me) { send(pend); pend = null; } else connect();
   };
-  ACT.onlCopy = function(){ var i = document.getElementById("onlMy"); if (!i) return; i.select(); try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand("copy"); } U.toast("Account code copied. Keep it private."); };
+  document.addEventListener("keydown", function(e){ if (e.key === "Enter" && document.getElementById("accm") && /^acc/.test((document.activeElement || {}).id || "")) { var b = document.querySelector('#accm [data-a="accGo"]'); if (b) b.click(); } });
   ACT.onlTab = function(d){ N.tab = d.v; panel(); if (d.v === "add") { var q = document.getElementById("onlQ"); if (q) q.focus(); } };
   ACT.onlAdd = function(d){ send({t: "freq", id: d.id}); U.toast("Friend request sent."); };
   ACT.onlAcc = function(d){ send({t: "facc", id: d.id}); };
@@ -246,12 +263,14 @@ waitUi(function(){
   };
   // signing out: copy your code first, it is the only way back in. This device keeps its progress as a guest save
   ACT.onlOut = function(d, b){
-    if (!b.getAttribute("data-sure")) { b.setAttribute("data-sure", "1"); b.textContent = "Copied your code? Sign out"; return; }
+    if (!b.getAttribute("data-sure")) { b.setAttribute("data-sure", "1"); b.textContent = "Sure? Log out"; return; }
     if (synced && ws && ws.readyState === 1) send({t: "save", data: MG.S, at: MG.S.at || Date.now()});
+    send({t: "logout"});
     keep(null); synced = false; dirty = false; N.me = null; N.friends = []; N.reqs = []; N.sent = []; N.invites = []; N.party = {leader: null, members: []};
     if (MG.S) { MG.S.admin = false; if (MG.adminSync) MG.adminSync(); MG.save(); }
-    var w = ws; ws = null; if (w) { w.onclose = null; try { w.close(); } catch (e) {} } N.on = false;
-    U.close(); U.toast("Signed out. This device keeps its progress as a guest."); U.go("home");
+    var w = ws; ws = null; if (w) { w.onclose = null; setTimeout(function(){ try { w.close(); } catch (e) {} }, 300); } N.on = false;
+    if (MG.S) { MG.S.name = MG.guestName(); MG.save(); }
+    U.close(); U.toast("Logged out. This device keeps its progress as a guest."); U.go("home");
   };
   ACT.onlRep = function(d){
     U.modal('<h2>Report ' + U.esc(d.n || "player") + '</h2><p class="mute">Tell the admins what happened, like a rude username.</p><div class="row"><input id="repWhy" maxlength="200" autocomplete="off" placeholder="What happened?" style="flex:1"></div><div class="row center"><button class="btn red" data-a="onlRepGo" data-id="' + d.id + '">Send report</button><button class="btn ghost" data-a="close">Cancel</button></div>', "onlc");
@@ -261,17 +280,12 @@ waitUi(function(){
   var pc0 = ACT.pcRedeem;
   ACT.pcRedeem = function(){
     var i = document.getElementById("pcode"), v = i ? i.value.trim().toUpperCase() : "";
-    if (/^MEGS-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/.test(v)) { if (!N.me) return U.toast("Make your username in Friends first."); send({t: "claim", code: v}); U.close(); return; }
+    if (/^MEGS-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/.test(v)) { if (!N.me) return U.toast("Log in first."); send({t: "claim", code: v}); U.close(); return; }
     return pc0.apply(this, arguments);
   };
-  // new players pick a username straight away; anyone without one is asked again once a day
-  var begin0 = ACT.begin;
-  ACT.begin = function(){ var r = begin0.apply(this, arguments); if (!acct()) setTimeout(ACT.friends, 400); return r; };
-  setTimeout(function(){
-    var S = MG.S, d = MG.day ? MG.day() : 0;
-    if (acct() || !S || !S.name || document.getElementById("wname") || (S.n && S.n.askAcct === d)) return;
-    S.n.askAcct = d; MG.save(); if (U.cur() === "home" && document.getElementById("modal").hidden) ACT.friends();
-  }, 1500);
+  // accounts used to sign in with a code; anyone still holding one is told once why they are logged out
+  acct();
+  if (N.oldOut) setTimeout(function(){ U.toast("Accounts now use a username and passcode. Log in again from the Locker."); }, 1500);
   ACT.onlPromote = function(d){ send({t: "promote", id: d.id}); U.close(); };
   ACT.onlKick = function(d){ send({t: "kick", id: d.id}); U.close(); };
   var ah = AFTER.home;
