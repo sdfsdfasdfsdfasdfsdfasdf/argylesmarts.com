@@ -15,7 +15,7 @@ waitUi(function(){
     return '<div class="set acct"><div>Username<small>' + sub + '</small></div><div class="accb">' +
       (!me.renamed ? '<input id="accRn" maxlength="16" autocomplete="off" value="' + esc(me.name) + '"><button class="btn sm" data-a="accRename">Change</button>'
         : '<b>' + esc(me.name) + '</b><button class="btn sm" data-a="accReq">' + (me.asked ? "Change my request" : "Request name change") + '</button>') + '</div></div>' +
-      '<div class="set acct"><div>Passcode<small>Keep it to yourself.</small></div><div class="accb"><button class="btn sm ghost" data-a="accPass">Change passcode</button><button class="btn sm ghost" data-a="onlOut">Log out</button></div></div>';
+      '<div class="set acct"><div>Passcode<small>Keep it to yourself.</small></div><div class="accb"><button class="btn sm ghost" data-a="accPass">Change passcode</button><button class="btn sm ghost" data-a="onlOut">Sign out</button></div></div>';
   }
   var lk0 = VIEW.locker;
   VIEW.locker = function(){
