@@ -125,8 +125,10 @@ MG.finish = function(res){
   out.coins = (res.win ? 60 : 25) + st.goals * 6 + st.megs * 12 + st.perfect * 4 + st.ankles * 8 + st.blocks * 3;
   out.xp = (res.win ? 90 : 40) + st.goals * 8 + st.megs * 10 + st.perfect * 3;
   if (res.ranked) {
-    out.coins = Math.round(out.coins * 1.25); out.elo = MG.eloD(res.opp.elo, res.win);
-    S.elo = Math.max(600, S.elo + out.elo); S.peak = Math.max(S.peak, S.elo); S.eh.push(S.elo); if (S.eh.length > 40) S.eh.shift();
+    // rank points: from how you played and anything rare you pulled off (rank.js), never below zero
+    var rp = MG.rankPts ? MG.rankPts(res) : {pts: 0}; out.elo = rp.pts; out.rare = rp.rare; out.rpcap = rp.cap;
+    out.coins = Math.round(out.coins * 1.25);
+    S.elo = Math.max(0, S.elo + out.elo); S.peak = Math.max(S.peak, S.elo); S.eh.push(S.elo); if (S.eh.length > 40) S.eh.shift();
     S.last = res.opp.id; if (MG.rank() === 1) n.first = 1;
   }
   if (res.win && res.mode === "moon") add("moon", 1);
@@ -155,7 +157,7 @@ MG.claim = function(id){
 };
 
 // ---- packs and the shop ----
-MG.KINDS = [["", "Mixed"], ["kit", "Kits"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["court", "Cages"]];
+MG.KINDS = [["", "Mixed"], ["kit", "Skins"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["court", "Cages"]];
 MG.packCost = function(pk, kind){ return Math.round(pk.cost * (kind ? 1.25 : 1) / 10) * 10; };   // choosing what is inside costs a little more
 MG.roll = function(pk, force, kind){
   var r = Math.random() * 100, a = 0, q = 7, i, pool = [];
