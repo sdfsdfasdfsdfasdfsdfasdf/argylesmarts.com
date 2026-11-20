@@ -62,12 +62,12 @@ R.flair = function(g, P, J, HD, hip, s, sd, c, sg, t, phase){
 // ---- the Admin page ----
 function waitUi(f){ if (MG.ui && MG.ui.ACT && MG.ui.VIEW && MG.net) f(); else setTimeout(function(){ waitUi(f); }, 0); }
 waitUi(function(){
-  var U = MG.ui, ACT = U.ACT, VIEW = U.VIEW, N = MG.net, esc = U.esc, coin = U.coin, A = {tab: "players", list: null, reports: null, q: ""};
+  var U = MG.ui, ACT = U.ACT, VIEW = U.VIEW, N = MG.net, esc = U.esc, coin = U.coin, A = {tab: "players", list: null, reports: null, q: "", online: null, all: null, names: null};
   function ago(t){ if (!t) return "never"; var m = Math.round((Date.now() - t) / 60000); return m < 2 ? "just now" : m < 120 ? m + " min ago" : m < 2880 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " days ago"; }
   VIEW.admin = function(){
     if (!(N.me && N.me.admin)) return '<div class="adv"><button class="btn ghost" data-a="go" data-v="home">' + U.ic("back") + 'Back</button><p class="mute">Admins only.</p></div>';
     var h = '<div class="adv"><div class="plh"><button class="btn ghost" data-a="go" data-v="home">' + U.ic("back") + 'Back</button><h1>Admin</h1></div><div class="tabs">' +
-      [["players", "Players"], ["reports", "Reports"]].map(function(x){ return '<button class="tab' + (A.tab === x[0] ? " on" : "") + '" data-a="admTab" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join("") + '</div>';
+      [["players", "Find a player"], ["online", "Online now" + (A.online ? " (" + A.online.list.length + ")" : "")], ["all", "All accounts" + (A.all ? " (" + A.all.total + ")" : "")], ["names", "Name requests" + (A.names && A.names.length ? " (" + A.names.length + ")" : "")], ["reports", "Reports"]].map(function(x){ return '<button class="tab' + (A.tab === x[0] ? " on" : "") + '" data-a="admTab" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join("") + '</div>';
     if (A.tab === "players") {
       h += '<div class="row"><input id="admQ" maxlength="16" autocomplete="off" placeholder="Search usernames (2+ letters)" value="' + esc(A.q) + '"><button class="btn" data-a="admFind">Search</button></div><datalist id="admItems">' +
         I.filter(function(it){ return !it.need; }).map(function(it){ return '<option value="' + it.id + '">' + esc(it.n) + ' (' + MG.RAR[it.r].n + ' ' + it.t + ')</option>'; }).join("") + '</datalist><div class="admL">';
@@ -76,9 +76,20 @@ waitUi(function(){
           '<div class="row"><input type="number" min="1" max="1000000" placeholder="Coins" id="ac_' + u.id + '"><button class="btn sm" data-a="admCoins" data-id="' + u.id + '">Give coins</button>' +
           '<input list="admItems" placeholder="Item id" id="ai_' + u.id + '"><button class="btn sm" data-a="admItem" data-id="' + u.id + '">Give item</button></div>' +
           '<div class="row"><input maxlength="16" placeholder="New username" id="an_' + u.id + '"><button class="btn sm ghost" data-a="admRename" data-id="' + u.id + '">Rename</button>' +
-          (u.admin ? "" : '<button class="btn sm ' + (u.banned ? "ghost" : "red") + '" data-a="' + (u.banned ? "admUnban" : "admBan") + '" data-id="' + u.id + '">' + (u.banned ? "Unban" : "Ban") + '</button>') + '</div></div>';
+          (u.admin ? "" : '<button class="btn sm ' + (u.banned ? "ghost" : "red") + '" data-a="' + (u.banned ? "admUnban" : "admBan") + '" data-id="' + u.id + '">' + (u.banned ? "Unban" : "Ban") + '</button>') + '</div>' +
+          '<div class="row"><input type="text" maxlength="64" placeholder="New passcode" id="ap_' + u.id + '"><button class="btn sm ghost" data-a="admPass" data-id="' + u.id + '">Set passcode</button><small class="mute">Logs them out everywhere</small></div></div>';
       }).join("") || (A.list ? '<p class="mute">Nobody found.</p>' : '<p class="mute">Search for a player to give coins or items, rename them or ban them. Gifts arrive the next time they are online.</p>');
       h += '</div>';
+    } else if (A.tab === "online" || A.tab === "all") {
+      var L = A[A.tab];
+      h += '<div class="row"><button class="btn sm" data-a="admTab" data-v="' + A.tab + '">Refresh</button>' + (L ? '<span class="mute">' + (A.tab === "online" ? L.list.length + " signed in, " + L.guests + " guests connected" : L.total + " accounts") + '</span>' : "") + '</div>';
+      h += !L ? '<p class="mute">Loading...</p>' : '<div class="admT"><div class="admTr admTh"><span>Username</span><span>Status</span><span>Joined</span><span>Level</span><span>Coins</span><span>Items</span><span></span></div>' + L.list.map(function(u){
+        return '<div class="admTr"><span><b>' + esc(u.name) + '</b>' + (u.admin ? ' <span class="admB">ADMIN</span>' : "") + (u.banned ? ' <span class="admX">Banned</span>' : "") + '</span><span>' + (u.on ? '<i class="dot on"></i> Online' : "Seen " + ago(u.seen)) + '</span><span>' + ago(u.created) + '</span><span>' + (u.lvl || "-") + '</span><span>' + (u.coins != null ? u.coins : "-") + '</span><span>' + (u.items != null ? u.items : "-") + '</span><span><button class="btn sm ghost" data-a="admOpen" data-n="' + esc(u.name) + '">Manage</button></span></div>';
+      }).join("") + '</div>';
+    } else if (A.tab === "names") {
+      h += '<div class="admL">' + ((A.names || []).map(function(r){
+        return '<div class="admU"><div class="admH"><b>' + esc(r.name || "?") + '</b> wants to be <b>' + esc(r.want) + '</b><small>' + ago(r.at) + (r.why ? ' &middot; ' + esc(r.why) : "") + '</small></div><div class="row"><button class="btn sm gold" data-a="admNameOk" data-rid="' + r.id + '">Approve</button><button class="btn sm ghost" data-a="admNameNo" data-rid="' + r.id + '">Turn down</button></div></div>';
+      }).join("") || '<p class="mute">' + (A.names ? "No name requests." : "Loading...") + '</p>') + '</div>';
     } else {
       h += '<div class="admL">' + ((A.reports || []).map(function(r){
         return '<div class="admU"><div class="admH"><b>' + esc(r.tn || "?") + '</b>' + (r.tb ? '<span class="admX">Banned</span>' : "") + '<small>Reported by ' + esc(r.fn || "?") + ' &middot; ' + ago(r.at) + '</small></div><p>' + esc(r.why || "(no reason given)") + '</p><div class="row">' +
@@ -89,7 +100,14 @@ waitUi(function(){
   };
   function redraw(){ if (U.cur() === "admin") { var q = document.getElementById("admQ"), f = q && document.activeElement === q; U.go("admin"); if (f) { q = document.getElementById("admQ"); q.focus(); } } }
   function val(id){ var e = document.getElementById(id); return e ? e.value.trim() : ""; }
-  ACT.admTab = function(d){ A.tab = d.v; if (d.v === "reports") N.send({t: "adm", op: "reports"}); redraw(); };
+  ACT.admTab = function(d){ A.tab = d.v; if (d.v === "reports") N.send({t: "adm", op: "reports"}); if (d.v === "online" || d.v === "all") N.send({t: "adm", op: d.v}); if (d.v === "names") N.send({t: "adm", op: "names"}); redraw(); };
+  ACT.admOpen = function(d){ A.tab = "players"; A.q = d.n; N.send({t: "adm", op: "find", q: d.n}); redraw(); };
+  ACT.admPass = function(d){ var v = val("ap_" + d.id); if (v.length < 4) return U.toast("A passcode needs at least 4 characters."); N.send({t: "adm", op: "setpass", id: d.id, pass: v}); };
+  ACT.admNameOk = function(d){ N.send({t: "adm", op: "nameok", rid: +d.rid}); };
+  ACT.admNameNo = function(d){ N.send({t: "adm", op: "nameno", rid: +d.rid}); };
+  // the admin page keeps its counts fresh when you open it
+  var go0 = U.AFTER.admin;
+  U.AFTER.admin = function(a){ if (go0) go0(a); if (!A.loaded && N.me && N.me.admin) { A.loaded = 1; N.send({t: "adm", op: "online"}); N.send({t: "adm", op: "all"}); N.send({t: "adm", op: "names"}); } };
   ACT.admFind = function(){ A.q = val("admQ"); if (A.q.length < 2) return U.toast("Type at least 2 letters."); N.send({t: "adm", op: "find", q: A.q}); };
   ACT.admCoins = function(d){ var n = Math.floor(+val("ac_" + d.id)); if (!(n > 0)) return U.toast("Type how many coins."); N.send({t: "adm", op: "give", id: d.id, coins: n}); };
   ACT.admItem = function(d){ var v = val("ai_" + d.id); if (!BY[v]) return U.toast("Pick an item id from the list."); N.send({t: "adm", op: "give", id: d.id, item: v}); };
@@ -99,6 +117,10 @@ waitUi(function(){
   ACT.admRdel = function(d){ N.send({t: "adm", op: "rdel", rid: d.rid}); };
   N.hook("adm", function(m){
     if (m.op === "find") A.list = m.list;
+    else if (m.op === "online" || m.op === "all") A[m.op] = m;
+    else if (m.op === "names") A.names = m.list;
+    else if (m.op === "nameok" || m.op === "nameno") { A.names = (A.names || []).filter(function(r){ return r.id !== m.rid; }); U.toast(m.op === "nameok" ? "Renamed to " + esc(m.name || "") + "." : "Turned down."); }
+    else if (m.op === "setpass") U.toast("New passcode set for " + esc(m.name) + ". They need to log in with it.");
     else if (m.op === "reports") A.reports = m.list;
     else if (m.op === "rdel") { A.reports = (A.reports || []).filter(function(r){ return r.id !== m.rid; }); }
     else if (m.op === "give") U.toast("Sent to " + esc(m.name) + ": " + (m.coins ? m.coins + " coins" : "") + (m.item ? (BY[m.item] || {}).n || m.item : "") + ".");
@@ -115,6 +137,7 @@ waitUi(function(){
     ".admL{display:flex;flex-direction:column;gap:.5rem}.admU{background:rgba(10,12,32,.85);border:1px solid #2f3466;border-radius:14px;padding:.7rem .9rem;display:flex;flex-direction:column;gap:.45rem}",
     ".admH{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}.admH small{color:#a9b0d6;flex-basis:100%}",
     ".admB{font-size:.66rem;font-weight:900;letter-spacing:.12em;color:#1a1405;background:linear-gradient(135deg,#fff3b0,#ffd23b 50%,#b8860b);border-radius:6px;padding:.1rem .4rem;box-shadow:0 0 10px rgba(255,210,59,.5)}",
+    ".admT{display:flex;flex-direction:column;gap:2px;background:rgba(10,12,32,.85);border:1px solid #2f3466;border-radius:14px;padding:.4rem;max-height:62vh;overflow:auto}.admTr{display:grid;grid-template-columns:2fr 1.4fr 1fr .6fr .8fr .6fr auto;gap:.5rem;align-items:center;padding:.35rem .5rem;border-radius:8px}.admTr:nth-child(even){background:rgba(255,255,255,.03)}.admTr .dot{display:inline-block;vertical-align:middle;margin-right:.35rem}.admTh{color:#a9b0d6;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}",
     ".admX{font-size:.7rem;font-weight:800;color:#fff;background:#b91c1c;border-radius:6px;padding:.1rem .4rem}",
     ".rlPl.adm,.rlFn.adm{border-color:#ffd23b;box-shadow:0 0 0 1px #ffd23b,0 8px 30px rgba(255,210,59,.35);background:linear-gradient(180deg,rgba(60,45,5,.9),rgba(10,12,32,.9))}"
   ].join("\n");
