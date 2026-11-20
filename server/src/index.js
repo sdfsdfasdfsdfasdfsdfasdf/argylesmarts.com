@@ -30,6 +30,10 @@ const RESERVED = ["admin", "moderator", "megs", "system", "server", "support", "
 const BAD = ["fuck", "shit", "bitch", "cunt", "nigg", "fag", "rape", "porn", "dick", "pussy", "whore", "slut", "nazi", "hitler"];
 // team size per online mode; r1 is ranked (1v1, solo only)
 const MODES = { r1: { size: 1, ranked: 1, solo: 1 }, q1: { size: 1 }, q5: { size: 5 } };
+// skins only admins can wear; anyone else has them taken off their look
+const ADMIN_ITEMS = ["s67", "ad_arch", "ad_gm", "ad_gold", "ad_dev", "ad_found"];
+// the one-time code that makes an account an admin (only its hash is here); it works for two accounts, then never again
+const ADMIN_CLAIM = "ae02b0532d12090d920867735c86201b8a0ae3bc6c250feff7a279030ddc87b8", ADMIN_MAX = 2;
 const now = () => Date.now();
 const rid = (n) => { const b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map((x) => x.toString(16).padStart(2, "0")).join(""); };
 async function sha(s) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
@@ -53,8 +57,12 @@ export class Hub extends DurableObject {
       "CREATE TABLE IF NOT EXISTS invites(f TEXT, t TEXT, at INTEGER, PRIMARY KEY(f, t))",
       "CREATE TABLE IF NOT EXISTS queue(leader TEXT PRIMARY KEY, mode TEXT, n INTEGER, rating INTEGER, at INTEGER)",
       "CREATE TABLE IF NOT EXISTS matches(id TEXT PRIMARY KEY, mode TEXT, ranked INTEGER, host TEXT, members TEXT, created INTEGER, done INTEGER DEFAULT 0, opts TEXT)",
-      "CREATE TABLE IF NOT EXISTS mres(mid TEXT, uid TEXT, won INTEGER, PRIMARY KEY(mid, uid))"
+      "CREATE TABLE IF NOT EXISTS mres(mid TEXT, uid TEXT, won INTEGER, PRIMARY KEY(mid, uid))",
+      "CREATE TABLE IF NOT EXISTS gifts(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, kind TEXT, val TEXT, at INTEGER, by TEXT)",
+      "CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY AUTOINCREMENT, f TEXT, t TEXT, why TEXT, at INTEGER)"
     ]) this.sql.exec(q);
+    // columns added after the first version
+    for (const c of ["admin INTEGER DEFAULT 0", "banned INTEGER DEFAULT 0", "save TEXT", "saved INTEGER DEFAULT 0"]) { try { this.sql.exec("ALTER TABLE users ADD COLUMN " + c); } catch (e) {} }
     // keep-alive pings are answered without waking the object, so idle players cost nothing
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
@@ -71,11 +79,22 @@ export class Hub extends DurableObject {
   online(uid) { return this.socks(uid).length > 0; }
   send(ws, o) { try { ws.send(JSON.stringify(o)); } catch (e) {} }
   to(uid, o) { const s = JSON.stringify(o); for (const w of this.socks(uid)) { try { w.send(s); } catch (e) {} } }
-  user(id) { return this.sql.exec("SELECT id, name, look, rating, wins, losses FROM users WHERE id = ?", id).toArray()[0]; }
-  pub(id) { const u = this.user(id); if (!u) return null; let look = {}; try { look = JSON.parse(u.look); } catch (e) {} return { id: u.id, name: u.name, look, rating: u.rating, on: this.online(id) }; }
+  user(id) { return this.sql.exec("SELECT id, name, look, rating, wins, losses, admin, banned FROM users WHERE id = ?", id).toArray()[0]; }
+  pub(id) { const u = this.user(id); if (!u) return null; let look = {}; try { look = JSON.parse(u.look); } catch (e) {} return { id: u.id, name: u.name, look, rating: u.rating, admin: !!u.admin, on: this.online(id) }; }
+  isAdmin(id) { const u = this.user(id); return !!(u && u.admin); }
+  cleanLook(look, admin) {
+    const o = {}; if (!look || typeof look !== "object") return "{}";
+    for (const k of Object.keys(look).slice(0, 16)) { const v = look[k]; if (!admin && typeof v === "string" && ADMIN_ITEMS.indexOf(v) >= 0) continue; o[k] = v; }
+    return JSON.stringify(o).slice(0, 3000);
+  }
+  pushGifts(uid) { const list = this.sql.exec("SELECT id, kind, val FROM gifts WHERE uid = ?", uid).toArray(); if (list.length) this.to(uid, { t: "gift", list }); }
+  summary(id) {
+    const r = this.sql.exec("SELECT save, saved, seen FROM users WHERE id = ?", id).toArray()[0] || {}; let d = null; try { d = JSON.parse(r.save || "null"); } catch (e) {}
+    return d ? { coins: d.coins | 0, lvl: d.lvl | 0, items: Object.keys(d.inv || {}).length, saved: r.saved, seen: r.seen } : { seen: r.seen };
+  }
 
   async webSocketMessage(ws, raw) {
-    if (typeof raw !== "string" || raw.length > 8192) return;
+    if (typeof raw !== "string" || raw.length > (raw.startsWith('{"t":"save"') ? 400000 : 8192)) return;
     const a = ws.deserializeAttachment() || {};
     // simple flood guard: at most 80 messages a second per connection
     const t = now();
@@ -112,7 +131,7 @@ export class Hub extends DurableObject {
       if (e) return this.send(ws, { t: "err", c: "name", msg: e });
       if (this.sql.exec("SELECT 1 FROM users WHERE lname = ?", name.toLowerCase()).toArray().length) return this.send(ws, { t: "err", c: "name", msg: "That name is taken" });
       const id = rid(8), key = rid(24);
-      this.sql.exec("INSERT INTO users(id, name, lname, key, look, created, seen) VALUES(?, ?, ?, ?, ?, ?, ?)", id, name, name.toLowerCase(), await sha(key), JSON.stringify(m.look || {}).slice(0, 3000), now(), now());
+      this.sql.exec("INSERT INTO users(id, name, lname, key, look, created, seen) VALUES(?, ?, ?, ?, ?, ?, ?)", id, name, name.toLowerCase(), await sha(key), this.cleanLook(m.look, false), now(), now());
       a.uid = id; ws.serializeAttachment(a);
       this.send(ws, { t: "me", id, key, ...this.pub(id), wins: 0, losses: 0 });
       return this.hello(id);
@@ -120,6 +139,7 @@ export class Hub extends DurableObject {
     if (m.t === "hello") {
       const r = this.sql.exec("SELECT key FROM users WHERE id = ?", String(m.id || "")).toArray()[0];
       if (!r || r.key !== await sha(String(m.key || ""))) return this.send(ws, { t: "err", c: "auth", msg: "That account code did not work" });
+      if (this.user(m.id).banned) return this.send(ws, { t: "err", c: "banned", msg: "This account has been banned." });
       a.uid = m.id; ws.serializeAttachment(a);
       const u = this.user(m.id);
       this.send(ws, { t: "me", id: m.id, ...this.pub(m.id), wins: u.wins, losses: u.losses });
@@ -130,6 +150,11 @@ export class Hub extends DurableObject {
 
   hello(uid) {
     this.sql.exec("UPDATE users SET seen = ? WHERE id = ?", now(), uid);
+    // your saved progress, so any device you sign in on carries on where you left off
+    const sv = this.sql.exec("SELECT save, saved FROM users WHERE id = ?", uid).toArray()[0] || {};
+    let data = null; try { data = JSON.parse(sv.save || "null"); } catch (e) {}
+    this.to(uid, { t: "save", data, at: sv.saved || 0 });
+    this.pushGifts(uid);
     this.pushFriends(uid);
     this.tellFriends(uid);
     this.pushParty(uid);
@@ -272,11 +297,79 @@ export class Hub extends DurableObject {
     this.to(loser, { t: "rated", mid, delta: -d, rating: Math.max(0, Lu.rating - d) });
   }
 
+  // ---------- admin tools: only for accounts with the admin flag ----------
+  admin(ws, uid, m) {
+    if (!this.isAdmin(uid)) return this.send(ws, { t: "err", c: "adm", msg: "Admins only." });
+    const op = String(m.op || ""), id = String(m.id || ""), out = (o) => this.send(ws, { t: "adm", op, ...o });
+    if (op === "find") {
+      const q = String(m.q || "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16);
+      const list = this.sql.exec("SELECT id, name, rating, admin, banned FROM users WHERE lname >= ? AND lname < ? ORDER BY lname LIMIT 20", q, q + "\uffff").toArray()
+        .map((u) => ({ ...u, on: this.online(u.id), ...this.summary(u.id) }));
+      return out({ list });
+    }
+    const u = this.user(id);
+    if (op === "reports") {
+      const list = this.sql.exec("SELECT id, f, t, why, at FROM reports ORDER BY id DESC LIMIT 50").toArray().map((r) => ({ ...r, fn: (this.user(r.f) || {}).name, tn: (this.user(r.t) || {}).name, tb: !!(this.user(r.t) || {}).banned }));
+      return out({ list });
+    }
+    if (op === "rdel") { this.sql.exec("DELETE FROM reports WHERE id = ?", +m.rid); return out({ rid: +m.rid }); }
+    if (!u) return this.send(ws, { t: "err", c: "adm", msg: "No such player." });
+    if (op === "give") {
+      const coins = Math.max(0, Math.min(1000000, Math.floor(+m.coins || 0))), item = String(m.item || "").slice(0, 40);
+      if (item && ADMIN_ITEMS.indexOf(item) >= 0 && !u.admin) return this.send(ws, { t: "err", c: "adm", msg: "Admin skins can only go to admins." });
+      if (coins) this.sql.exec("INSERT INTO gifts(uid, kind, val, at, by) VALUES(?, 'coins', ?, ?, ?)", id, String(coins), now(), uid);
+      if (item) this.sql.exec("INSERT INTO gifts(uid, kind, val, at, by) VALUES(?, 'item', ?, ?, ?)", id, item, now(), uid);
+      this.pushGifts(id);
+      return out({ id, name: u.name, coins, item });
+    }
+    if (op === "ban" || op === "unban") {
+      if (u.admin) return this.send(ws, { t: "err", c: "adm", msg: "Admins can't be banned." });
+      this.sql.exec("UPDATE users SET banned = ? WHERE id = ?", op === "ban" ? 1 : 0, id);
+      if (op === "ban") { for (const w of this.socks(id)) { this.send(w, { t: "err", c: "banned", msg: "This account has been banned." }); try { w.close(4003, "banned"); } catch (e) {} } this.unqueue(id); this.leaveMatch(id, true); this.leaveParty(id); this.tellFriends(id); }
+      return out({ id, name: u.name });
+    }
+    if (op === "rename") {
+      const name = String(m.name || "").trim(), e = nameErr(name);
+      if (e) return this.send(ws, { t: "err", c: "adm", msg: e });
+      const o = this.sql.exec("SELECT id FROM users WHERE lname = ?", name.toLowerCase()).toArray()[0];
+      if (o && o.id !== id) return this.send(ws, { t: "err", c: "adm", msg: "That name is taken" });
+      this.sql.exec("UPDATE users SET name = ?, lname = ? WHERE id = ?", name, name.toLowerCase(), id);
+      this.to(id, { t: "me", id, ...this.pub(id) }); this.tellFriends(id);
+      return out({ id, name });
+    }
+  }
+
   // ---------- messages from a signed-in player ----------
   async handle(ws, uid, m) {
     const t = m.t;
+    if (t === "save") {
+      const d = JSON.stringify(m.data || null);
+      if (!m.data || typeof m.data !== "object" || d.length > 380000) return;
+      this.sql.exec("UPDATE users SET save = ?, saved = ? WHERE id = ?", d, Math.min(+m.at || now(), now() + 60000), uid);
+      return;
+    }
+    if (t === "gack") {
+      for (const id of (Array.isArray(m.ids) ? m.ids : []).slice(0, 100)) this.sql.exec("DELETE FROM gifts WHERE id = ? AND uid = ?", +id, uid);
+      return;
+    }
+    if (t === "claim") {
+      const ok = (await sha("megs-admin:" + String(m.code || "").trim().toUpperCase())) === ADMIN_CLAIM;
+      const n = this.sql.exec("SELECT COUNT(*) AS c FROM users WHERE admin = 1").one().c;
+      if (!ok || n >= ADMIN_MAX || this.isAdmin(uid)) return this.send(ws, { t: "err", c: "claim", msg: "That code did not work." });
+      this.sql.exec("UPDATE users SET admin = 1 WHERE id = ?", uid);
+      this.to(uid, { t: "me", id: uid, ...this.pub(uid) });
+      this.tellFriends(uid);
+      return this.send(ws, { t: "ok", c: "admin" });
+    }
+    if (t === "report") {
+      const id = String(m.id || ""); if (!this.user(id) || id === uid) return;
+      if (this.sql.exec("SELECT COUNT(*) AS c FROM reports WHERE f = ?", uid).one().c >= 30) return;
+      this.sql.exec("INSERT INTO reports(f, t, why, at) VALUES(?, ?, ?, ?)", uid, id, String(m.why || "").slice(0, 200), now());
+      return this.send(ws, { t: "ok", c: "reported" });
+    }
+    if (t === "adm") return this.admin(ws, uid, m);
     if (t === "look") {
-      this.sql.exec("UPDATE users SET look = ? WHERE id = ?", JSON.stringify(m.look || {}).slice(0, 3000), uid);
+      this.sql.exec("UPDATE users SET look = ? WHERE id = ?", this.cleanLook(m.look, this.isAdmin(uid)), uid);
       this.tellFriends(uid);
       const L = this.leaderOf(uid); if (L) this.pushPartyAll(L);
       return;
