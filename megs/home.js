@@ -28,29 +28,32 @@ waitUi(function(){
     return '<div class="lob">' + left + mid + right + '</div>';
   };
   AFTER.home = function(){};
-  // every way to play, opened from the Play button. Online modes are against real people; everything under
-  // "Vs computer" is against computer players. In a party, modes that only make sense alone are hidden.
+  // every way to play, in three plain groups: play a match now, take on a challenge, or just mess about.
+  // Each card says what it is, how long it takes and what you get. Online modes sit at the bottom until they open.
+  // [action, view, icon, name, what it is, colours, solo/party/both, tag]
+  var NOW = [
+    ["go", "quick", "ball", "Quick Match", "You against one computer player. First to 5 goals.", "#2c8fa3,#15475a", "solo", "Start here"],
+    ["go", "team", "users", "5v5", "Your team of five against theirs, on a full pitch.", "#15803d,#0b3d24", "", "About 5 min"],
+    ["field", "", "pitch", "1v1 Full Pitch", "One against one, a goal at each end.", "#0e7490,#0b3b52", "solo", "About 3 min"]];
+  var CHAL = [
+    ["go", "campaign", "trophy", "Campaign", "Beat each club to reach the Galaxy Cup.", "#b9791a,#6b3d0c", "solo", "Story"],
+    ["go", "ladder", "ladder", "The Ladder", "20 rivals in a row. Lose and you drop down.", "#1f8a5b,#0f4f3a", "solo", "Climb"],
+    ["go", "cups", "trophy", "Cups", "A knockout cup: 8 players, 3 rounds.", "#a16207,#5a3a06", "solo", "Prizes"],
+    ["go", "gauntlet", "shield", "The Gauntlet", "Endless rivals, each one harder. How far can you go?", "#b91c1c,#4a0d0d", "solo", "High score"]];
+  var FUN = [
+    ["practice", "", "ball", "Kickabout", "Practise moves. No clock, no score.", "#3d4370,#22264a", "solo", "Learn"],
+    ["go", "party", "users", "Co-op", "Two players on one keyboard.", "#a23bb5,#4f1f6b", "", "Same device"]];
   var ONLINE = [
-    ["soonOn", "ranked", "bolt", "Ranked 1v1", "Real players, real ranks", "#2b62d9,#1a2f7a", "solo"],
-    ["soonOn", "custom", "gear", "Custom Game", "Your party, your rules", "#7c3aed,#3b1d7a", "party"]];
-  var VSAI = [
-    ["go", "quick", "ball", "Quick Match", "Quick games and arcade modes", "#2c8fa3,#15475a", "solo"],
-    ["go", "team", "users", "5v5", "Full pitch, four team-mates", "#15803d,#0b3d24", ""],
-    ["field", "", "pitch", "1v1", "A whole pitch, a goal at each end", "#0e7490,#0b3b52", "solo"],
-    ["go", "campaign", "trophy", "Campaign", "Road to the Galaxy Cup", "#b9791a,#6b3d0c", "solo"],
-    ["go", "ladder", "ladder", "The Ladder", "Beat 20 rivals in a row", "#1f8a5b,#0f4f3a", "solo"],
-    ["go", "cups", "trophy", "Cups", "Eight players, three rounds", "#a16207,#5a3a06", "solo"],
-    ["go", "gauntlet", "shield", "The Gauntlet", "How long can you last?", "#b91c1c,#4a0d0d", "solo"],
-    ["go", "party", "users", "Co-op", "Friends on one keyboard", "#a23bb5,#4f1f6b", ""],
-    ["practice", "", "ball", "Kickabout", "No clock, no score", "#3d4370,#22264a", "solo"]];
-  function tile(x){ return '<button class="rlT' + (x[0] === "soonOn" ? " soon" : "") + '" style="--g:linear-gradient(135deg,' + x[5] + ')" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : "") + '>' + ic(x[2]) + '<b>' + x[3] + '</b><small>' + (x[0] === "soonOn" ? "Next update" : x[4]) + '</small></button>'; }
-  // the Play page fills the screen
+    ["soonOn", "ranked", "bolt", "Ranked 1v1", "Real players, real ranks.", "#2b62d9,#1a2f7a", "solo", "Next update"],
+    ["soonOn", "custom", "gear", "Custom Game", "Your party, your rules.", "#7c3aed,#3b1d7a", "party", "Next update"]];
+  function tile(x){ return '<button class="plT' + (x[0] === "soonOn" ? " soon" : "") + (x[7] === "Start here" ? " best" : "") + '" style="--g:linear-gradient(135deg,' + x[5] + ')" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : "") + '>' + ic(x[2]) + '<span><b>' + x[3] + '</b><small>' + x[4] + '</small></span><i>' + x[7] + '</i></button>'; }
+  function group(name, sub, list, fit, cls){ list = list.filter(fit); return list.length ? '<section class="plG ' + (cls || "") + '"><h3>' + name + '<small>' + sub + '</small></h3><div class="plR">' + list.map(tile).join("") + '</div></section>' : ""; }
   VIEW.play = function(){
     var party = MG.net && MG.net.inParty(), fit = function(x){ return party ? x[6] !== "solo" : x[6] !== "party"; };
-    return '<div class="plv"><div class="plh"><button class="btn ghost" data-a="go" data-v="home">' + ic("back") + 'Back</button><h1>Play</h1></div>' +
-      (party ? '<p class="mute">You are in a party, so solo modes are hidden. Playing together online is the next update; until then these play on this device.</p>' : "") +
-      '<h3>Online</h3><div class="rlGrid">' + ONLINE.filter(fit).map(tile).join("") + '</div>' +
-      '<h3>Vs computer</h3><div class="rlGrid">' + VSAI.filter(fit).map(tile).join("") + '</div></div>';
+    return '<div class="plv"><div class="plh"><button class="btn ghost" data-a="go" data-v="home">' + ic("back") + 'Back</button><h1>Play</h1><p class="mute">Every mode earns XP; wins earn coins.</p></div>' +
+      (party ? '<p class="mute">You are in a party, so modes for one player are hidden. Playing together online comes in the next update; for now these play on this device.</p>' : "") +
+      group("Play a match", "against the computer", NOW, fit) + group("Challenges", "longer runs with rewards", CHAL, fit) + group("Just for fun", "practise or play with a friend next to you", FUN, fit) +
+      group("Online", "against real players, coming in the next update", ONLINE, fit, "dim") + '</div>';
   };
   ACT.rlPlay = function(){ U.go("play"); };
 
@@ -112,7 +115,15 @@ waitUi(function(){
   var st = document.createElement("style");
   st.textContent = [
     "body:has(#view .lob) #nav{display:none}body:has(#view .plv) #nav{display:none}",
-    ".plv{min-height:calc(100vh - 175px);display:flex;flex-direction:column;gap:.4rem}.plh{display:flex;align-items:center;gap:1rem}.plh h1{margin:0;font-size:2.4rem;letter-spacing:.06em;text-transform:uppercase}",
+    ".plv{min-height:calc(100vh - 175px);display:flex;flex-direction:column;gap:.5rem}.plh p{margin:0 0 0 auto}",
+    ".plG h3{margin:.2rem 0 .4rem;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase;color:#e6e8f5}.plG h3 small{margin-left:.6rem;letter-spacing:0;text-transform:none;color:#a9b0d6;font-weight:400}",
+    ".plR{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.6rem}",
+    ".plT{position:relative;display:flex;align-items:center;gap:.8rem;text-align:left;min-height:84px;padding:.7rem .9rem;border:0;border-radius:16px;background:var(--g);color:#fff;cursor:pointer;font:inherit;box-shadow:0 8px 20px rgba(0,0,0,.35);transition:transform .12s}",
+    ".plT:hover{transform:translateY(-3px)}.plT .ic{width:34px;height:34px;flex:none}.plT span{display:flex;flex-direction:column;gap:.15rem}.plT b{font-size:1.15rem}.plT small{opacity:.88;font-size:.8rem;line-height:1.25}",
+    ".plT i{position:absolute;top:.45rem;right:.6rem;font-style:normal;font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,0,0,.3);border-radius:999px;padding:.12rem .45rem}",
+    ".plT.best{outline:3px solid #ffd23b;outline-offset:2px}.plT.best i{background:#ffd23b;color:#1a1405}.plG.dim .plT{filter:saturate(.45) brightness(.75);min-height:64px}",
+    ".kickp{position:sticky;bottom:10px;z-index:5;box-shadow:0 -8px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:1.2rem;padding:.6rem 1rem}.kickp>h3,.kickp>p{display:none}.kickp .set{flex:1;border:0;padding:0}.kickp .row{margin:0;order:-1}.kickbar{position:sticky;bottom:10px;z-index:5}",
+    ".plh{display:flex;align-items:center;gap:1rem}.plh h1{margin:0;font-size:2.4rem;letter-spacing:.06em;text-transform:uppercase}",
     ".plv h3{margin:1rem 0 .4rem;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;color:#a9b0d6}.plv .rlGrid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.7rem}.plv .rlT{min-height:150px;padding:1rem;transform:skewX(-4deg)}.plv .rlT>*{transform:skewX(4deg)}.plv .rlT b{font-size:1.4rem}.plv .rlT .ic{width:36px;height:36px}",
     ".crv{min-height:calc(100vh - 175px)}.crc{display:flex;flex-direction:column;align-items:center;gap:.4rem;margin-top:8vh;text-align:center}.crc h1{font-size:4rem;letter-spacing:.2em;margin:.2rem 0 1rem}.crn{display:flex;flex-direction:column;gap:.6rem;font-size:1.8rem;margin:.4rem 0 1.4rem}",
     ".rku{display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center}.rku h2{margin:0;font-size:2rem}.rkb{display:block;width:min(360px,80vw);height:14px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.rkb i{display:block;height:100%;border-radius:999px}",
@@ -127,7 +138,7 @@ waitUi(function(){
     ".rlMe{display:flex;flex-direction:column;align-items:center;position:relative}.rlMe canvas#hero{width:min(300px,38vh);height:min(400px,50vh);filter:drop-shadow(0 18px 24px rgba(0,0,0,.55))}",
     ".rlPl{display:flex;flex-direction:column;align-items:center;gap:.15rem;background:rgba(10,12,32,.82);border:1px solid #2f3466;border-radius:14px;padding:.45rem 1.1rem;margin-top:-.6rem;min-width:200px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}.rlPl b{font-size:1.25rem}.rlPl small{color:#a9b0d6}",
     ".rlEd{margin-top:.5rem}",
-    ".rlS{width:120px;height:min(240px,34vh);border:2px dashed rgba(170,180,240,.35);border-radius:18px;background:rgba(14,16,40,.45);color:#c9cde6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;cursor:pointer;font:inherit}.rlS .ic{width:34px;height:34px;opacity:.8}.rlS small{color:#8a8fb5}.rlS:hover{border-color:#9ab6ff;background:rgba(43,79,214,.18)}",
+    ".rlS{width:150px;height:150px;aspect-ratio:1;border:2px dashed rgba(170,180,240,.35);border-radius:18px;background:rgba(14,16,40,.45);color:#c9cde6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;cursor:pointer;font:inherit}.rlS .ic{width:34px;height:34px;opacity:.8}.rlS small{color:#8a8fb5}.rlS:hover{border-color:#9ab6ff;background:rgba(43,79,214,.18)}",
     ".rlT.soon{filter:saturate(.45) brightness(.8)}.rlM h3{margin:.8rem 0 .4rem;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;color:#a9b0d6}",
     ".rlSc{margin:.6rem 0 0;font-size:.8rem}.lnk{background:none;border:0;color:#9ab6ff;text-decoration:underline;cursor:pointer;font:inherit;padding:0}",
     ".rlR{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:1rem;padding-bottom:1rem}",
