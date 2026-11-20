@@ -12,7 +12,7 @@ MG.CEL = 7; MG.BP_N = 5; MG.BP_COST = 1000; MG.BP_CHANCE = 0.18;
 
 // ---- where everything comes from ----
 I.forEach(function(it){
-  if (it.src === "free" || it.src === "earn" || it.need || it.t === "stadium" && it.r <= MG.LEG) return;
+  if (it.src === "free" || it.src === "earn" || it.src === "rank" || it.need || it.t === "stadium" && it.r <= MG.LEG) return;
   if (it.t === "banner" || it.t === "scene") { if (it.src !== "pass" && it.src !== "season") it.src = hash(it.id) % 3 ? "season" : "pass"; return; }
   if (it.r === 5 || it.r === 6) { if (it.src === "pack" || it.src === "shop") it.src = hash(it.id) % 4 ? "season" : "pass"; return; }
   if (it.r === MG.CEL && (it.src === "pack" || it.src === "shop")) { it.src = "pack"; it.cel = 1; }
