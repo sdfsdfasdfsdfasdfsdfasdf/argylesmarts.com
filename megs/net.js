@@ -199,7 +199,8 @@ function panel(){
   }
   h += '</div>';
   if (N.inParty()) h += '<div class="row"><button class="btn ghost sm" data-a="onlLeave">Leave party</button></div>';
-  h += '<details class="onlAlt"><summary>Your account code</summary><p class="mute">This code is your account. Use it to sign in on another device. Anyone who has it can use your account, so keep it private.</p><div class="row"><input id="onlMy" readonly value="' + (a ? esc(a.id + "." + a.key) : "") + '"><button class="btn ghost sm" data-a="onlCopy">Copy</button></div></details>';
+  h += '<details class="onlAlt"><summary>Your account code</summary><p class="mute">This code is your account. Use it to sign in on another device. Anyone who has it can use your account, so keep it private.</p><div class="row"><input id="onlMy" readonly value="' + (a ? esc(a.id + "." + a.key) : "") + '"><button class="btn ghost sm" data-a="onlCopy">Copy</button></div></details>' +
+    '<div class="row"><button class="btn ghost sm" data-a="onlOut">Sign out</button></div>';
   var keepQ = document.activeElement && document.activeElement.id === "onlQ", pos = keepQ ? document.activeElement.selectionStart : 0;
   el.innerHTML = h;
   var q = document.getElementById("onlQ");
@@ -242,6 +243,15 @@ waitUi(function(){
     U.modal('<h2>' + U.esc(p.name) + '</h2><p class="mute">' + (p.id === N.party.leader ? "Party leader" : "In your party") + '</p><div class="row center">' +
       (lead ? '<button class="btn" data-a="onlPromote" data-id="' + p.id + '">Make leader</button><button class="btn ghost" data-a="onlKick" data-id="' + p.id + '">Remove from party</button>' : "") +
       '<button class="btn ghost" data-a="onlLeave">Leave party</button><button class="btn ghost" data-a="onlRep" data-id="' + p.id + '" data-n="' + U.esc(p.name) + '">Report</button><button class="btn ghost" data-a="close">Close</button></div>');
+  };
+  // signing out: copy your code first, it is the only way back in. This device keeps its progress as a guest save
+  ACT.onlOut = function(d, b){
+    if (!b.getAttribute("data-sure")) { b.setAttribute("data-sure", "1"); b.textContent = "Copied your code? Sign out"; return; }
+    if (synced && ws && ws.readyState === 1) send({t: "save", data: MG.S, at: MG.S.at || Date.now()});
+    keep(null); synced = false; dirty = false; N.me = null; N.friends = []; N.reqs = []; N.sent = []; N.invites = []; N.party = {leader: null, members: []};
+    if (MG.S) { MG.S.admin = false; if (MG.adminSync) MG.adminSync(); MG.save(); }
+    var w = ws; ws = null; if (w) { w.onclose = null; try { w.close(); } catch (e) {} } N.on = false;
+    U.close(); U.toast("Signed out. This device keeps its progress as a guest."); U.go("home");
   };
   ACT.onlRep = function(d){
     U.modal('<h2>Report ' + U.esc(d.n || "player") + '</h2><p class="mute">Tell the admins what happened, like a rude username.</p><div class="row"><input id="repWhy" maxlength="200" autocomplete="off" placeholder="What happened?" style="flex:1"></div><div class="row center"><button class="btn red" data-a="onlRepGo" data-id="' + d.id + '">Send report</button><button class="btn ghost" data-a="close">Cancel</button></div>', "onlc");
