@@ -122,7 +122,7 @@ MG.shopBuy = function(id){
   if (!it || s.inv[id] || MG.weekShop().indexOf(it) < 0 || s.coins < MG.shopPrice(it)) return false;
   s.coins -= MG.shopPrice(it); s.inv[id] = 1; MG.save(); return true;
 };
-MG.BUNDLES = [["Season 1 Premium Pass", "Unlocks the premium track: every Season 1 signature kit, wrap, emote and banner."], ["Kickoff Bundle", "The premium pass plus 10 tiers skipped straight away."], ["Coin Chest", "A big pile of coins for packs and the weekly shop."]];
+MG.BUNDLES = [["Season 1 Premium Pass", "Unlocks the premium track: every Season 1 signature skin, wrap, emote and banner."], ["Kickoff Bundle", "The premium pass plus 10 tiers skipped straight away."], ["Coin Chest", "A big pile of coins for packs and the weekly shop."]];
 
 // ---- loadout presets ----
 MG.presets = function(){ var s = S(); if (!s.pre) s.pre = []; return s.pre; };
