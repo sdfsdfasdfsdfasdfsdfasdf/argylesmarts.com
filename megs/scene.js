@@ -107,7 +107,7 @@ function brand(g, w, h, t){
 }
 
 // ---- the background behind the menus ----
-var BG = null, SCENE_V = {home: 1, profile: 1, team: 1, campaign: 1, tres: 1, result: 1, cups: 1}, BRAND_V = {shop: 1, pass: 1, locker: 1, ranks: 1, ladder: 1, gauntlet: 1, party: 1};
+var BG = null, SCENE_V = {home: 1, play: 1, credits: 1, profile: 1, team: 1, campaign: 1, tres: 1, result: 1, cups: 1}, BRAND_V = {shop: 1, pass: 1, locker: 1, ranks: 1, ladder: 1, gauntlet: 1, party: 1};
 function bgMode(){ var v = MG.ui && MG.ui.cur ? MG.ui.cur() : "home"; return SCENE_V[v] ? "scene" : BRAND_V[v] ? "brand" : ""; }
 var lastBg = 0;
 function bgTick(now){
@@ -132,7 +132,7 @@ function heroTick(t){
   var c = document.getElementById("hero"), q;
   if (!c || document.body.classList.contains("playing")) return;
   q = c.getBoundingClientRect(); if (q.bottom < 0) return;
-  R.portrait(c, MG.me(), t, {turn: 0.45 * Math.sin(t * 0.35), emote: (t % 14) > 11 ? (MG.ITEM[MG.S.eq.emote] || {}).k : ""});
+  R.portrait(c, MG.me(), t, {zoom: 2.65, turn: 0.45 * Math.sin(t * 0.35), emote: (t % 14) > 11 ? (MG.ITEM[MG.S.eq.emote] || {}).k : ""});
 }
 function waitUi(f){ if (MG.ui && MG.ui.VIEW) f(); else setTimeout(function(){ waitUi(f); }, 0); }
 
