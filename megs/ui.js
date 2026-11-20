@@ -130,8 +130,9 @@ VIEW.quick = function(){
   var ms = QM;
   return head("Quick and Arcade", "Pick a game, then how tough the rival should be. Nothing but coins and XP on the line.") +
     '<div class="modes">' + ms.map(function(k){ var m = MG.MODES[k]; return '<button class="mode' + (quick.mode === k ? " sel" : "") + '" style="--g:linear-gradient(135deg,' + MCOL[k] + ')" data-a="qmode" data-id="' + k + '">' + ic(MICO[k]) + '<b>' + m.n + '</b><span>' + (k === "quick" ? ruleText(rules()) : m.d) + '</span></button>'; }).join("") + '</div>' +
-    '<section class="panel"><h3>Rival</h3><div class="set"><div>Difficulty<small id="lvn">' + MG.LEVELS[quick.lv] + '</small></div><input type="range" min="0" max="10" step="1" value="' + quick.lv + '" id="qlv"></div>' +
+    '<section class="panel kickp"><h3>Rival</h3><div class="set"><div>Difficulty<small id="lvn">' + MG.LEVELS[quick.lv] + '</small></div><input type="range" min="0" max="10" step="1" value="' + quick.lv + '" id="qlv"></div>' +
     '<div class="row"><button class="btn big" data-a="playQuick">' + ic("play") + 'Kick off</button></div><p class="mute">The rules for Quick Match can be changed in Settings.</p></section>';
+  // (the Rival panel with Kick off stays stuck to the bottom of the screen, so you never have to scroll to it)
 };
 AFTER.quick = function(){ $("qlv").addEventListener("input", function(){ quick.lv = +this.value; $("lvn").textContent = MG.LEVELS[quick.lv]; }); };
 ACT.qmode = function(d){ quick.mode = d.id; go("quick"); };
@@ -461,10 +462,10 @@ VIEW.help = function(){
 var arch0 = 5;
 function welcome(){
   arch0 = 5;
-  modal('<h2>Welcome to the cage</h2><p class="mute">Pick a name and a style. You can change both later in the Locker.</p><input type="text" id="wname" maxlength="12" placeholder="Your name" autocomplete="off" aria-label="Your name"><div class="arch" id="warch">' + archBtns(5, "arch0") + '</div><div class="row center"><button class="btn big" data-a="begin">Step into the cage</button></div>');
+  modal('<h2>Welcome to the cage</h2><p class="mute">Pick a style. You start as a guest; sign up in the Locker whenever you want a real name.</p><div class="arch" id="warch">' + archBtns(5, "arch0") + '</div><div class="row center"><button class="btn big" data-a="begin">Step into the cage</button></div>');
 }
 ACT.arch0 = function(d){ arch0 = +d.i; $("warch").innerHTML = archBtns(arch0, "arch0"); };
-ACT.begin = function(){ var s = S(); s.name = clean($("wname").value) || "Player"; s.arch = arch0; MG.save(); close(); go("home"); toast("Tip: try a Kickabout first to learn the moves."); };
+ACT.begin = function(){ var s = S(); s.name = s.name || (MG.guestName ? MG.guestName() : "Guest"); s.arch = arch0; MG.save(); close(); go("home"); toast("Tip: try a Kickabout first to learn the moves."); };
 document.addEventListener("click", function(e){
   var b = e.target.closest("[data-a]"), a;
   if (!b || b.disabled) return;
