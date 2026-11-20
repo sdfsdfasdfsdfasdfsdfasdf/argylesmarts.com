@@ -22,7 +22,7 @@ MG.DUPE[MG.CEL] = 400;
 // ---- packs: one item a pull ----
 var PK = {street: [100, [50, 28, 14, 6, 1.9, 0, 0, 0.1], 60], pro: [500, [0, 30, 38, 22, 9.5, 0, 0, 0.5], 20], elite: [1000, [0, 0, 28, 46, 24, 0, 0, 2], 6]};
 MG.PACKS.forEach(function(p){ var o = PK[p.id]; if (o) { p.cost = o[0]; p.odds = o[1]; p.pity = o[2]; } });
-// a pack of one kind: small things are much cheaper, kits and stadiums cost a quarter more
+// a pack of one kind: small things are much cheaper, skins and stadiums cost a quarter more
 MG.KIND_X = {boot: 0.3, sticker: 0.25, trail: 0.35, emote: 0.4, ball: 0.45, wrap: 0.5, hair: 0.5, fx: 0.8, court: 1, kit: 1.25, stadium: 1.25};
 MG.packCost = function(pk, kind){ return Math.max(10, Math.round(pk.cost * (kind ? MG.KIND_X[kind] || 1 : 1) / 10) * 10); };
 // the two big packs pay out more than an item: Celestial blueprints and season pass XP on every pull
@@ -121,7 +121,7 @@ waitUi(function(){
   // the shop: packs are pulls now
   var shop0 = VIEW.shop;
   VIEW.shop = function(){
-    return what(shop0()).replace(/A pack of one kind costs a quarter more\./, "Picking one kind changes the price: boots, stickers, trails, emotes, balls, wraps and hair are much cheaper; kits and stadiums cost a quarter more.").replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ").replace(/Duplicates pay coins back\./g, "Duplicates stack up (x2, x3) so you can trade them later.") +
+    return what(shop0()).replace(/A pack of one kind costs a quarter more\./, "Picking one kind changes the price: boots, stickers, trails, emotes, balls, wraps and hair are much cheaper; skins and stadiums cost a quarter more.").replace(/<section class="panel pack (\w+)">([\s\S]*?)Three items in every pack\./g, function(x, id, mid){ var pk = MG.PACKS.filter(function(p){ return p.id === id; })[0], b = pk && MG.packBonus(pk); return '<section class="panel pack ' + id + '">' + mid + 'One item a pull. Open 1, 3 or 10 at once.' + (b ? '</p><p class="pkb">' + b : ""); }).replace(/ packs \((\d+) opened since your last one\)/g, " pulls ($1 since your last one)").replace(/guaranteed at least every 1 pulls \(\d+ since your last one\)/g, "guaranteed on every pull").replace(/>Open for /g, ">Open ").replace(/Duplicates pay coins back\./g, "Duplicates stack up (x2, x3) so you can trade them later.") +
       '<section class="panel"><h3>Celestial items</h3><p class="mute">A Celestial from a pack is only discovered. To build it you also need ' + MG.BP_N + ' of its blueprints (wins drop them at random) and ' + coin(MG.BP_COST) + '. Your progress is in the Locker under Blueprints.</p></section>';
   };
   // under every buy button: what you are getting
