@@ -9,11 +9,13 @@ function rnd(n, k){ var r = MG.rng(n * 131 + k), a = [], i; for (i = 0; i < n; i
 function grad(g, y0, y1, cols){ var gr = g.createLinearGradient(0, y0, 0, y1); cols.forEach(function(c, i){ gr.addColorStop(i / (cols.length - 1), c); }); return gr; }
 
 // ---- the scenes ----
-var SC = [["sc_night", "Floodlit Night", 0, "free"], ["sc_street", "Street Cage", 0, "free"], ["sc_sunset", "Beach Sunset", 1, "shop"], ["sc_roof", "Rooftop Blue Hour", 1, "pack"],
+var SC = [["sc_brand", "Megs Colours", 0, "free"], ["sc_night", "Floodlit Night", 0, "free"], ["sc_street", "Street Cage", 0, "free"], ["sc_sunset", "Beach Sunset", 1, "shop"], ["sc_roof", "Rooftop Blue Hour", 1, "pack"],
   ["sc_snow", "Snow Day", 2, "pass"], ["sc_jungle", "Jungle", 2, "pack"], ["sc_dunes", "Dunes", 2, "shop"], ["sc_rain", "Neon Rain", 3, "shop"], ["sc_synth", "Synthwave", 3, "pack"],
   ["sc_ocean", "Underwater", 3, "pass"], ["sc_sakura", "Cherry Blossom", 3, "shop"], ["sc_arcade", "Arcade", 3, "pack"], ["sc_space", "Deep Space", 4, "shop"], ["sc_aurora", "Aurora", 4, "pass"],
   ["sc_volcano", "Volcano", 4, "pack"], ["sc_storm", "Thunderstorm", 4, "shop"], ["sc_candy", "Candy Land", 4, "pack"], ["sc_final", "Golden Final", 5, "season"], ["sc_galaxy", "Galaxy Core", 6, "pack"], ["sc_heaven", "Cloud Kingdom", 7, "season"]];
 SC.forEach(function(s){ add("scene", s[0], s[1], s[2], s[3], {k: s[0].slice(3)}); });
+// the home screen now starts on the Megs colours (the same as the Locker); the floodlit stadium is still in the Locker
+(function(S){ if (!S || (S.n && S.n.bg1)) return; S.n = S.n || {}; S.n.bg1 = 1; S.inv.sc_brand = 1; if (!S.eq.scene || S.eq.scene === "sc_night") S.eq.scene = "sc_brand"; if (MG.save) MG.save(); })(MG.S);
 
 function stadium(g, w, h, t, sky, crowd){
   var i, r = rnd(220, 3), x, y, gr;
@@ -35,6 +37,7 @@ function stars(g, w, h, n, t, k){ rnd(n, k || 1).forEach(function(q, i){ g.fillS
 function hills(g, w, h, y, amp, col, k, sharp){ var i, x; g.fillStyle = col; g.beginPath(); g.moveTo(0, h); for (i = 0; i <= 24; i++) { x = i / 24 * w; g.lineTo(x, y - amp * (sharp ? Math.abs(Math.sin(i * 1.3 + k)) : 0.5 + 0.5 * Math.sin(i * 0.7 + k))); } g.lineTo(w, h); g.fill(); }
 function city(g, w, h, y, col, lit, t, k){ var r = rnd(40, k), x = 0, i = 0, bw, bh, a, b; while (x < w) { bw = 30 + r[i % 40][0] * 60; bh = (0.15 + r[i % 40][1] * 0.35) * h; g.fillStyle = col; g.fillRect(x, y - bh, bw - 3, bh + h); if (lit) for (a = 0; a < bw - 12; a += 9) for (b = 8; b < bh - 6; b += 12) if ((a * 7 + b * 13 + i) % 5 === 0) { g.fillStyle = lit; g.globalAlpha = 0.5 + 0.5 * Math.sin(t * 0.7 + a + b); g.fillRect(x + 6 + a, y - bh + b, 4, 6); } g.globalAlpha = 1; x += bw; i++; } }
 var DRAW = {
+  brand: function(g, w, h, t){ brand(g, w, h, t); },
   night: function(g, w, h, t){ if (R.homeStadium && w > 400) R.homeStadium(g, w, h, t); else stadium(g, w, h, t, ["#05071a", "#1a1f4a", "#2a2f66"], ["#e6705e", "#f2f2f7", "#3b6ef5", "#ffd23b", "#5ee6a8"]); },   // the default scene is your own stadium, lit up at night
   final: function(g, w, h, t){
     stadium(g, w, h, t, ["#1a0d05", "#4a2a0c", "#8a5a14"], ["#ffd23b", "#fff6c2", "#ffffff", "#ff4f7a"]);
@@ -108,7 +111,7 @@ function brand(g, w, h, t){
 
 // ---- the background behind the menus ----
 var BG = null, SCENE_V = {home: 1, play: 1, credits: 1, profile: 1, team: 1, campaign: 1, tres: 1, result: 1, cups: 1}, BRAND_V = {shop: 1, pass: 1, locker: 1, ranks: 1, ladder: 1, gauntlet: 1, party: 1};
-function bgMode(){ var v = MG.ui && MG.ui.cur ? MG.ui.cur() : "home"; return SCENE_V[v] ? "scene" : BRAND_V[v] ? "brand" : ""; }
+function bgMode(){ var v = MG.ui && MG.ui.cur ? MG.ui.cur() : "home"; return SCENE_V[v] ? (MG.S && MG.S.eq.scene === "sc_brand" ? "brand" : "scene") : BRAND_V[v] ? "brand" : ""; }
 var lastBg = 0;
 function bgTick(now){
   requestAnimationFrame(bgTick);
