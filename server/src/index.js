@@ -3,6 +3,7 @@
 // parties, invites, matchmaking and a relay for match traffic. The game itself runs in the players' browsers:
 // the match host simulates and the others send inputs, all passed through here.
 import { DurableObject } from "cloudflare:workers";
+import { CAT } from "./catalog.js";
 
 const ORIGINS = ["https://argylesmarts.com", "https://www.argylesmarts.com"];
 function okOrigin(o) {
@@ -35,6 +36,73 @@ const ADMIN_ITEMS = ["s67", "ad_arch", "ad_gm", "ad_gold", "ad_dev", "ad_found"]
 // the one-time code that makes an account an admin (only its hash is here); it works for two accounts, then never again
 const ADMIN_CLAIM = "ae02b0532d12090d920867735c86201b8a0ae3bc6c250feff7a279030ddc87b8", ADMIN_MAX = 2;
 const now = () => Date.now();
+// ---------- the bank: the server owns every account's coins and items, and opens the packs ----------
+// Accounts made before this went live keep what they had; newer ones bring only a little guest progress with them.
+const CUTOFF = 1795140000000, SEASON = 1, START_COINS = 500;
+const WIN_COINS = 50, WIN_GAP = 30000, DAY_COINS = 3000, DAY_XP = 30000, XP_MAX = 3000, ULTRA = 1 / 2500;
+const CODES = { "3b1fef17630831146ce458069b3a2c539f0c6fe21fe4ec05c4fe9249e3611962": "all", "97b9ebd519ecf14a27ab2e90924ef7f6f44c7325a172c6693807e14a0f04ec20": "coins" };
+const IT = CAT.items, ITEM_KEYS = ["kit", "trail", "fx", "emote", "boot", "wrap", "hair", "banner", "ball", "court", "scene", "stadium", "sticker"];
+const has = (id, f) => !!(IT[id] && IT[id][3].indexOf(f) >= 0);
+const day = () => Math.floor(now() / 86400000);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+function freshWal() { const inv = {}; for (const id of CAT.free) inv[id] = 1; return { coins: START_COINS, inv, seen: {}, bp: {}, pity: {}, pass: { s: SEASON, xp: 0, got: {}, bon: 0 }, free: 0, codes: {}, earn: { d: 0, c: 0, x: 0, last: 0 }, imp: 0 }; }
+function passOf(w) { if (!w.pass || w.pass.s !== SEASON) w.pass = { s: SEASON, xp: 0, got: {}, bon: 0 }; return w.pass; }
+function tierOf(w) { return Math.min(CAT.passN, Math.floor(passOf(w).xp / CAT.passXp)); }
+function give(w, id) { w.inv[id] = w.inv[id] ? Math.min(99, (+w.inv[id] || 1) + 1) : 1; }
+function roll(pk, force, kind) {
+  const P = CAT.packs[pk];
+  if (pk === "galaxy" && (!kind || kind === "kit") && Math.random() < ULTRA) return pick(Object.keys(IT).filter((id) => has(id, "u")));
+  let r = Math.random() * 100, a = 0, q = 7;
+  for (let i = 0; i < 8; i++) { a += P[1][i] || 0; if (r < a) { q = i; break; } }
+  if (force && q < CAT.leg) q = CAT.leg;
+  const of = (k) => Object.keys(IT).filter((id) => IT[id][0] === k && IT[id][2] === "pack" && !has(id, "f") && (!kind || IT[id][1] === kind));
+  let pool;
+  while (!(pool = of(q)).length && q > 0) q--;
+  while (!pool.length && q < 8) pool = of(++q);
+  return pick(pool);
+}
+// a pull: a new Celestial is only discovered (finding it again is a blueprint); anything else stacks as x2, x3...
+function grant(w, id) {
+  if (has(id, "c") && !w.inv[id]) { const first = !w.seen[id]; w.seen[id] = 1; if (!first) w.bp[id] = Math.min(CAT.bpN, (w.bp[id] || 0) + 1); return { id, cel: 1, first, bp: w.bp[id] || 0 }; }
+  const d = !!w.inv[id]; give(w, id); return { id, dupe: d, n: w.inv[id] };
+}
+function bonusBp(w) {
+  const pool = Object.keys(IT).filter((id) => has(id, "c") && !w.inv[id] && (w.bp[id] || 0) < CAT.bpN);
+  if (!pool.length) { w.coins += 300; return "+300 coins"; }
+  const id = pick(pool); w.bp[id] = (w.bp[id] || 0) + 1; return "Blueprint: " + id + " (" + w.bp[id] + "/" + CAT.bpN + ")";
+}
+function packCost(pk, kind) { return Math.max(10, Math.round(CAT.packs[pk][0] * (kind ? CAT.kindx[kind] || 1 : 1) / 10) * 10); }
+// bringing a save that was made before the bank into an account
+function importSave(w, d, old, admin) {
+  if (!d || typeof d !== "object") return;
+  const inv = d.inv || {};
+  w.coins = Math.max(0, w.coins - START_COINS) + Math.max(0, Math.min(old ? 200000 : 1500, Math.floor(+d.coins || 0)));
+  for (const id of Object.keys(inv)) {
+    if (!IT[id] || has(id, "a")) continue;
+    if (!old && (IT[id][0] > 2 || has(id, "c") || has(id, "u"))) continue;
+    w.inv[id] = Math.max(w.inv[id] || 0, Math.min(old ? 10 : 1, Math.floor(+inv[id] || 1)));
+  }
+  if (old) {
+    for (const id of Object.keys(d.seen || {})) if (has(id, "c")) w.seen[id] = 1;
+    for (const id of Object.keys(d.bp || {})) if (has(id, "c")) w.bp[id] = Math.min(CAT.bpN, Math.floor(+d.bp[id] || 0));
+    for (const k of Object.keys(d.pity || {})) if (CAT.packs[k]) w.pity[k] = Math.min(100, Math.floor(+d.pity[k] || 0));
+    for (const k of Object.keys(d.codes || {})) w.codes[k] = 1;
+    w.free = Math.floor(+d.free || 0);
+  }
+  if (d.pass && d.pass.s === SEASON) { const p = passOf(w); p.xp = Math.max(p.xp, Math.min(old ? 1e6 : 5000, Math.floor(+d.pass.xp || 0))); if (old) { for (const k of Object.keys(d.pass.got || {})) p.got[k] = 1; p.bon = Math.floor(+d.pass.bon || 0); } }
+}
+// ---------- passcodes: stored only as a salted, slow hash ----------
+const PASS_ITER = 10000;
+// the two admin accounts get these passcodes once (only the hashes are here)
+const ADMIN_PASS = { hudsonboyd: ["63e29355b27a70863c84a15d0e993556", "07006ae4d71d76660e14401b77d39be92826e3926a9a162d3ae9ccaa9bdb3e6e"], audensattler: ["31e19a07da27f72c4bb86e4dc861f034", "1ac765c6a5cbea5cc2dd546d6595bab60c546270c0770abcfcef9d1119dde586"] };
+function hexb(h) { const b = new Uint8Array(h.length / 2); for (let i = 0; i < b.length; i++) b[i] = parseInt(h.substr(i * 2, 2), 16); return b; }
+async function passHash(pass, salt) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: hexb(salt), iterations: PASS_ITER }, k, 256);
+  return [...new Uint8Array(bits)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+function passErr(p) { p = String(p || ""); return p.length < 4 ? "Your passcode needs at least 4 characters" : p.length > 64 ? "That passcode is too long" : ""; }
+const WAL_KEYS = ["coins", "inv", "seen", "bp", "pity", "pass", "free", "codes"];
 const rid = (n) => { const b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map((x) => x.toString(16).padStart(2, "0")).join(""); };
 async function sha(s) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 function nameErr(n) {
@@ -59,10 +127,20 @@ export class Hub extends DurableObject {
       "CREATE TABLE IF NOT EXISTS matches(id TEXT PRIMARY KEY, mode TEXT, ranked INTEGER, host TEXT, members TEXT, created INTEGER, done INTEGER DEFAULT 0, opts TEXT)",
       "CREATE TABLE IF NOT EXISTS mres(mid TEXT, uid TEXT, won INTEGER, PRIMARY KEY(mid, uid))",
       "CREATE TABLE IF NOT EXISTS gifts(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, kind TEXT, val TEXT, at INTEGER, by TEXT)",
-      "CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY AUTOINCREMENT, f TEXT, t TEXT, why TEXT, at INTEGER)"
+      "CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY AUTOINCREMENT, f TEXT, t TEXT, why TEXT, at INTEGER)",
+      "CREATE TABLE IF NOT EXISTS sessions(tok TEXT PRIMARY KEY, uid TEXT, at INTEGER)",
+      "CREATE TABLE IF NOT EXISTS namereq(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, want TEXT, why TEXT, at INTEGER)",
+      "CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)"
     ]) this.sql.exec(q);
     // columns added after the first version
-    for (const c of ["admin INTEGER DEFAULT 0", "banned INTEGER DEFAULT 0", "save TEXT", "saved INTEGER DEFAULT 0"]) { try { this.sql.exec("ALTER TABLE users ADD COLUMN " + c); } catch (e) {} }
+    for (const c of ["admin INTEGER DEFAULT 0", "banned INTEGER DEFAULT 0", "save TEXT", "saved INTEGER DEFAULT 0", "wal TEXT", "pw TEXT", "renamed INTEGER DEFAULT 0"]) { try { this.sql.exec("ALTER TABLE users ADD COLUMN " + c); } catch (e) {} }
+    // once: account codes stop working (everyone logs in with a username and passcode now), admins get their passcodes
+    if (!this.sql.exec("SELECT 1 FROM meta WHERE k = 'passcodes'").toArray().length) {
+      this.sql.exec("UPDATE users SET key = NULL");
+      for (const n of Object.keys(ADMIN_PASS)) this.sql.exec("UPDATE users SET pw = ? WHERE lname = ? AND pw IS NULL", ADMIN_PASS[n][0] + ":" + ADMIN_PASS[n][1], n);
+      this.sql.exec("INSERT INTO meta(k, v) VALUES('passcodes', ?)", String(now()));
+    }
+    this.fails = new Map();
     // keep-alive pings are answered without waking the object, so idle players cost nothing
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
@@ -82,11 +160,37 @@ export class Hub extends DurableObject {
   user(id) { return this.sql.exec("SELECT id, name, look, rating, wins, losses, admin, banned FROM users WHERE id = ?", id).toArray()[0]; }
   pub(id) { const u = this.user(id); if (!u) return null; let look = {}; try { look = JSON.parse(u.look); } catch (e) {} return { id: u.id, name: u.name, look, rating: u.rating, admin: !!u.admin, on: this.online(id) }; }
   isAdmin(id) { const u = this.user(id); return !!(u && u.admin); }
-  cleanLook(look, admin) {
-    const o = {}; if (!look || typeof look !== "object") return "{}";
-    for (const k of Object.keys(look).slice(0, 16)) { const v = look[k]; if (!admin && typeof v === "string" && ADMIN_ITEMS.indexOf(v) >= 0) continue; o[k] = v; }
+  // what others see you wearing: only things this account really owns
+  cleanLook(look, admin, uid) {
+    const o = {}, inv = uid ? (this.wal(uid).inv) : {}; if (!look || typeof look !== "object") return "{}";
+    for (const k of Object.keys(look).slice(0, 16)) {
+      const v = look[k];
+      if (typeof v === "string" && IT[v]) { if (has(v, "a") ? !admin : !(inv[v] || has(v, "f"))) continue; }
+      else if (!admin && typeof v === "string" && ADMIN_ITEMS.indexOf(v) >= 0) continue;
+      o[k] = v;
+    }
     return JSON.stringify(o).slice(0, 3000);
   }
+  // ---------- wallets ----------
+  wal(uid) {
+    const r = this.sql.exec("SELECT wal, save, created, admin FROM users WHERE id = ?", uid).toArray()[0];
+    if (!r) return freshWal();
+    let w = null; try { w = JSON.parse(r.wal || "null"); } catch (e) {}
+    if (!w) {
+      w = freshWal(); let d = null; try { d = JSON.parse(r.save || "null"); } catch (e) {}
+      if (d) { importSave(w, d, r.created < CUTOFF, !!r.admin); w.imp = 1; }
+      this.putWal(uid, w);
+    }
+    if (r.admin) for (const id of ADMIN_ITEMS) if (IT[id] && !w.inv[id]) w.inv[id] = 1;
+    if (!r.admin) for (const id of ADMIN_ITEMS) delete w.inv[id];
+    for (const id of CAT.free) if (!w.inv[id]) w.inv[id] = 1;
+    passOf(w);
+    return w;
+  }
+  putWal(uid, w) { this.sql.exec("UPDATE users SET wal = ? WHERE id = ?", JSON.stringify(w), uid); }
+  walOut(w) { const o = {}; for (const k of WAL_KEYS) o[k] = w[k]; return o; }
+  pushWal(uid, w) { this.to(uid, { t: "wal", wal: this.walOut(w || this.wal(uid)) }); }
+  withWal(d, w) { if (d && typeof d === "object") for (const k of WAL_KEYS) d[k] = w[k]; return d; }
   pushGifts(uid) { const list = this.sql.exec("SELECT id, kind, val FROM gifts WHERE uid = ?", uid).toArray(); if (list.length) this.to(uid, { t: "gift", list }); }
   summary(id) {
     const r = this.sql.exec("SELECT save, saved, seen FROM users WHERE id = ?", id).toArray()[0] || {}; let d = null; try { d = JSON.parse(r.save || "null"); } catch (e) {}
@@ -115,9 +219,11 @@ export class Hub extends DurableObject {
   drop(ws) {
     const a = ws.deserializeAttachment() || {};
     if (!a.uid) return;
-    const uid = a.uid;
     try { ws.close(1000, "bye"); } catch (e) {}
-    if (this.socks(uid).some((w) => w !== ws)) return;   // still connected in another tab
+    if (this.socks(a.uid).some((w) => w !== ws)) return;   // still connected in another tab
+    this.offline(a.uid);
+  }
+  offline(uid) {
     this.sql.exec("UPDATE users SET seen = ? WHERE id = ?", now(), uid);
     this.unqueue(uid);
     this.leaveMatch(uid, true);
@@ -125,27 +231,52 @@ export class Hub extends DurableObject {
     this.tellFriends(uid);
   }
 
+  // a new session for a device that just logged in; the device keeps the token, the server only its hash
+  async session(ws, a, uid) {
+    const tok = rid(24);
+    this.sql.exec("INSERT INTO sessions(tok, uid, at) VALUES(?, ?, ?)", await sha(tok), uid, now());
+    a.uid = uid; a.tok = await sha(tok); ws.serializeAttachment(a);
+    const u = this.user(uid);
+    this.send(ws, { t: "me", id: uid, tok, ...this.pub(uid), ...this.mine(uid), wins: u.wins, losses: u.losses });
+    return this.hello(uid);
+  }
+  mine(uid) {
+    const r = this.sql.exec("SELECT renamed FROM users WHERE id = ?", uid).toArray()[0] || {}, q = this.sql.exec("SELECT want FROM namereq WHERE uid = ?", uid).toArray()[0];
+    return { renamed: !!r.renamed, asked: q ? q.want : null };
+  }
   async anon(ws, a, m) {
     if (m.t === "signup") {
-      const name = String(m.name || "").trim(), e = nameErr(name);
+      const name = String(m.name || "").trim(), e = nameErr(name) || passErr(m.pass);
       if (e) return this.send(ws, { t: "err", c: "name", msg: e });
       if (this.sql.exec("SELECT 1 FROM users WHERE lname = ?", name.toLowerCase()).toArray().length) return this.send(ws, { t: "err", c: "name", msg: "That name is taken" });
-      const id = rid(8), key = rid(24);
-      this.sql.exec("INSERT INTO users(id, name, lname, key, look, created, seen) VALUES(?, ?, ?, ?, ?, ?, ?)", id, name, name.toLowerCase(), await sha(key), this.cleanLook(m.look, false), now(), now());
-      a.uid = id; ws.serializeAttachment(a);
-      this.send(ws, { t: "me", id, key, ...this.pub(id), wins: 0, losses: 0 });
-      return this.hello(id);
+      const id = rid(8), salt = rid(16);
+      this.sql.exec("INSERT INTO users(id, name, lname, look, created, seen, pw) VALUES(?, ?, ?, ?, ?, ?, ?)", id, name, name.toLowerCase(), "{}", now(), now(), salt + ":" + await passHash(String(m.pass), salt));
+      return this.session(ws, a, id);
+    }
+    if (m.t === "login") {
+      // a few wrong passcodes in a row and that username has to wait a bit
+      const ln = String(m.name || "").trim().toLowerCase(), f = this.fails.get(ln) || { n: 0, at: now() };
+      if (now() - f.at > 600000) { f.n = 0; f.at = now(); }
+      if (f.n >= 8) return this.send(ws, { t: "err", c: "auth", msg: "Too many tries. Wait a few minutes and try again." });
+      const r = this.sql.exec("SELECT id, pw, banned FROM users WHERE lname = ?", ln).toArray()[0];
+      let ok = false;
+      if (r && r.pw) { const [salt, h] = r.pw.split(":"); ok = (await passHash(String(m.pass || ""), salt)) === h; }
+      if (!ok) { f.n++; this.fails.set(ln, f); return this.send(ws, { t: "err", c: "auth", msg: r && !r.pw ? "This account needs a new passcode. Ask an admin to set one." : "Wrong username or passcode." }); }
+      this.fails.delete(ln);
+      if (r.banned) return this.send(ws, { t: "err", c: "banned", msg: "This account has been banned." });
+      return this.session(ws, a, r.id);
     }
     if (m.t === "hello") {
-      const r = this.sql.exec("SELECT key FROM users WHERE id = ?", String(m.id || "")).toArray()[0];
-      if (!r || r.key !== await sha(String(m.key || ""))) return this.send(ws, { t: "err", c: "auth", msg: "That account code did not work" });
+      const tk = await sha(String(m.tok || "")), r = this.sql.exec("SELECT uid FROM sessions WHERE tok = ? AND uid = ?", tk, String(m.id || "")).toArray()[0];
+      if (!r) return this.send(ws, { t: "err", c: "auth", msg: "Please log in again.", out: 1 });
       if (this.user(m.id).banned) return this.send(ws, { t: "err", c: "banned", msg: "This account has been banned." });
-      a.uid = m.id; ws.serializeAttachment(a);
+      a.uid = m.id; a.tok = tk; ws.serializeAttachment(a);
+      this.sql.exec("UPDATE sessions SET at = ? WHERE tok = ?", now(), tk);
       const u = this.user(m.id);
-      this.send(ws, { t: "me", id: m.id, ...this.pub(m.id), wins: u.wins, losses: u.losses });
+      this.send(ws, { t: "me", id: m.id, ...this.pub(m.id), ...this.mine(m.id), wins: u.wins, losses: u.losses });
       return this.hello(m.id);
     }
-    this.send(ws, { t: "err", c: "auth", msg: "Sign in first" });
+    this.send(ws, { t: "err", c: "auth", msg: "Log in first" });
   }
 
   hello(uid) {
@@ -153,8 +284,10 @@ export class Hub extends DurableObject {
     // your saved progress, so any device you sign in on carries on where you left off
     const sv = this.sql.exec("SELECT save, saved FROM users WHERE id = ?", uid).toArray()[0] || {};
     let data = null; try { data = JSON.parse(sv.save || "null"); } catch (e) {}
-    this.to(uid, { t: "save", data, at: sv.saved || 0 });
-    this.pushGifts(uid);
+    const w = this.wal(uid);
+    // a brand-new wallet waits for the device's first save, so what the player already has comes with them
+    this.to(uid, { t: "save", data: w.imp ? this.withWal(data, w) : data, at: sv.saved || 0 });
+    if (w.imp) this.pushWal(uid, w);
     this.pushFriends(uid);
     this.tellFriends(uid);
     this.pushParty(uid);
@@ -298,7 +431,7 @@ export class Hub extends DurableObject {
   }
 
   // ---------- admin tools: only for accounts with the admin flag ----------
-  admin(ws, uid, m) {
+  async admin(ws, uid, m) {
     if (!this.isAdmin(uid)) return this.send(ws, { t: "err", c: "adm", msg: "Admins only." });
     const op = String(m.op || ""), id = String(m.id || ""), out = (o) => this.send(ws, { t: "adm", op, ...o });
     if (op === "find") {
@@ -307,7 +440,42 @@ export class Hub extends DurableObject {
         .map((u) => ({ ...u, on: this.online(u.id), ...this.summary(u.id) }));
       return out({ list });
     }
+    if (op === "online" || op === "all") {
+      // everyone online right now, or every account there is (most recently seen first)
+      const ids = new Set(); for (const w of this.ctx.getWebSockets()) { const a = w.deserializeAttachment(); if (a && a.uid) ids.add(a.uid); }
+      const guests = this.ctx.getWebSockets().filter((w) => { const a = w.deserializeAttachment(); return !(a && a.uid); }).length;
+      const rows = op === "online" ? [...ids].map((i) => this.sql.exec("SELECT id, name, rating, admin, banned, created, seen FROM users WHERE id = ?", i).toArray()[0]).filter(Boolean)
+        : this.sql.exec("SELECT id, name, rating, admin, banned, created, seen FROM users ORDER BY seen DESC LIMIT 1000").toArray();
+      const total = this.sql.exec("SELECT COUNT(*) AS c FROM users").one().c;
+      return out({ list: rows.map((r) => ({ ...r, on: ids.has(r.id), ...this.summary(r.id) })), total, guests });
+    }
+    if (op === "names") {
+      const list = this.sql.exec("SELECT id, uid, want, why, at FROM namereq ORDER BY id").toArray().map((r) => ({ ...r, name: (this.user(r.uid) || {}).name }));
+      return out({ list });
+    }
+    if (op === "nameok" || op === "nameno") {
+      const r = this.sql.exec("SELECT uid, want FROM namereq WHERE id = ?", +m.rid).toArray()[0];
+      if (!r) return out({ rid: +m.rid });
+      this.sql.exec("DELETE FROM namereq WHERE id = ?", +m.rid);
+      if (op === "nameok") {
+        if (this.sql.exec("SELECT 1 FROM users WHERE lname = ? AND id != ?", r.want.toLowerCase(), r.uid).toArray().length) return this.send(ws, { t: "err", c: "adm", msg: "That name was taken in the meantime." });
+        this.sql.exec("UPDATE users SET name = ?, lname = ? WHERE id = ?", r.want, r.want.toLowerCase(), r.uid); this.tellFriends(r.uid);
+      }
+      this.to(r.uid, { t: "me", id: r.uid, ...this.pub(r.uid), ...this.mine(r.uid) });
+      this.to(r.uid, { t: "ok", c: op === "nameok" ? "nameok" : "nameno", name: r.want });
+      return out({ rid: +m.rid, name: r.want });
+    }
     const u = this.user(id);
+    if (op === "setpass") {
+      if (!u) return this.send(ws, { t: "err", c: "adm", msg: "No such player." });
+      const e = passErr(m.pass); if (e) return this.send(ws, { t: "err", c: "adm", msg: e });
+      const salt = rid(16); this.sql.exec("UPDATE users SET pw = ? WHERE id = ?", salt + ":" + await passHash(String(m.pass), salt), id);
+      // every device that account was logged in on has to log in again with the new passcode
+      this.sql.exec("DELETE FROM sessions WHERE uid = ?", id);
+      for (const w of this.socks(id)) { this.send(w, { t: "err", c: "auth", msg: "Your passcode was changed. Please log in again.", out: 1 }); const a = w.deserializeAttachment(); a.uid = null; a.tok = null; w.serializeAttachment(a); }
+      if (id !== uid) this.offline(id);
+      return out({ id, name: u.name });
+    }
     if (op === "reports") {
       const list = this.sql.exec("SELECT id, f, t, why, at FROM reports ORDER BY id DESC LIMIT 50").toArray().map((r) => ({ ...r, fn: (this.user(r.f) || {}).name, tn: (this.user(r.t) || {}).name, tb: !!(this.user(r.t) || {}).banned }));
       return out({ list });
@@ -317,15 +485,17 @@ export class Hub extends DurableObject {
     if (op === "give") {
       const coins = Math.max(0, Math.min(1000000, Math.floor(+m.coins || 0))), item = String(m.item || "").slice(0, 40);
       if (item && ADMIN_ITEMS.indexOf(item) >= 0 && !u.admin) return this.send(ws, { t: "err", c: "adm", msg: "Admin skins can only go to admins." });
-      if (coins) this.sql.exec("INSERT INTO gifts(uid, kind, val, at, by) VALUES(?, 'coins', ?, ?, ?)", id, String(coins), now(), uid);
-      if (item) this.sql.exec("INSERT INTO gifts(uid, kind, val, at, by) VALUES(?, 'item', ?, ?, ?)", id, item, now(), uid);
-      this.pushGifts(id);
+      if (item && !IT[item]) return this.send(ws, { t: "err", c: "adm", msg: "No such item." });
+      const w = this.wal(id), list = [];
+      if (coins) { w.coins += coins; list.push({ kind: "coins", val: String(coins) }); }
+      if (item) { give(w, item); list.push({ kind: "item", val: item }); }
+      this.putWal(id, w); this.pushWal(id, w); this.to(id, { t: "gift", list, applied: 1 });
       return out({ id, name: u.name, coins, item });
     }
     if (op === "ban" || op === "unban") {
       if (u.admin) return this.send(ws, { t: "err", c: "adm", msg: "Admins can't be banned." });
       this.sql.exec("UPDATE users SET banned = ? WHERE id = ?", op === "ban" ? 1 : 0, id);
-      if (op === "ban") { for (const w of this.socks(id)) { this.send(w, { t: "err", c: "banned", msg: "This account has been banned." }); try { w.close(4003, "banned"); } catch (e) {} } this.unqueue(id); this.leaveMatch(id, true); this.leaveParty(id); this.tellFriends(id); }
+      if (op === "ban") { this.sql.exec("DELETE FROM sessions WHERE uid = ?", id); for (const w of this.socks(id)) { this.send(w, { t: "err", c: "banned", msg: "This account has been banned." }); try { w.close(4003, "banned"); } catch (e) {} } this.unqueue(id); this.leaveMatch(id, true); this.leaveParty(id); this.tellFriends(id); }
       return out({ id, name: u.name });
     }
     if (op === "rename") {
@@ -339,15 +509,95 @@ export class Hub extends DurableObject {
     }
   }
 
+  // ---------- the bank's transactions: every coin and item change goes through here ----------
+  tx(ws, uid, m) {
+    const w = this.wal(uid), op = String(m.op || ""), rid = m.rid, d0 = day(), e = w.earn || (w.earn = { d: 0, c: 0, x: 0, last: 0 });
+    if (e.d !== d0) { e.d = d0; e.c = 0; e.x = 0; }
+    const fail = (msg) => this.send(ws, { t: "tx", rid, op, ok: false, msg, wal: this.walOut(w) });
+    const done = (res) => { this.putWal(uid, w); this.send(ws, { t: "tx", rid, op, ok: true, res: res || null, wal: this.walOut(w) }); };
+    const addXp = (n) => { n = Math.max(0, Math.min(XP_MAX, Math.floor(+n || 0), DAY_XP - e.x)); e.x += n; passOf(w).xp += n; return n; };
+    if (op === "sync") return done();
+    if (op === "win") {
+      // a win pays 50 coins and sometimes a Celestial blueprint; wins can't come faster than a real match
+      const res = { coins: 0, bp: null };
+      if (m.win && now() - (e.last || 0) >= WIN_GAP) {
+        e.last = now();
+        const c = Math.min(WIN_COINS, DAY_COINS - e.c); if (c > 0) { w.coins += c; e.c += c; res.coins = c; }
+        if (Math.random() < CAT.bpChance) { const pool = Object.keys(IT).filter((id) => has(id, "c") && !w.inv[id] && (w.bp[id] || 0) < CAT.bpN); if (pool.length) { const id = pick(pool); w.bp[id] = (w.bp[id] || 0) + 1; res.bp = { id, n: w.bp[id], seen: !!w.seen[id] }; } }
+      }
+      return done(res);
+    }
+    if (op === "xp") return done({ xp: addXp(m.n) });
+    if (op === "unlock") { const got = []; for (const id of (Array.isArray(m.ids) ? m.ids : []).slice(0, 40)) if (has(id, "n") && !w.inv[id]) { w.inv[id] = 1; got.push(id); } return done({ got }); }
+    if (op === "pack" || op === "free") {
+      const pk = op === "free" ? "street" : String(m.id || ""), kind = op === "free" ? "" : String(m.kind || ""), n = op === "free" ? 1 : [1, 3, 10].indexOf(+m.n) >= 0 ? +m.n : 1, P = CAT.packs[pk];
+      if (!P || (kind && !CAT.kindx[kind])) return fail("That pack doesn't exist.");
+      if (op === "free") { const cd = Math.floor(+m.day || 0); if (!(cd > (w.free || 0) && Math.abs(cd - d0) <= 1)) return fail("Your daily crate is already open."); w.free = cd; }
+      else { const c = packCost(pk, kind) * n; if (w.coins < c) return fail("Not enough coins."); w.coins -= c; }
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        let id;
+        if (op === "free") id = roll(pk, false, "");
+        else { w.pity[pk] = (w.pity[pk] || 0) + 1; id = roll(pk, w.pity[pk] >= P[2], kind); if (IT[id][0] >= CAT.leg) w.pity[pk] = 0; }
+        const g = grant(w, id);
+        if (op === "pack" && P[3]) { g.extra = []; for (let j = 0; j < P[3][0]; j++) g.extra.push(bonusBp(w)); passOf(w).xp += P[3][1]; g.extra.push("+" + P[3][1] + " pass XP"); }
+        out.push(g);
+      }
+      return done({ got: out });
+    }
+    if (op === "buy" || op === "wbuy") {
+      const id = String(m.id || ""), I = IT[id];
+      if (!I || w.inv[id] || has(id, "n") || I[0] > CAT.leg || (op === "buy" ? (I[2] !== "pack" && I[2] !== "shop") || ["banner", "scene", "stadium"].indexOf(I[1]) >= 0 : I[2] !== "shop" || I[1] === "banner" || I[1] === "scene")) return fail("You can't buy that.");
+      const price = op === "buy" ? CAT.price[I[0]] : CAT.shopp[I[0]] || 400;
+      if (w.coins < price) return fail("Not enough coins.");
+      w.coins -= price; w.inv[id] = 1; return done({ id });
+    }
+    if (op === "bp") {
+      const id = String(m.id || "");
+      if (!has(id, "c") || w.inv[id] || !w.seen[id] || (w.bp[id] || 0) < CAT.bpN) return fail("Not ready to build.");
+      if (w.coins < CAT.bpCost) return fail("Not enough coins.");
+      w.coins -= CAT.bpCost; w.inv[id] = 1; return done({ id });
+    }
+    if (op === "pass") {
+      const p = passOf(w), t = tierOf(w), out = [];
+      for (const k of (Array.isArray(m.ks) ? m.ks : []).slice(0, CAT.passN)) {
+        const T = CAT.pass[k]; if (!T || p.got[k] || k >= t) continue;
+        p.got[k] = 1; const g = { k, items: [], coins: T[1], pulls: [] };
+        for (const id of T[0]) { if (IT[id]) { give(w, id); g.items.push(id); } }
+        w.coins += T[1];
+        if (T[2] && CAT.packs[T[2][0]]) for (let i = 0; i < T[2][1]; i++) g.pulls.push(grant(w, roll(T[2][0], false, "")));
+        out.push(g);
+      }
+      return done({ got: out });
+    }
+    if (op === "bonus") { const p = passOf(w), n = Math.max(0, Math.floor(p.xp / CAT.passXp) - CAT.passN - (p.bon || 0)); p.bon = (p.bon || 0) + n; w.coins += n * CAT.bonus; return done({ coins: n * CAT.bonus }); }
+    if (op === "code") {
+      return sha("megs:" + String(m.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "")).then((h) => {
+        const k = CODES[h]; if (!k) return fail("That code did not work."); if (w.codes[h]) return fail("You already used that code.");
+        w.codes[h] = 1;
+        if (k === "all") for (const id of Object.keys(IT)) { if (has(id, "a") || has(id, "u")) continue; if (!w.inv[id]) w.inv[id] = 1; if (has(id, "c")) { w.seen[id] = 1; w.bp[id] = CAT.bpN; } }
+        if (k === "coins") w.coins += 50000;
+        return done({ k });
+      });
+    }
+    return fail("Unknown request.");
+  }
+
   // ---------- messages from a signed-in player ----------
   async handle(ws, uid, m) {
     const t = m.t;
     if (t === "save") {
       const d = JSON.stringify(m.data || null);
       if (!m.data || typeof m.data !== "object" || d.length > 380000) return;
-      this.sql.exec("UPDATE users SET save = ?, saved = ? WHERE id = ?", d, Math.min(+m.at || now(), now() + 60000), uid);
+      const w = this.wal(uid), u = this.user(uid);
+      if (!w.imp) { const c = this.sql.exec("SELECT created FROM users WHERE id = ?", uid).one().created; importSave(w, m.data, c < CUTOFF, !!u.admin); w.imp = 1; this.putWal(uid, w); this.pushWal(uid, w); }
+      // the bank's numbers replace whatever the device sent; if the device was off, it gets told the real ones
+      const off = m.data.coins !== w.coins || Object.keys(m.data.inv || {}).length !== Object.keys(w.inv).length;
+      this.sql.exec("UPDATE users SET save = ?, saved = ? WHERE id = ?", JSON.stringify(this.withWal(m.data, w)), Math.min(+m.at || now(), now() + 60000), uid);
+      if (off) this.pushWal(uid, w);
       return;
     }
+    if (t === "tx") return this.tx(ws, uid, m);
     if (t === "gack") {
       for (const id of (Array.isArray(m.ids) ? m.ids : []).slice(0, 100)) this.sql.exec("DELETE FROM gifts WHERE id = ? AND uid = ?", +id, uid);
       return;
@@ -358,6 +608,7 @@ export class Hub extends DurableObject {
       if (!ok || n >= ADMIN_MAX || this.isAdmin(uid)) return this.send(ws, { t: "err", c: "claim", msg: "That code did not work." });
       this.sql.exec("UPDATE users SET admin = 1 WHERE id = ?", uid);
       this.to(uid, { t: "me", id: uid, ...this.pub(uid) });
+      this.pushWal(uid);
       this.tellFriends(uid);
       return this.send(ws, { t: "ok", c: "admin" });
     }
@@ -369,18 +620,43 @@ export class Hub extends DurableObject {
     }
     if (t === "adm") return this.admin(ws, uid, m);
     if (t === "look") {
-      this.sql.exec("UPDATE users SET look = ? WHERE id = ?", this.cleanLook(m.look, this.isAdmin(uid)), uid);
+      this.sql.exec("UPDATE users SET look = ? WHERE id = ?", this.cleanLook(m.look, this.isAdmin(uid), uid), uid);
       this.tellFriends(uid);
       const L = this.leaderOf(uid); if (L) this.pushPartyAll(L);
       return;
     }
+    if (t === "logout") {
+      // this device stops being you; the connection stays open as a guest
+      const a = ws.deserializeAttachment() || {}; if (a.tok) this.sql.exec("DELETE FROM sessions WHERE tok = ?", a.tok);
+      a.uid = null; a.tok = null; ws.serializeAttachment(a);
+      if (!this.online(uid)) this.offline(uid);
+      return this.send(ws, { t: "ok", c: "out" });
+    }
+    if (t === "pass") {
+      const r = this.sql.exec("SELECT pw FROM users WHERE id = ?", uid).toArray()[0], e = passErr(m.next);
+      if (e) return this.send(ws, { t: "err", c: "pass", msg: e });
+      const [salt, h] = String(r.pw || ":").split(":");
+      if (!r.pw || (await passHash(String(m.old || ""), salt)) !== h) return this.send(ws, { t: "err", c: "pass", msg: "Your current passcode is wrong." });
+      const s2 = rid(16); this.sql.exec("UPDATE users SET pw = ? WHERE id = ?", s2 + ":" + await passHash(String(m.next), s2), uid);
+      return this.send(ws, { t: "ok", c: "pass" });
+    }
+    if (t === "namereq") {
+      const want = String(m.want || "").trim(), e = nameErr(want);
+      if (e) return this.send(ws, { t: "err", c: "name", msg: e });
+      if (this.sql.exec("SELECT 1 FROM users WHERE lname = ? AND id != ?", want.toLowerCase(), uid).toArray().length) return this.send(ws, { t: "err", c: "name", msg: "That name is taken" });
+      this.sql.exec("DELETE FROM namereq WHERE uid = ?", uid);
+      this.sql.exec("INSERT INTO namereq(uid, want, why, at) VALUES(?, ?, ?, ?)", uid, want, String(m.why || "").slice(0, 200), now());
+      this.to(uid, { t: "me", id: uid, ...this.pub(uid), ...this.mine(uid) });
+      return this.send(ws, { t: "ok", c: "namereq" });
+    }
     if (t === "rename") {
       const name = String(m.name || "").trim(), e = nameErr(name);
       if (e) return this.send(ws, { t: "err", c: "name", msg: e });
+      if (this.sql.exec("SELECT renamed FROM users WHERE id = ?", uid).one().renamed) return this.send(ws, { t: "err", c: "name", msg: "You've already changed your name once. Request a change instead." });
       const o = this.sql.exec("SELECT id FROM users WHERE lname = ?", name.toLowerCase()).toArray()[0];
       if (o && o.id !== uid) return this.send(ws, { t: "err", c: "name", msg: "That name is taken" });
-      this.sql.exec("UPDATE users SET name = ?, lname = ? WHERE id = ?", name, name.toLowerCase(), uid);
-      this.to(uid, { t: "me", id: uid, ...this.pub(uid) });
+      this.sql.exec("UPDATE users SET name = ?, lname = ?, renamed = 1 WHERE id = ?", name, name.toLowerCase(), uid);
+      this.to(uid, { t: "me", id: uid, ...this.pub(uid), ...this.mine(uid) });
       this.tellFriends(uid);
       return;
     }
