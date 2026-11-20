@@ -12,7 +12,23 @@ var LOOK_KEYS = ["kit", "cus", "look", "trail", "fx", "emote", "boot", "wrap", "
 // you stay logged in on this device with a session token (never your passcode). Old account codes no longer work.
 function acct(){ var a = null; try { a = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {} if (a && !a.tok) { keep(null); N.oldOut = true; a = null; } return a; }
 function keep(a){ try { if (a) localStorage.setItem(KEY, JSON.stringify(a)); else localStorage.removeItem(KEY); } catch (e) {} }
-function send(o){ if (ws && ws.readyState === 1) { ws.send(JSON.stringify(o)); return true; } return false; }
+// a random id for this device, so a ban sticks to the device and not just the account
+var DEV = (function(){ var d = ""; try { d = localStorage.getItem("megs.dev") || ""; if (!/^[a-z0-9]{16,40}$/.test(d)) { d = ""; for (var i = 0; i < 24; i++) d += "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]; localStorage.setItem("megs.dev", d); } } catch (e) {} return d; })();
+// the game's version: the server turns away pages too old to use the bank, so a cached old page can't undo anything
+MG.VER = 2;
+function send(o){ if (ws && ws.readyState === 1) { if (/^(hello|signup|login|chk)$/.test(o.t)) { o.dev = DEV; o.ver = MG.VER; } ws.send(JSON.stringify(o)); return true; } return false; }
+// a banned device gets a screen it can't get past; it goes away only if an admin lifts the ban
+function banFlag(){ try { return localStorage.getItem("megs.ban") === "1"; } catch (e) { return false; } }
+function showBan(msg){
+  try { localStorage.setItem("megs.ban", "1"); } catch (e) {}
+  var d = document.getElementById("banned");
+  if (!d) { d = document.createElement("div"); d.id = "banned"; document.body.appendChild(d); }
+  d.innerHTML = '<div><h2>Banned</h2><p>' + (msg || "This account has been banned from Megs.") + '</p><p class="mute">If you think this is a mistake, talk to the Megs team.</p></div>';
+  d.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;text-align:center;padding:2rem;background:rgba(6,7,20,.97);color:#f2f2f7;font:inherit";
+  document.addEventListener("keydown", banKeys, true);
+}
+function banKeys(e){ if (document.getElementById("banned")) { e.stopPropagation(); e.preventDefault(); } }
+function unBan(){ try { localStorage.removeItem("megs.ban"); } catch (e) {} N.banned = false; var d = document.getElementById("banned"); if (d) d.remove(); document.removeEventListener("keydown", banKeys, true); }
 N.send = send;
 N.inParty = function(){ return !!(N.me && N.party.leader && N.party.members.length > 1); };
 N.leader = function(){ return !N.inParty() || N.party.leader === N.me.id; };
@@ -37,13 +53,14 @@ function connect(){
     var a = acct();
     if (a) send({t: "hello", id: a.id, tok: a.tok});
     else if (pend) { send(pend); pend = null; }
+    else if (banFlag()) send({t: "chk"});
     changed();
   };
   ws.onmessage = function(e){ if (e.data === "pong") return; var m; try { m = JSON.parse(e.data); } catch (x) { return; } recv(m); };
   ws.onclose = function(){ ws = null; N.on = false; N.busy = false; N.me = null; synced = false; changed(); retry(); };
   ws.onerror = function(){};
 }
-function retry(){ if (N.banned || (!acct() && !document.getElementById("onl"))) return; tries++; clearTimeout(timer); timer = setTimeout(connect, Math.min(30000, 1500 * Math.pow(2, Math.min(tries, 5)))); }
+function retry(){ if (N.banned || (!acct() && !document.getElementById("onl") && !banFlag())) return; tries++; clearTimeout(timer); timer = setTimeout(connect, Math.min(30000, 1500 * Math.pow(2, Math.min(tries, 5)))); }
 // ---- your progress lives on your account: every change is sent up, and a new device picks it up when you sign in ----
 var save0 = MG.save;
 MG.save = function(){ if (N.adopting) return; if (MG.S) MG.S.at = Date.now(); dirty = true; return save0.apply(this, arguments); };
@@ -96,7 +113,8 @@ function recv(m){
   } else if (m.t === "save") gotSave(m);
   else if (m.t === "gift") gotGifts(m);
   else if (m.t === "err") {
-    if (m.c === "banned") { N.banned = true; N.err = m.msg; keep(null); if (U) U.toast(m.msg); }
+    if (m.c === "old") { if (U) U.toast("Updating Megs..."); setTimeout(function(){ location.replace(location.pathname + "?r=" + Date.now()); }, 800); return; }
+    if (m.c === "banned") { N.banned = true; N.err = m.msg; keep(null); N.me = null; showBan(U ? U.esc(m.msg) : ""); }
     else if (m.c === "auth" && m.out) { keep(null); N.me = null; synced = false; if (U) U.toast(U.esc(m.msg)); }
     else if (document.getElementById("accMsg") && (m.c === "auth" || m.c === "name" || m.c === "pass")) document.getElementById("accMsg").textContent = m.msg;
     else if (m.c === "auth" || m.c === "name") N.err = m.msg; else if (U) U.toast(U.esc(m.msg));
@@ -109,6 +127,7 @@ function recv(m){
     N.invites = N.invites.filter(function(x){ return x.from.id !== m.from.id; });
     N.invites.push({from: m.from, at: Date.now()});
     if (MG.sfx) MG.sfx("ui");
+  } else if (m.t === "ok" && m.c === "free") { unBan();
   } else if (m.t === "ok") {
     if (!U) return;
     if (m.c === "invited") U.toast("Invite sent.");
@@ -210,7 +229,7 @@ function panel(){
   }
   h += '</div>';
   if (N.inParty()) h += '<div class="row"><button class="btn ghost sm" data-a="onlLeave">Leave party</button></div>';
-  h += '<div class="row"><button class="btn ghost sm" data-a="onlOut">Log out</button></div>';
+  h += '<div class="row"><button class="btn ghost sm" data-a="onlOut">Sign out</button></div>';
   var keepQ = document.activeElement && document.activeElement.id === "onlQ", pos = keepQ ? document.activeElement.selectionStart : 0;
   el.innerHTML = h;
   var q = document.getElementById("onlQ");
@@ -263,14 +282,14 @@ waitUi(function(){
   };
   // signing out: copy your code first, it is the only way back in. This device keeps its progress as a guest save
   ACT.onlOut = function(d, b){
-    if (!b.getAttribute("data-sure")) { b.setAttribute("data-sure", "1"); b.textContent = "Sure? Log out"; return; }
+    if (!b.getAttribute("data-sure")) { b.setAttribute("data-sure", "1"); b.textContent = "Sure? Sign out"; return; }
     if (synced && ws && ws.readyState === 1) send({t: "save", data: MG.S, at: MG.S.at || Date.now()});
     send({t: "logout"});
     keep(null); synced = false; dirty = false; N.me = null; N.friends = []; N.reqs = []; N.sent = []; N.invites = []; N.party = {leader: null, members: []};
     if (MG.S) { MG.S.admin = false; if (MG.adminSync) MG.adminSync(); MG.save(); }
     var w = ws; ws = null; if (w) { w.onclose = null; setTimeout(function(){ try { w.close(); } catch (e) {} }, 300); } N.on = false;
     if (MG.S) { MG.S.name = MG.guestName(); MG.save(); }
-    U.close(); U.toast("Logged out. This device keeps its progress as a guest."); U.go("home");
+    U.close(); U.toast("Signed out. This device keeps its progress as a guest."); U.go("home");
   };
   ACT.onlRep = function(d){
     U.modal('<h2>Report ' + U.esc(d.n || "player") + '</h2><p class="mute">Tell the admins what happened, like a rude username.</p><div class="row"><input id="repWhy" maxlength="200" autocomplete="off" placeholder="What happened?" style="flex:1"></div><div class="row center"><button class="btn red" data-a="onlRepGo" data-id="' + d.id + '">Send report</button><button class="btn ghost" data-a="close">Cancel</button></div>', "onlc");
@@ -285,6 +304,7 @@ waitUi(function(){
   };
   // accounts used to sign in with a code; anyone still holding one is told once why they are logged out
   acct();
+  if (banFlag()) { showBan(); connect(); }
   if (N.oldOut) setTimeout(function(){ U.toast("Accounts now use a username and passcode. Log in again from the Locker."); }, 1500);
   ACT.onlPromote = function(d){ send({t: "promote", id: d.id}); U.close(); };
   ACT.onlKick = function(d){ send({t: "kick", id: d.id}); U.close(); };
@@ -305,7 +325,7 @@ waitUi(function(){
   st.textContent = [
     ".rlSlot{display:flex}",
     ".rlF{display:flex;flex-direction:column;align-items:center;gap:.2rem;background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit}",
-    ".rlF canvas{width:min(170px,22vh);height:min(226px,29vh);filter:drop-shadow(0 14px 18px rgba(0,0,0,.5))}",
+    ".rlF canvas{width:min(170px,22vh,24cqi);height:min(226px,29vh,32cqi);filter:drop-shadow(0 14px 18px rgba(0,0,0,.5))}",
     ".rlFn{display:flex;flex-direction:column;align-items:center;background:rgba(10,12,32,.82);border:1px solid #2f3466;border-radius:12px;padding:.25rem .8rem;margin-top:-.5rem;min-width:120px}.rlFn small{color:#a9b0d6;font-size:.72rem}",
     ".rlF:hover .rlFn{border-color:#9ab6ff}",
     ".rlMore{min-height:1em;margin:.3rem 0 0;font-size:.8rem;color:#a9b0d6}",
