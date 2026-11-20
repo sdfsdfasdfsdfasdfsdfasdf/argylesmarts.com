@@ -106,7 +106,10 @@ function passErr(p) { p = String(p || ""); return p.length < 4 ? "Your passcode 
 const WAL_KEYS = ["coins", "inv", "seen", "bp", "pity", "pass", "free", "codes", "rp", "rpd"];
 // ---------- matches: every reward from a match needs a ticket from when it kicked off ----------
 // the same rank point sums as the game (rank.js); gains are capped each day so Bronze to Legend takes three weeks or more
-const RP_DAY = 100, MATCH_XP = 1200, BONUS_DAY = 6000;
+const RP_DAY = 100, MATCH_XP = 1200, BONUS_DAY = 6000, RANK_MIN = [0, 250, 550, 900, 1300, 1700, 2100];
+function rankTier(rp) { let k = 0; for (let i = 0; i < RANK_MIN.length; i++) if (rp >= RANK_MIN[i]) k = i; return k; }
+// every rank reached gives its skin, boots, banner and background, for good
+function rankGive(w) { const k = rankTier(Math.max(w.rp || 0, w.rpk || 0)), got = []; for (const id of Object.keys(IT)) if (has(id, "k") && (IT[id][4] || 9) <= k && !w.inv[id]) { w.inv[id] = 1; got.push(id); } return got; }
 const RARE = [["corner", 5], ["mgoal", 6], ["vgoal", 4], ["post", 3], ["pgoal", 2], ["twos", 2]];
 const num = (v, hi) => Math.max(0, Math.min(hi, Math.floor(+v || 0)));
 function cleanRes(r) {
@@ -220,6 +223,7 @@ export class Hub extends DurableObject {
     if (r.admin) for (const id of ADMIN_ITEMS) if (IT[id] && !w.inv[id]) w.inv[id] = 1;
     if (!r.admin) for (const id of ADMIN_ITEMS) delete w.inv[id];
     for (const id of CAT.free) if (!w.inv[id]) w.inv[id] = 1;
+    rankGive(w);
     passOf(w);
     return w;
   }
@@ -603,7 +607,7 @@ export class Hub extends DurableObject {
         let pts = rankCalc(r);
         if (!w.rpd || w.rpd.d !== d0) w.rpd = { d: d0, g: 0 };
         if (pts > 0) { const left = Math.max(0, RP_DAY - w.rpd.g); if (pts > left) { pts = left; res.capped.push("rp"); } w.rpd.g += pts; }
-        w.rp = Math.max(0, (w.rp || 0) + pts); res.rp = pts;
+        w.rp = Math.max(0, (w.rp || 0) + pts); res.rp = pts; w.rpk = Math.max(w.rpk || 0, w.rp); res.ranked = rankGive(w);
         this.sql.exec("UPDATE users SET rating = ? WHERE id = ?", w.rp, uid);
       }
       return done(res);
