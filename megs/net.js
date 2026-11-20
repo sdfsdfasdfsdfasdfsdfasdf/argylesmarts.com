@@ -120,7 +120,7 @@ function drawSlots(now){
   if (!cs.length || document.body.classList.contains("playing")) return;
   [].forEach.call(cs, function(c, i){
     var p = N.party.members.filter(function(x){ return x.id === c.getAttribute("data-pid"); })[0];
-    if (p) R.portrait(c, N.side(p), t + i * 3, {turn: 0.45 * Math.sin(t * 0.35 + i * 2)});
+    if (p) R.portrait(c, N.side(p), t + i * 3, {zoom: 2.65, turn: 0.45 * Math.sin(t * 0.35 + i * 2)});
   });
 }
 requestAnimationFrame(drawSlots);
