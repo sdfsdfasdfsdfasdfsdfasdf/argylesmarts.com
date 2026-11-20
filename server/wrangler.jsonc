@@ -1,0 +1,13 @@
+{
+  // Megs online server: one Worker in front of one SQLite-backed Durable Object ("Hub").
+  // Runs on the Workers Free plan: going over a free limit makes requests fail until the daily reset, it never bills.
+  "name": "megs-server",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "HUB", "class_name": "Hub" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hub"] }],
+  "observability": { "enabled": true }
+}
