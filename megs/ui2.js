@@ -106,17 +106,18 @@ function foeSides(f){
   MG.ITEM[f.kit.id] = f.kit;
   return [0, 1, 2, 3, 4].map(function(i){ return {kit: i ? f.kit.id : "gk_b", name: f.names[i], look: {skin: (i * 3 + f.name.length) % 5, hair: (i * 7 + f.name.length) % 22, hc: (i * 5) % 7, num: [1, 3, 6, 7, 11][i]}, trail: "t_none", fx: "f_conf", boot: "bt" + ((f.name.length + i) % 20)}; });
 }
-var TEAMLV = [["0.5", "Beginner"], ["2.5", "Casual"], ["4.5", "Pro"], ["6.5", "Elite"], ["8.5", "Legend"]], tset = {lv: "2.5", half: "150"};
+var TEAMLV = [["0.5", "Beginner"], ["2.5", "Casual"], ["4.5", "Pro"], ["6.5", "Elite"], ["8.5", "Legend"]], tset = {lv: "2.5", half: "150", n: "5"};
 function randClub(lv){
   var k = Math.floor(Math.random() * 36), ch = MG.CAMP[Math.floor(k / 6)].m[k % 6], f = MG.club(ch);
   f.lv = lv; return f;
 }
 // o: {name, sub, foe, half, mate, mode, again, back, done(res, out)}
 function teamGo(o){
-  var s = S(), m = {team: 1, name: o.name, sub: o.sub, first: null, ball: s.eq.ball, cfg: {half: o.half || 150, lv: [o.mate || 5.5, o.foe.lv], mate: o.mate || 5.5, human: [true, false], names: [mySides().map(function(x){ return x.name; }), o.foe.names]},
+  var s = S(), m = {team: 1, ranked: o.ranked ? 1 : 0, size: o.n || 5, name: o.name, sub: o.sub, first: null, ball: s.eq.ball, cfg: {half: o.half || 150, n: o.n || 5, lv: [o.mate || 5.5, o.foe.lv], mate: o.mate || 5.5, human: [true, false], names: [mySides().map(function(x){ return x.name; }), o.foe.names]},
     sides: [{name: s.name || "You"}, {name: o.foe.name}], teams: [mySides(), foeSides(o.foe)], src: [{k: "k1", arrows: 1, pad: 0, touch: 1}, null], st: [], ai: [], forfeit: 0};
   m.done = function(res){
-    var out = MG.finish({mode: o.mode || "team", win: res.win, me: res.me, sc: res.sc, opp: {name: o.foe.name, elo: 0, id: -1}, top: 0, team: 1}), extra = o.after ? o.after(res) : null;
+    res.ranked = o.ranked; res.size = o.n || 5;
+    var out = MG.finish({mode: o.mode || "team", win: res.win, draw: res.draw, me: res.me, sc: res.sc, opp: {name: o.foe.name, elo: o.foeRp || 0, id: -1}, top: 0, team: 1, ranked: o.ranked, size: o.n || 5, t: res.t}), extra = o.after ? o.after(res) : null;
     MG.sfx(res.win ? "win" : "lose"); go("tres", {o: o, res: res, out: out, extra: extra});
   };
   m.quit = function(){ go(o.back || "home"); };
@@ -126,8 +127,9 @@ function teamGo(o){
 }
 MG.teamGo = teamGo;
 VIEW.team = function(){
-  return head("5v5", "Five against five on a full-size pitch with two halves. You steer whoever is nearest the ball; your team-mates and the other side are computer players.") +
-    '<div class="cols"><section class="panel"><h3>Opponent strength</h3>' + chips(TEAMLV, tset.lv, "tlv") + '<h3>Half length</h3>' + chips([["90", "1.5 min"], ["150", "2.5 min"], ["240", "4 min"], ["360", "6 min"]], tset.half, "thalf") +
+  var n = +tset.n || 5;
+  return head("Practice " + MG.SIZE_N[n], n + "v" + n + " on a full-size pitch with two halves. Your team-mates and the other side are computer players. No rank points.") +
+    '<div class="cols"><section class="panel"><h3>Team size</h3>' + chips([["2", "Duos 2v2"], ["3", "Trios 3v3"], ["4", "Squads 4v4"], ["5", "Team 5v5"]], String(n), "tsize") + '<h3>Opponent strength</h3>' + chips(TEAMLV, tset.lv, "tlv") + '<h3>Half length</h3>' + chips([["90", "1.5 min"], ["150", "2.5 min"], ["240", "4 min"], ["360", "6 min"]], tset.half, "thalf") +
     '<div class="row kickbar"><button class="btn big" data-a="teamPlay">' + ic("play") + 'Kick off</button></div></section>' + controls() + '</div>';
 };
 function controls(){
@@ -136,7 +138,9 @@ function controls(){
 }
 ACT.tlv = function(d){ tset.lv = d.id; go("team"); };
 ACT.thalf = function(d){ tset.half = d.id; go("team"); };
-ACT.teamPlay = function(){ var f = randClub(+tset.lv); teamGo({name: "5v5", sub: "Two halves of " + Math.round(+tset.half / 60 * 10) / 10 + " minutes", foe: f, half: +tset.half, mate: 6.5, back: "team"}); };
+ACT.tsize = function(d){ tset.n = d.id; go("team"); };
+ACT.prac = function(d){ tset.n = String(d.v || 5); go("team"); };
+ACT.teamPlay = function(){ var f = randClub(+tset.lv), n = +tset.n || 5; teamGo({name: "Practice " + MG.SIZE_N[n], n: n, sub: "Two halves of " + Math.round(+tset.half / 60 * 10) / 10 + " minutes", foe: f, half: +tset.half, mate: 6.5, back: "team"}); };
 
 // ---- the result of a team match ----
 VIEW.tres = function(a){
@@ -144,7 +148,7 @@ VIEW.tres = function(a){
     rows = [["Shots", "shots"], ["On target", "ont"], ["Passes completed", "pok"], ["Tackles", "tackles"], ["Saves", "saves"]];
   U.resA(a);
   h = '<div class="res ' + (w ? "win" : dr ? "" : "loss") + '"><span class="kick">' + esc(a.o.name) + '</span><h2>' + (res.quit ? "Forfeit" : w ? "You win" : dr ? "A draw" : "You lose") + '</h2><div class="score"><b>' + res.sc[0] + '</b><i>-</i><b>' + res.sc[1] + '</b></div><p class="mute">against ' + esc(a.o.foe.name) + '</p><div class="rw">' +
-    (out.coins ? '<span class="pill">' + coin("+" + (out.coins + (x && x.coins || 0))) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.pass || x && x.pass ? '<span class="pill up">+' + ((out.pass || 0) + (x && x.pass || 0)) + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (out.lv ? '<span class="pill up">Level ' + s.lvl + '</span>' : "") + '</div>';
+    (out.coins ? '<span class="pill">' + coin("+" + (out.coins + (x && x.coins || 0))) + '</span>' : "") + (out.pass || x && x.pass ? '<span class="pill up">+' + ((out.pass || 0) + (x && x.pass || 0)) + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (res.ranked || out.elo ? '<span class="pill ' + (out.elo > 0 ? "up" : out.elo < 0 ? "dn" : "") + '">' + (out.elo > 0 ? "+" : "") + (out.elo || 0) + ' rank points</span>' : "") + (out.rpcap ? '<span class="pill">Daily rank point limit reached</span>' : "") + (out.rare && out.rare.length ? '<span class="pill up">' + out.rare.join(", ") + '</span>' : "") + '</div>';
   if (x && x.stars != null) h += '<p class="stars">' + [1, 2, 3].map(function(k){ return star(k <= x.stars); }).join("") + '</p><p class="mute">Win for one star, win by two for two, win without conceding for three.</p>';
   if (w) h += '<div class="center"><canvas class="emo" data-emote="' + (MG.ITEM[s.eq.emote] || {k: "wave"}).k + '" width="300" height="400"></canvas></div>';
   h += (out.items || []).concat(x && x.items || []).map(function(it){ return '<p class="got" style="--r:' + MG.RAR[it.r].c + '">Unlocked: <b>' + it.n + '</b> <small>' + MG.RAR[it.r].n + '</small></p>'; }).join("") + (out.quests || []).map(function(q){ return '<p class="got">Quest done: <b>' + q + '</b></p>'; }).join("") + (out.notes || []).map(function(q){ return '<p class="got bpn">' + q + '</p>'; }).join("");
@@ -214,14 +218,14 @@ VIEW.shop = function(){
   }).join("") + '</div></section>' : "") +
   '<section class="panel"><h3>Bundles <small>buyable soon</small></h3><div class="bund">' + MG.BUNDLES.map(function(b){ return '<div class="bd"><b>' + b[0] + '</b><p class="mute">' + b[1] + '</p><button class="btn gold sm" disabled>Buyable soon</button></div>'; }).join("") + '</div></section>' + h;
 };
-var TYPE = {kit: "Kit", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Emote", court: "Cage", boot: "Boots", wrap: "Wrap", sticker: "Sticker", banner: "Banner", hair: "Hair", scene: "Scene", stadium: "Stadium"};
+var TYPE = {kit: "Skin", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Emote", court: "Cage", boot: "Boots", wrap: "Wrap", sticker: "Sticker", banner: "Banner", hair: "Hair", scene: "Scene", stadium: "Stadium"};
 ACT.wbuy = function(d){ if (MG.shopBuy(d.id)) { MG.sfx("coin"); toast("Bought " + MG.ITEM[d.id].n + "."); } else toast("Not enough coins."); go("shop"); };
 MG.KINDS.splice(6, 0, ["boot", "Boots"], ["wrap", "Wraps"], ["sticker", "Stickers"], ["banner", "Banners"]);
 
 // ---- locker ----
 var stkSlot = 0;
 VIEW.locker = function(tab){
-  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["stadium", "Stadiums"], ["court", "Cages"], ["bp", "Blueprints"], ["pre", "Presets"], ["me", "Player"]],
+  var s = S(), t = tab || "kit", tabs = [["kit", "Skins"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["stadium", "Stadiums"], ["court", "Cages"], ["bp", "Blueprints"], ["pre", "Presets"], ["me", "Player"]],
     all = MG.ITEMS.filter(function(it){ return it.t === t; }), list = all.filter(function(it){ return s.inv[it.id]; }), own = list.length, body;
   // only what you own is shown, so the locker stays quick however big the catalogue gets
   list.sort(function(a, b){ return a.r - b.r || (a.n < b.n ? -1 : 1); });
@@ -254,7 +258,13 @@ ACT.item = function(d){
 
 // ---- profile: your banner on top ----
 var prof0 = VIEW.profile;
-VIEW.profile = function(){ var s = S(); return '<div class="card0"><canvas class="pbn" data-bn="' + s.eq.banner + '" data-live="1" width="720" height="200"></canvas><div class="cardt"><b>' + esc(s.name || "You") + '</b><span>' + esc(s.title) + ' &middot; Level ' + s.lvl + ' &middot; Season pass tier ' + MG.passTier() + '</span></div></div>' + prof0(); };
+// the profile card: your skin as a tile in the top left with your player standing in it, then name, title and rank
+VIEW.profile = function(){ var s = S(), it = MG.ITEM[s.eq.kit] || {}, rc = RAR(it).c;
+  return '<div class="card0"><canvas class="pbn" data-bn="' + s.eq.banner + '" data-live="1" width="720" height="200"></canvas>' +
+    '<div class="cardrow"><div class="pskin" style="--c:' + rc + '"><canvas id="pskc" width="240" height="300"></canvas><span>' + esc(it.n || "Skin") + '</span></div>' +
+    '<div class="cardt"><b>' + esc(s.name || "You") + '</b><span>' + esc(s.title) + ' &middot; ' + (MG.TIERS[MG.tier(s.elo)] || {}).n + ' &middot; Season pass tier ' + MG.passTier() + '</span></div></div></div>' + prof0(); };
+var aprof = AFTER.profile;
+AFTER.profile = function(a){ if (aprof) aprof(a); var c = $("pskc"); if (!c) return; (function loop(t){ if (!c.isConnected) return; R.portrait(c, MG.me(), t / 1000, {turn: 0.25}); requestAnimationFrame(loop); })(0); };
 
 // ---- settings: music ----
 var set0 = VIEW.settings;
