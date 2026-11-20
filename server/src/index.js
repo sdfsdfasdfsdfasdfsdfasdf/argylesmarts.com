@@ -36,6 +36,7 @@ const ADMIN_ITEMS = ["s67", "ad_arch", "ad_gm", "ad_gold", "ad_dev", "ad_found"]
 // the one-time code that makes an account an admin (only its hash is here); it works for two accounts, then never again
 const ADMIN_CLAIM = "ae02b0532d12090d920867735c86201b8a0ae3bc6c250feff7a279030ddc87b8", ADMIN_MAX = 2;
 const now = () => Date.now();
+const MIN_VER = 2;
 // ---------- the bank: the server owns every account's coins and items, and opens the packs ----------
 // Accounts made before this went live keep what they had; newer ones bring only a little guest progress with them.
 const CUTOFF = 1795140000000, SEASON = 1, START_COINS = 500;
@@ -45,7 +46,7 @@ const IT = CAT.items, ITEM_KEYS = ["kit", "trail", "fx", "emote", "boot", "wrap"
 const has = (id, f) => !!(IT[id] && IT[id][3].indexOf(f) >= 0);
 const day = () => Math.floor(now() / 86400000);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
-function freshWal() { const inv = {}; for (const id of CAT.free) inv[id] = 1; return { coins: START_COINS, inv, seen: {}, bp: {}, pity: {}, pass: { s: SEASON, xp: 0, got: {}, bon: 0 }, free: 0, codes: {}, earn: { d: 0, c: 0, x: 0, last: 0 }, imp: 0 }; }
+function freshWal() { const inv = {}; for (const id of CAT.free) inv[id] = 1; return { coins: START_COINS, inv, seen: {}, bp: {}, pity: {}, pass: { s: SEASON, xp: 0, got: {}, bon: 0 }, free: 0, codes: {}, earn: { d: 0, c: 0, x: 0, last: 0 }, imp: 0, rp: 0, rpd: { d: 0, g: 0 } }; }
 function passOf(w) { if (!w.pass || w.pass.s !== SEASON) w.pass = { s: SEASON, xp: 0, got: {}, bon: 0 }; return w.pass; }
 function tierOf(w) { return Math.min(CAT.passN, Math.floor(passOf(w).xp / CAT.passXp)); }
 function give(w, id) { w.inv[id] = w.inv[id] ? Math.min(99, (+w.inv[id] || 1) + 1) : 1; }
@@ -102,7 +103,36 @@ async function passHash(pass, salt) {
   return [...new Uint8Array(bits)].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 function passErr(p) { p = String(p || ""); return p.length < 4 ? "Your passcode needs at least 4 characters" : p.length > 64 ? "That passcode is too long" : ""; }
-const WAL_KEYS = ["coins", "inv", "seen", "bp", "pity", "pass", "free", "codes"];
+const WAL_KEYS = ["coins", "inv", "seen", "bp", "pity", "pass", "free", "codes", "rp", "rpd"];
+// ---------- matches: every reward from a match needs a ticket from when it kicked off ----------
+// the same rank point sums as the game (rank.js); gains are capped each day so Bronze to Legend takes three weeks or more
+const RP_DAY = 100, MATCH_XP = 1200, BONUS_DAY = 6000;
+const RARE = [["corner", 5], ["mgoal", 6], ["vgoal", 4], ["post", 3], ["pgoal", 2], ["twos", 2]];
+const num = (v, hi) => Math.max(0, Math.min(hi, Math.floor(+v || 0)));
+function cleanRes(r) {
+  r = r && typeof r === "object" ? r : {}; const me = r.me && typeof r.me === "object" ? r.me : {}, o = { win: !!r.win, draw: !r.win && !!r.draw, sc: [num((r.sc || [])[0], 40), num((r.sc || [])[1], 40)], me: {} };
+  for (const k of ["goals", "megs", "ankles", "perfect", "tackles", "blocks", "pok", "twos", "corner", "mgoal", "vgoal", "post", "pgoal"]) o.me[k] = num(me[k], 60);
+  for (const k of ["goals", "twos", "corner", "mgoal", "vgoal", "post", "pgoal"]) o.me[k] = Math.min(o.me[k], o.sc[0] + 1);
+  if (o.win && o.sc[0] < o.sc[1]) o.win = false;
+  return o;
+}
+function rankCalc(r) {
+  const m = r.me, sc = r.sc; let rr = 0;
+  const perf = Math.min(12, m.goals * 2 + m.megs * 2 + m.ankles * 2 + m.perfect + Math.floor(m.tackles / 2) + m.blocks + Math.floor(m.pok / 10));
+  for (const x of RARE) rr += Math.min(5, m[x[0]] || 0) * x[1];
+  rr = Math.min(15, rr);
+  if (r.win) return Math.min(40, 16 + perf + rr + (sc[0] - sc[1] >= 3 ? 3 : 0) + (sc[1] === 0 ? 3 : 0));
+  if (r.draw) return Math.min(8, Math.floor((perf + rr) / 3));
+  return Math.min(-3, -14 + Math.floor((perf + rr) / 2));
+}
+// season pass XP for a match, the same shape as the game's sums, with a ceiling
+function passCalc(r, t) {
+  const m = r.me; let xp = (r.win ? 90 : 40) + m.goals * 8 + m.megs * 10 + m.perfect * 3;
+  let extra = (r.win ? 60 : 25) + m.goals * 6 + m.megs * 12 + m.perfect * 4 + m.ankles * 8 + m.blocks * 3;
+  if (t.ranked) extra = Math.round(extra * 1.25);
+  if (t.team) { extra += 60 + 10 * m.goals; xp += 120; }
+  return Math.min(MATCH_XP, Math.round(xp * (t.team ? 2 : 1.5)) + extra);
+}
 const rid = (n) => { const b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map((x) => x.toString(16).padStart(2, "0")).join(""); };
 async function sha(s) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 function nameErr(n) {
@@ -130,7 +160,9 @@ export class Hub extends DurableObject {
       "CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY AUTOINCREMENT, f TEXT, t TEXT, why TEXT, at INTEGER)",
       "CREATE TABLE IF NOT EXISTS sessions(tok TEXT PRIMARY KEY, uid TEXT, at INTEGER)",
       "CREATE TABLE IF NOT EXISTS namereq(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, want TEXT, why TEXT, at INTEGER)",
-      "CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)"
+      "CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)",
+      "CREATE TABLE IF NOT EXISTS seenby(uid TEXT, k TEXT, at INTEGER, PRIMARY KEY(uid, k))",
+      "CREATE TABLE IF NOT EXISTS bans(k TEXT PRIMARY KEY, uid TEXT, at INTEGER)"
     ]) this.sql.exec(q);
     // columns added after the first version
     for (const c of ["admin INTEGER DEFAULT 0", "banned INTEGER DEFAULT 0", "save TEXT", "saved INTEGER DEFAULT 0", "wal TEXT", "pw TEXT", "renamed INTEGER DEFAULT 0"]) { try { this.sql.exec("ALTER TABLE users ADD COLUMN " + c); } catch (e) {} }
@@ -140,15 +172,19 @@ export class Hub extends DurableObject {
       for (const n of Object.keys(ADMIN_PASS)) this.sql.exec("UPDATE users SET pw = ? WHERE lname = ? AND pw IS NULL", ADMIN_PASS[n][0] + ":" + ADMIN_PASS[n][1], n);
       this.sql.exec("INSERT INTO meta(k, v) VALUES('passcodes', ?)", String(now()));
     }
+    // once: ranks move to rank points, and everyone starts again at zero (Bronze)
+    if (!this.sql.exec("SELECT 1 FROM meta WHERE k = 'rp1'").toArray().length) { this.sql.exec("UPDATE users SET rating = 0"); this.sql.exec("INSERT INTO meta(k, v) VALUES('rp1', ?)", String(now())); }
     this.fails = new Map();
     // keep-alive pings are answered without waking the object, so idle players cost nothing
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
   async fetch(req) {
+    // the network a player connects from is kept only as a short hash, for bans
+    const ip = req.headers.get("CF-Connecting-IP") || "", iph = ip ? (await sha("megs-ip:" + ip)).slice(0, 24) : "";
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment({ uid: null, n: 0, t: now() });
+    pair[1].serializeAttachment({ uid: null, n: 0, t: now(), ip: iph });
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
@@ -231,11 +267,28 @@ export class Hub extends DurableObject {
     this.tellFriends(uid);
   }
 
+  // ---------- bans stick to the devices and networks a banned account used ----------
+  keysOf(a) { const k = []; if (a.dev) k.push("dev:" + a.dev); if (a.ip) k.push("ip:" + a.ip); return k; }
+  // a banned device is blocked for good; a banned network only stops new accounts, and only for a week (schools share one)
+  blocked(a, signup) {
+    for (const k of this.keysOf(a)) {
+      const b = this.sql.exec("SELECT at FROM bans WHERE k = ?", k).toArray()[0];
+      if (b && (k.startsWith("dev:") || (signup && now() - b.at < 7 * 86400000))) return true;
+    }
+    return false;
+  }
+  remember(uid, a) { for (const k of this.keysOf(a)) this.sql.exec("INSERT INTO seenby(uid, k, at) VALUES(?, ?, ?) ON CONFLICT(uid, k) DO UPDATE SET at = excluded.at", uid, k, now()); }
+  banKeys(uid) {
+    const ks = new Set(this.sql.exec("SELECT k FROM seenby WHERE uid = ?", uid).toArray().map((r) => r.k));
+    for (const w of this.socks(uid)) for (const k of this.keysOf(w.deserializeAttachment() || {})) ks.add(k);
+    for (const k of ks) this.sql.exec("INSERT INTO bans(k, uid, at) VALUES(?, ?, ?) ON CONFLICT(k) DO UPDATE SET uid = excluded.uid, at = excluded.at", k, uid, now());
+  }
   // a new session for a device that just logged in; the device keeps the token, the server only its hash
   async session(ws, a, uid) {
     const tok = rid(24);
     this.sql.exec("INSERT INTO sessions(tok, uid, at) VALUES(?, ?, ?)", await sha(tok), uid, now());
     a.uid = uid; a.tok = await sha(tok); ws.serializeAttachment(a);
+    this.remember(uid, a);
     const u = this.user(uid);
     this.send(ws, { t: "me", id: uid, tok, ...this.pub(uid), ...this.mine(uid), wins: u.wins, losses: u.losses });
     return this.hello(uid);
@@ -245,7 +298,13 @@ export class Hub extends DurableObject {
     return { renamed: !!r.renamed, asked: q ? q.want : null };
   }
   async anon(ws, a, m) {
+    if (m.dev && /^[a-z0-9]{16,40}$/.test(String(m.dev)) && a.dev !== m.dev) { a.dev = String(m.dev); ws.serializeAttachment(a); }
+    const BANNED = { t: "err", c: "banned", msg: "This device has been banned from Megs." };
+    // pages older than the bank would undo purchases when they save; they are told to refresh instead
+    if (["hello", "signup", "login"].indexOf(m.t) >= 0 && !(+m.ver >= MIN_VER)) return this.send(ws, { t: "err", c: "old", msg: "A new version of Megs is out. Refresh the page to keep playing." });
+    if (m.t === "chk") return this.send(ws, this.blocked(a, false) ? BANNED : { t: "ok", c: "free" });
     if (m.t === "signup") {
+      if (this.blocked(a, true)) return this.send(ws, BANNED);
       const name = String(m.name || "").trim(), e = nameErr(name) || passErr(m.pass);
       if (e) return this.send(ws, { t: "err", c: "name", msg: e });
       if (this.sql.exec("SELECT 1 FROM users WHERE lname = ?", name.toLowerCase()).toArray().length) return this.send(ws, { t: "err", c: "name", msg: "That name is taken" });
@@ -264,13 +323,15 @@ export class Hub extends DurableObject {
       if (!ok) { f.n++; this.fails.set(ln, f); return this.send(ws, { t: "err", c: "auth", msg: r && !r.pw ? "This account needs a new passcode. Ask an admin to set one." : "Wrong username or passcode." }); }
       this.fails.delete(ln);
       if (r.banned) return this.send(ws, { t: "err", c: "banned", msg: "This account has been banned." });
+      if (!this.user(r.id).admin && this.blocked(a, false)) return this.send(ws, BANNED);
       return this.session(ws, a, r.id);
     }
     if (m.t === "hello") {
       const tk = await sha(String(m.tok || "")), r = this.sql.exec("SELECT uid FROM sessions WHERE tok = ? AND uid = ?", tk, String(m.id || "")).toArray()[0];
       if (!r) return this.send(ws, { t: "err", c: "auth", msg: "Please log in again.", out: 1 });
       if (this.user(m.id).banned) return this.send(ws, { t: "err", c: "banned", msg: "This account has been banned." });
-      a.uid = m.id; a.tok = tk; ws.serializeAttachment(a);
+      if (!this.user(m.id).admin && this.blocked(a, false)) return this.send(ws, BANNED);
+      a.uid = m.id; a.tok = tk; ws.serializeAttachment(a); this.remember(m.id, a);
       this.sql.exec("UPDATE sessions SET at = ? WHERE tok = ?", now(), tk);
       const u = this.user(m.id);
       this.send(ws, { t: "me", id: m.id, ...this.pub(m.id), ...this.mine(m.id), wins: u.wins, losses: u.losses });
@@ -495,7 +556,8 @@ export class Hub extends DurableObject {
     if (op === "ban" || op === "unban") {
       if (u.admin) return this.send(ws, { t: "err", c: "adm", msg: "Admins can't be banned." });
       this.sql.exec("UPDATE users SET banned = ? WHERE id = ?", op === "ban" ? 1 : 0, id);
-      if (op === "ban") { this.sql.exec("DELETE FROM sessions WHERE uid = ?", id); for (const w of this.socks(id)) { this.send(w, { t: "err", c: "banned", msg: "This account has been banned." }); try { w.close(4003, "banned"); } catch (e) {} } this.unqueue(id); this.leaveMatch(id, true); this.leaveParty(id); this.tellFriends(id); }
+      if (op === "unban") this.sql.exec("DELETE FROM bans WHERE uid = ?", id);
+      if (op === "ban") { this.banKeys(id); this.sql.exec("DELETE FROM sessions WHERE uid = ?", id); for (const w of this.socks(id)) { this.send(w, { t: "err", c: "banned", msg: "This account has been banned." }); try { w.close(4003, "banned"); } catch (e) {} } this.unqueue(id); this.leaveMatch(id, true); this.leaveParty(id); this.tellFriends(id); }
       return out({ id, name: u.name });
     }
     if (op === "rename") {
@@ -517,17 +579,45 @@ export class Hub extends DurableObject {
     const done = (res) => { this.putWal(uid, w); this.send(ws, { t: "tx", rid, op, ok: true, res: res || null, wal: this.walOut(w) }); };
     const addXp = (n) => { n = Math.max(0, Math.min(XP_MAX, Math.floor(+n || 0), DAY_XP - e.x)); e.x += n; passOf(w).xp += n; return n; };
     if (op === "sync") return done();
-    if (op === "win") {
-      // a win pays 50 coins and sometimes a Celestial blueprint; wins can't come faster than a real match
-      const res = { coins: 0, bp: null };
-      if (m.win && now() - (e.last || 0) >= WIN_GAP) {
-        e.last = now();
-        const c = Math.min(WIN_COINS, DAY_COINS - e.c); if (c > 0) { w.coins += c; e.c += c; res.coins = c; }
+    if (op === "start") {
+      // kick-off: the match gets a ticket; the rewards at the end need it
+      const size = num(m.size, 5) || 1;
+      w.tk = { id: String(rid) + ":" + now(), at: now(), ranked: !!m.ranked, team: !!m.team, size, mode: String(m.mode || "").slice(0, 20) };
+      return done({ tk: w.tk.id });
+    }
+    if (op === "end") {
+      const t = w.tk, res = { coins: 0, xp: 0, rp: 0, bp: null, capped: [] };
+      if (!t || t.id !== String(m.tk || "")) return fail("That match didn't start properly, so it can't pay out.");
+      w.tk = null;
+      // a match can't be over faster than a real one
+      const min = t.team ? 60000 : t.ranked ? 40000 : 15000;
+      if (now() - t.at < min) { this.putWal(uid, w); return fail("That match was too short to count."); }
+      const r = cleanRes(m.res);
+      if (r.win) {
+        const c = Math.min(WIN_COINS, DAY_COINS - e.c); if (c > 0) { w.coins += c; e.c += c; res.coins = c; } else res.capped.push("coins");
         if (Math.random() < CAT.bpChance) { const pool = Object.keys(IT).filter((id) => has(id, "c") && !w.inv[id] && (w.bp[id] || 0) < CAT.bpN); if (pool.length) { const id = pick(pool); w.bp[id] = (w.bp[id] || 0) + 1; res.bp = { id, n: w.bp[id], seen: !!w.seen[id] }; } }
+      }
+      let fw = 0; if (r.win && e.fw !== d0) { e.fw = d0; fw = 100; }   // first win of the day
+      const want = Math.min(MATCH_XP, passCalc(r, t) + fw), got = Math.max(0, Math.min(want, DAY_XP - e.x)); e.x += got; passOf(w).xp += got; res.xp = got; if (got < want) res.capped.push("xp");
+      if (t.ranked) {
+        let pts = rankCalc(r);
+        if (!w.rpd || w.rpd.d !== d0) w.rpd = { d: d0, g: 0 };
+        if (pts > 0) { const left = Math.max(0, RP_DAY - w.rpd.g); if (pts > left) { pts = left; res.capped.push("rp"); } w.rpd.g += pts; }
+        w.rp = Math.max(0, (w.rp || 0) + pts); res.rp = pts;
+        this.sql.exec("UPDATE users SET rating = ? WHERE id = ?", w.rp, uid);
       }
       return done(res);
     }
-    if (op === "xp") return done({ xp: addXp(m.n) });
+    if (op === "xp") {
+      // pass XP that isn't from a match: daily quests, weekly challenges, the campaign. Each kind has its own limit
+      const why = String(m.why || ""), wk = Math.floor((d0 + 3) / 7), b = w.bx && w.bx.d === d0 ? w.bx : (w.bx = { d: d0, q: 0, o: 0, w: (w.bx && w.bx.wk === wk ? w.bx.w : 0), wk });
+      if (b.wk !== wk) { b.wk = wk; b.w = 0; }
+      let n = Math.floor(+m.n || 0);
+      if (why === "quest") { if (b.q >= 4) return fail("Daily quest XP is used up for today."); b.q++; n = Math.min(n, 1500); }
+      else if (why === "week") { if (b.w >= 4) return fail("Weekly challenge XP is used up for this week."); b.w++; n = Math.min(n, 3000); }
+      else { n = Math.max(0, Math.min(n, 2000, BONUS_DAY - b.o)); b.o += n; }
+      return done({ xp: addXp(n) });
+    }
     if (op === "unlock") { const got = []; for (const id of (Array.isArray(m.ids) ? m.ids : []).slice(0, 40)) if (has(id, "n") && !w.inv[id]) { w.inv[id] = 1; got.push(id); } return done({ got }); }
     if (op === "pack" || op === "free") {
       const pk = op === "free" ? "street" : String(m.id || ""), kind = op === "free" ? "" : String(m.kind || ""), n = op === "free" ? 1 : [1, 3, 10].indexOf(+m.n) >= 0 ? +m.n : 1, P = CAT.packs[pk];
@@ -566,6 +656,7 @@ export class Hub extends DurableObject {
         for (const id of T[0]) { if (IT[id]) { give(w, id); g.items.push(id); } }
         w.coins += T[1];
         if (T[2] && CAT.packs[T[2][0]]) for (let i = 0; i < T[2][1]; i++) g.pulls.push(grant(w, roll(T[2][0], false, "")));
+        g.bps = []; for (let i = 0; i < (T[3] || 0); i++) g.bps.push(bonusBp(w));
         out.push(g);
       }
       return done({ got: out });
