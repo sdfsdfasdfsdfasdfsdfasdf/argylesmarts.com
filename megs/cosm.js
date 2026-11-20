@@ -172,7 +172,7 @@ ST.forEach(function(s, k){
 var BMOT = ["stripes", "chevron", "waves", "stars", "hex", "rings", "grid", "rays", "peaks", "city", "flames", "bolt", "confetti", "checker", "topo", "galaxy", "circuit", "dots", "diamond", "aurora"];
 var BN = [["Street", 0], ["Kickoff", 1], ["Floodlights", 1], ["Terrace", 1], ["Derby", 1], ["Sunday League", 1], ["Rooftop", 2], ["Harbour", 2], ["Night Shift", 2], ["Golden Hour", 3],
   ["Thunder Road", 3], ["Neon Alley", 3], ["Frontline", 2], ["Overtime", 2], ["Penalty Box", 1], ["Cup Run", 3], ["Hall of Fame", 4], ["Wildfire", 4], ["Deep Space", 5], ["Starlight", 5],
-  ["Monsoon", 2], ["Dune Sea", 2], ["Glacier", 3], ["Volcano", 4], ["Jungle", 2], ["Arcade", 3], ["Synthwave", 4], ["Blueprint", 2], ["Chalkboard", 1], ["Graffiti", 3],
+  ["Monsoon", 2], ["Dune Sea", 2], ["Glacier", 3], ["Volcano", 4], ["Jungle", 2], ["Arcade", 3], ["Synthwave", 4], ["Drafting Table", 2], ["Chalkboard", 1], ["Graffiti", 3],
   ["Crown Jewels", 5], ["Eclipse", 6], ["Aurora", 6], ["Prism", 6], ["Nebula", 7], ["Big Bang", 7], ["Champions", 5], ["Captain", 3], ["Wonderkid", 2], ["Veteran", 2],
   ["Midnight Oil", 3], ["Matchday", 1], ["Cold Snap", 2], ["Heatwave", 3], ["Riverside", 2], ["Skyline", 3], ["Moonlit", 4], ["Comet", 5], ["Supernova", 7], ["Infinity", 6]];
 BN.forEach(function(b, k){
