@@ -44,8 +44,8 @@ function paint(){
 }
 function top(){
   var s = S();
-  $("top").innerHTML = '<button class="me" data-a="go" data-v="profile"><canvas id="mep" width="96" height="124"></canvas><span><span class="nm">' + esc(s.name || "You") + '</span><span class="tt">' + esc(s.title) + ' &middot; Level ' + s.lvl + '</span><span class="xp"><i style="width:' + Math.round(s.xp / MG.xpNeed(s.lvl) * 100) + '%"></i></span></span></button>' +
-    '<span class="pill">' + tier(s.elo) + '<b>' + s.elo + '</b></span><span class="pill">' + coin(s.coins) + '</span>';
+  $("top").innerHTML = '<button class="me" data-a="go" data-v="profile"><canvas id="mep" width="96" height="124"></canvas><span><span class="nm">' + esc(s.name || "You") + '</span><span class="tt">' + esc(s.title) + ' &middot; ' + MG.TIERS[MG.tier(s.elo)].n + '</span><span class="xp"><i style="width:' + Math.round((MG.rankProg ? MG.rankProg(s.elo) : 0) * 100) + '%"></i></span></span></button>' +
+    '<span class="pill">' + tier(s.elo) + '<b>' + s.elo + '</b><small class="rpw">rank points</small></span><span class="pill">' + coin(s.coins) + '</span>';
   R.portrait($("mep"), MG.me(), 1.3, {bust: 1});
 }
 function go(v, a){
@@ -115,8 +115,8 @@ ACT.close = close;
 ACT.go = function(d){ close(); go(d.v, d.arg); };
 ACT.ranked = function(){
   var foe = MG.match();
-  modal('<div class="center"><div class="spin"></div><h2>Finding a rival</h2><p class="mute">Looking through the CPU league for someone rated near ' + S().elo + '.</p><button class="btn ghost" data-a="close">Cancel</button></div>');
-  wait = setTimeout(function(){ start(foe, {name: "Ranked 1v1", sub: "First to 5. Long range counts double. Your rating is on the line.", cfg: {}, mode: "ranked", ranked: 1, forfeit: 1, again: function(){ ACT.ranked(); }}); }, 800 + Math.random() * 1200);
+  modal('<div class="center"><div class="spin"></div><h2>Finding a rival</h2><p class="mute">Looking through the CPU league for someone near ' + S().elo + ' rank points.</p><button class="btn ghost" data-a="close">Cancel</button></div>');
+  wait = setTimeout(function(){ start(foe, {name: "Ranked Solo", sub: "First to 5. Long range counts double. Rank points are on the line.", cfg: {}, mode: "ranked", ranked: 1, forfeit: 1, again: function(){ ACT.ranked(); }}); }, 800 + Math.random() * 1200);
 };
 ACT.field = function(){ quick.mode = "field"; go("quick"); };
 ACT.practice = function(){
@@ -148,8 +148,8 @@ VIEW.result = function(a){
     rows = [["Shots", "shots"], ["In the green", "green"], ["Perfect", "perfect"], ["Megs", "megs"], ["Ankles broken", "ankles"], ["Tackles", "tackles"], ["Blocks", "blocks"]], h;
   resA = a;
   h = '<div class="res ' + (w ? "win" : "loss") + '"><span class="kick">' + esc(a.o.name) + '</span><h2>' + (res.quit ? "Forfeit" : w ? "You win" : "You lose") + '</h2><div class="score"><b>' + res.sc[0] + '</b><i>-</i><b>' + res.sc[1] + '</b></div><p class="mute">against ' + esc(a.foe.name) + '</p><div class="rw">' +
-    (out.coins ? '<span class="pill">' + coin("+" + out.coins) + '</span>' : "") + (out.xp ? '<span class="pill">+' + out.xp + ' XP</span>' : "") + (out.pass ? '<span class="pill up">+' + out.pass + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (out.elo ? '<span class="pill ' + (out.elo > 0 ? "up" : "dn") + '">' + (out.elo > 0 ? "+" : "") + out.elo + ' rating</span>' : "") +
-    (out.lv ? '<span class="pill up">Level ' + s.lvl + ': a skill point to spend</span>' : "") + (out.first ? '<span class="pill">First win of the day +100</span>' : "") + (out.ladder ? '<span class="pill up">Ladder rival beaten</span>' : "") + '</div>';
+    (out.coins ? '<span class="pill">' + coin("+" + out.coins) + '</span>' : "") + (out.pass ? '<span class="pill up">+' + out.pass + ' pass XP</span>' : "") + (out.tiers ? '<span class="pill up">Season pass: ' + out.tiers + (out.tiers === 1 ? " tier" : " tiers") + ' up</span>' : "") + (res.ranked || out.elo ? '<span class="pill ' + (out.elo > 0 ? "up" : out.elo < 0 ? "dn" : "") + '">' + (out.elo > 0 ? "+" : "") + out.elo + ' rank points</span>' : "") + (out.rpcap ? '<span class="pill">Daily rank point limit reached</span>' : "") + (out.rare && out.rare.length ? '<span class="pill up">' + out.rare.join(", ") + '</span>' : "") +
+    (out.lv ? '<span class="pill up">A skill point to spend</span>' : "") + (out.first ? '<span class="pill">First win of the day +100</span>' : "") + (out.ladder ? '<span class="pill up">Ladder rival beaten</span>' : "") + '</div>';
   if (a.res.win) h += '<div class="center"><canvas class="emo" data-emote="' + (MG.ITEM[s.eq.emote] || {k: "wave"}).k + '" width="300" height="400"></canvas></div>';
   if (a.gaunt) h += '<p class="got">' + (a.gaunt.end ? "The run ends in round " + (a.gaunt.k + 1) + ". Best run: " + (s.n.gaunt || 0) + "." : "Round " + (a.gaunt.k + 1) + " cleared. +" + a.gaunt.xp + " pass XP") + '</p>';
   if (cup) h += '<p class="got">' + (cup.champ ? "Champions! The cup is yours. +" + cup.prize + " pass XP" : cup.end ? "Knocked out in the " + rn[cup.round] + (cup.prize ? ". +" + cup.prize + " pass XP" : ".") : "Through to the " + rn[cup.round + 1] + ".") + '</p>';
@@ -240,7 +240,7 @@ VIEW.party = function(){
       return '<div class="seat"><canvas data-s="' + reg(seatSide(p, i, "#3b6ef5")) + '" width="96" height="128"></canvas><input type="text" maxlength="10" value="' + esc(st.n) + '" data-seat="' + i + '" data-f="n" aria-label="Player name">' +
         '<select data-seat="' + i + '" data-f="cpu" aria-label="Human or CPU"><option value="0"' + (st.cpu ? "" : " selected") + '>Human</option><option value="1"' + (st.cpu ? " selected" : "") + '>CPU</option></select>' +
         (st.cpu ? '<select data-seat="' + i + '" data-f="lv" aria-label="CPU level">' + MG.LEVELS.map(function(n, k){ return '<option value="' + k + '"' + (k === st.lv ? " selected" : "") + '>' + n + '</option>'; }).join("") + '</select>' : "") +
-        '<button class="btn ghost sm" data-a="seatKit" data-i="' + i + '">' + ic("shirt") + 'Kit</button>' + (p.seats.length > 2 ? '<button class="btn ghost sm" data-a="seatDel" data-i="' + i + '" aria-label="Remove player">' + ic("x") + '</button>' : "") + '</div>';
+        '<button class="btn ghost sm" data-a="seatKit" data-i="' + i + '">' + ic("shirt") + 'Skin</button>' + (p.seats.length > 2 ? '<button class="btn ghost sm" data-a="seatDel" data-i="' + i + '" aria-label="Remove player">' + ic("x") + '</button>' : "") + '</div>';
     }).join("") + (p.seats.length < 4 ? '<div class="row"><button class="btn ghost sm" data-a="seatAdd">' + ic("plus") + 'Add a player</button></div>' : "") + '</section>' +
     '<section class="panel"><h3>Format</h3>' + chips(fm, p.fmt, "pfmt") + '<p class="mute">' + fd[p.fmt] + '</p><h3>Game</h3>' + chips(ms.map(function(k){ return [k, MG.MODES[k].n]; }), p.mode, "pmode") + '<p class="mute">' + (p.mode === "quick" ? ruleText(rules()) : MG.MODES[p.mode].d) + '</p></section>' +
     '<div class="row center"><button class="btn big" data-a="partyGo">' + ic("play") + 'Start the party</button></div>';
@@ -309,14 +309,14 @@ function editor(){
 }
 function maker(){
   var s = S();
-  return '<section class="panel"><h3>Kit Maker</h3><p class="mute">Design the Custom Kit: a pattern and three colours.</p>' + chips(R.BASIC.map(function(p){ return [p, p.charAt(0).toUpperCase() + p.slice(1)]; }), s.cus.p, "cusp") +
+  return '<section class="panel"><h3>Skin Maker</h3><p class="mute">Design the Custom Skin: a pattern and three colours.</p>' + chips(R.BASIC.map(function(p){ return [p, p.charAt(0).toUpperCase() + p.slice(1)]; }), s.cus.p, "cusp") +
     '<div class="row">' + ["Shirt", "Trim", "Shorts"].map(function(n, i){ return '<label class="pick">' + n + '<input type="color" value="' + s.cus.c[i] + '" data-cus="' + i + '"></label>'; }).join("") + '</div></section>';
 }
 VIEW.locker = function(tab){
-  var s = S(), t = tab || "kit", tabs = [["kit", "Kits"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["court", "Cages"], ["me", "Player"]], list = MG.ITEMS.filter(function(it){ return it.t === t; }), own = list.filter(function(it){ return s.inv[it.id]; }).length;
+  var s = S(), t = tab || "kit", tabs = [["kit", "Skins"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["court", "Cages"], ["me", "Player"]], list = MG.ITEMS.filter(function(it){ return it.t === t; }), own = list.filter(function(it){ return s.inv[it.id]; }).length;
   list.sort(function(a, b){ return (s.inv[b.id] ? 1 : 0) - (s.inv[a.id] ? 1 : 0) || a.r - b.r; });
   return '<div class="lock"><section class="panel prev"><canvas id="pv" width="440" height="560"></canvas><canvas id="pvb" width="140" height="140"></canvas><div class="eq">' +
-    ["kit", "ball", "trail", "fx", "emote", "court"].map(function(k){ var it = MG.ITEM[s.eq[k]]; return '<div><span>' + {kit: "Kit", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Win emote", court: "Cage"}[k] + '</span><b style="color:' + MG.RAR[it.r].c + '">' + it.n + '</b></div>'; }).join("") + '</div></section>' +
+    ["kit", "ball", "trail", "fx", "emote", "court"].map(function(k){ var it = MG.ITEM[s.eq[k]]; return '<div><span>' + {kit: "Skin", ball: "Ball", trail: "Trail", fx: "Celebration", emote: "Win emote", court: "Cage"}[k] + '</span><b style="color:' + MG.RAR[it.r].c + '">' + it.n + '</b></div>'; }).join("") + '</div></section>' +
     '<div>' + chips(tabs, t, "ltab") + (t === "me" ? editor() : '<p class="mute">' + own + ' of ' + list.length + ' collected. Tap an item you own to use it.</p><div class="items">' + list.map(itemCard).join("") + '</div>' + (t === "kit" && s.inv.custom ? maker() : "")) + '</div></div>';
 };
 AFTER.locker = function(){ var pv = $("pv"), pb = $("pvb"); tick.push(function(t){ if (!pv.isConnected) return; R.portrait(pv, MG.me(), t, {spin: 1}); R.ballIcon(pb, S().eq.ball, t); }); };
@@ -379,14 +379,14 @@ ACT.claim = function(d){ var g = MG.claim(d.id); if (g) { MG.sfx("coin"); toast(
 
 // ---- ranks and profile ----
 VIEW.ranks = function(key){
-  var k = key || "elo", b = MG.board(k), tabs = [["elo", "Rating"], ["w", "Wins"], ["megs", "Megs"], ["cups", "Cups"], ["strk", "Best streak"], ["gaunt", "Gauntlet"]], me = 0, rows = "", i, x;
+  var k = key || "elo", b = MG.board(k), tabs = [["elo", "Rank points"], ["w", "Wins"], ["megs", "Megs"], ["cups", "Cups"], ["strk", "Best streak"], ["gaunt", "Gauntlet"]], me = 0, rows = "", i, x;
   for (i = 0; i < b.length; i++) if (b[i].me) me = i;
   for (i = 0; i < b.length; i++) {
     x = b[i];
     if (i >= 25 && Math.abs(i - me) > 2) { if (i === 25 || i === me + 3) rows += '<tr class="gap"><td colspan="4">&middot; &middot; &middot;</td></tr>'; continue; }
     rows += '<tr class="' + (x.me ? "mine" : "") + '"' + (x.me ? "" : ' data-a="peek" data-id="' + x.p.id + '"') + '><td>' + (i + 1) + '</td><td><b>' + (x.clan ? '<i class="clan">' + x.clan + '</i>' : "") + esc(x.n) + '</b><small>' + esc(x.title) + '</small></td><td>' + tier(x.elo) + '</td><td class="num">' + x[k] + '</td></tr>';
   }
-  return chips(tabs, k, "rtab") + '<p class="mute">This is a simulated league. The other 160 players are CPU rivals, and their ratings drift a little every day. Win ranked matches to climb.</p><table class="tbl">' + rows + '</table>';
+  return chips(tabs, k, "rtab") + '<p class="mute">This is a simulated league. The other 160 players are CPU rivals, and their rank points drift a little every day. Win ranked matches to climb.</p><table class="tbl">' + rows + '</table>';
 };
 ACT.rtab = function(d){ go("ranks", d.id); };
 ACT.peek = function(d){
@@ -403,9 +403,9 @@ function spark(a){
 VIEW.profile = function(){
   var s = S(), n = s.n, g = s.games, own = MG.ITEMS.filter(function(it){ return s.inv[it.id]; }).length, mn = {ladder: "Ladder", cup: "Cup", friendly: "Friendly", ranked: "Ranked", gauntlet: "Gauntlet"},
     st = [["Matches", g], ["Wins", n.w || 0], ["Win rate", g ? Math.round((n.w || 0) / g * 100) + "%" : "-"], ["Goals", n.goals || 0], ["Long range", n.twos || 0], ["Megs", n.megs || 0], ["Ankles broken", n.ankles || 0], ["Perfect strikes", n.perfect || 0],
-      ["Blocks and saves", n.blocks || 0], ["Best streak", n.best || 0], ["Peak rating", s.peak], ["League rank", "#" + MG.rank()], ["Cups", n.cups || 0], ["Ladder", s.ladder + "/20"], ["Balls won back", n.tackles || 0], ["Best Gauntlet", n.gaunt || 0], ["Packs opened", n.packs || 0], ["Items", own + "/" + MG.ITEMS.length]];
+      ["Blocks and saves", n.blocks || 0], ["Best streak", n.best || 0], ["Peak rank points", s.peak], ["League rank", "#" + MG.rank()], ["Cups", n.cups || 0], ["Ladder", s.ladder + "/20"], ["Balls won back", n.tackles || 0], ["Best Gauntlet", n.gaunt || 0], ["Packs opened", n.packs || 0], ["Items", own + "/" + MG.ITEMS.length]];
   return '<div class="cols"><section class="panel"><h3>Career</h3><div class="stats">' + st.map(function(x){ return '<div><b>' + x[1] + '</b><span>' + x[0] + '</span></div>'; }).join("") + '</div></section>' +
-    '<section class="panel"><h3>Rating</h3>' + spark(s.eh) + '<h3>Recent matches</h3>' + (s.hist.length ? s.hist.map(function(h){ return '<div class="hrow"><b class="' + (h.w ? "up" : "dn") + '">' + (h.w ? "W" : "L") + '</b><span>' + h.s + ' v ' + esc(h.o) + '</span><small>' + (MG.MODES[h.m] ? MG.MODES[h.m].n : mn[h.m] || h.m) + (h.d ? " " + (h.d > 0 ? "+" : "") + h.d : "") + '</small></div>'; }).join("") : '<p class="mute">No matches yet.</p>') + '</section></div>' +
+    '<section class="panel"><h3>Rank points</h3>' + spark(s.eh) + '<h3>Recent matches</h3>' + (s.hist.length ? s.hist.map(function(h){ return '<div class="hrow"><b class="' + (h.w ? "up" : "dn") + '">' + (h.w ? "W" : "L") + '</b><span>' + h.s + ' v ' + esc(h.o) + '</span><small>' + (MG.MODES[h.m] ? MG.MODES[h.m].n : mn[h.m] || h.m) + (h.d ? " " + (h.d > 0 ? "+" : "") + h.d : "") + '</small></div>'; }).join("") : '<p class="mute">No matches yet.</p>') + '</section></div>' +
     '<section class="panel"><h3>Titles</h3><div class="arch">' + MG.TITLES.map(function(t){ var ok = MG.stat(t[2]) >= t[3]; return '<button class="ar' + (ok ? "" : " off") + (s.title === t[0] ? " on" : "") + '"' + (ok ? ' data-a="title" data-id="' + t[0] + '"' : " disabled") + '><b>' + t[0] + '</b><small>' + t[1] + '</small></button>'; }).join("") + '</div></section>';
 };
 ACT.title = function(d){ S().title = d.id; MG.save(); go("profile"); };
