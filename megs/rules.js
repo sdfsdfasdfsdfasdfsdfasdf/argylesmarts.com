@@ -26,8 +26,8 @@ MG.PACKS.forEach(function(p){ var o = PK[p.id]; if (o) { p.cost = o[0]; p.odds =
 MG.KIND_X = {boot: 0.3, sticker: 0.25, trail: 0.35, emote: 0.4, ball: 0.45, wrap: 0.5, hair: 0.5, fx: 0.8, court: 1, kit: 1.25, stadium: 1.25};
 MG.packCost = function(pk, kind){ return Math.max(10, Math.round(pk.cost * (kind ? MG.KIND_X[kind] || 1 : 1) / 10) * 10); };
 // the two big packs pay out more than an item: Celestial blueprints and season pass XP on every pull
-MG.PACKS.push({id: "champ", n: "Champion Pack", cost: 2000, odds: [0, 0, 0, 52, 44, 0, 0, 4], pity: 3, bonus: {bp: 1, xp: 250}},
-  {id: "galaxy", n: "Galaxy Pack", cost: 5000, odds: [0, 0, 0, 0, 88, 0, 0, 12], pity: 1, bonus: {bp: 2, xp: 1000}});
+MG.PACKS.push({id: "champ", n: "Champion Pack", cost: 2000, odds: [0, 0, 0, 0, 96, 0, 0, 4], pity: 3, bonus: {bp: 1, xp: 250}},
+  {id: "galaxy", n: "Galaxy Pack", cost: 5000, odds: [0, 0, 0, 0, 80, 0, 0, 20], pity: 1, bonus: {bp: 2, xp: 1000}});
 MG.packBonus = function(pk){ var b = pk.bonus; return b ? "Every pull also gives " + b.bp + (b.bp > 1 ? " Celestial blueprints" : " Celestial blueprint") + " and " + b.xp + " season pass XP" + (b.xp >= MG.PASS_XP ? " (a whole tier)" : "") + "." : ""; };
 // a bonus blueprint goes to a random Celestial you have not built; with none left it pays 300 coins instead
 function bonusBp(s){
@@ -145,7 +145,7 @@ waitUi(function(){
   // one reel; each item spins in after the one before, quickly
   function spin(got, title){
     var pool = I.filter(function(it){ return !it.need && it.src === "pack"; }), N = 26, WIN = 21, i = 0, dur = got.length >= 10 ? 0.85 : 1.25, timer = null, done = false;
-    function card(it){ return '<div class="rl" style="--r:' + rar(it).c + '">' + (it.t === "emote" ? '<span class="sw" style="background:#22264a"></span>' : U.vis(it, "")) + '<b>' + esc(it.n) + '</b></div>'; }
+    function card(it){ if (it.ux) return '<div class="rl ux"><span class="uxq">?</span><b>???</b></div>'; return '<div class="rl" style="--r:' + rar(it).c + '">' + (it.t === "emote" ? '<span class="sw" style="background:#22264a"></span>' : U.vis(it, "")) + '<b>' + esc(it.n) + '</b></div>'; }
     function line(g){ var r = rar(g.it); return '<p class="won show" style="--r:' + r.c + '"><b>' + r.n + ': ' + esc(g.it.n) + '</b> ' + (g.cel ? (g.first ? "Discovered! Build it with " + MG.BP_N + " blueprints" : "Found again: +1 blueprint (" + g.bp + " of " + MG.BP_N + ")") : g.dupe ? "Duplicate: you now have x" + g.n + " (keep it for trading)" : "New") + (g.extra ? '<small class="pkx">' + g.extra.map(esc).join(" &middot; ") + '</small>' : "") + '</p>'; }
     modal('<h2 class="center">' + (title || "Opening " + got.length) + ' <small class="mute" id="pkn"></small></h2><div class="reel"><div class="strip" id="pks"></div><i></i></div><div id="pkw" class="pkw"></div><div class="row center"><button class="btn ghost" data-a="pkSkip" id="pkskip">Skip</button><button class="btn big" data-a="packDone" id="rdone" disabled>Opening...</button></div>', "wide");
     function finish(){ done = true; clearTimeout(timer); var w = document.getElementById("pkw"); if (w) w.innerHTML = got.map(line).join(""); var b = document.getElementById("rdone"); if (b) { b.disabled = false; b.textContent = "Nice"; } var k = document.getElementById("pkskip"); if (k) k.remove(); U.paint && U.paint(); }
@@ -164,7 +164,10 @@ waitUi(function(){
       }); });
       timer = setTimeout(function(){
         if (done) return; c.classList.add("hit"); MG.sfx("rare", Math.min(g.it.r, 6));
-        var w = document.getElementById("pkw"); if (w) w.insertAdjacentHTML("afterbegin", line(g));
+        var w = document.getElementById("pkw");
+        // the rarest pulls get a reveal of their own before the opening carries on
+        if (g.it.ux && MG.ultraReveal) return MG.ultraReveal(g.it, function(){ if (w) w.insertAdjacentHTML("afterbegin", line(g)); i++; timer = setTimeout(next, 300); });
+        if (w) w.insertAdjacentHTML("afterbegin", line(g));
         i++; timer = setTimeout(next, got.length >= 10 ? 220 : 380);
       }, dur * 1000 + 60);
     }
