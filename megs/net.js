@@ -5,7 +5,7 @@
 var MG = window.MG, R = MG.R;
 var KEY = "megs.online", WS_URL = (function(){ try { return localStorage.getItem("megs.ws") || ""; } catch (e) { return ""; } })() || "wss://online.argylesmarts.com/ws";
 var N = MG.net = {on: false, busy: false, me: null, friends: [], reqs: [], sent: [], party: {leader: null, members: []}, invites: [], found: null, tab: "friends", err: ""};
-var ws = null, tries = 0, timer = 0, lastLook = "", pend = null;
+var ws = null, tries = 0, timer = 0, lastLook = "", pend = null, dirty = false, synced = false, SAVE_KEY = "megs.save.v1";
 var LOOK_KEYS = ["kit", "cus", "look", "trail", "fx", "emote", "boot", "wrap", "hair", "banner"], ITEM_KEYS = ["kit", "trail", "fx", "emote", "boot", "wrap", "hair", "banner"];
 
 function acct(){ try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
@@ -38,10 +38,39 @@ function connect(){
     changed();
   };
   ws.onmessage = function(e){ if (e.data === "pong") return; var m; try { m = JSON.parse(e.data); } catch (x) { return; } recv(m); };
-  ws.onclose = function(){ ws = null; N.on = false; N.busy = false; N.me = null; changed(); retry(); };
+  ws.onclose = function(){ ws = null; N.on = false; N.busy = false; N.me = null; synced = false; changed(); retry(); };
   ws.onerror = function(){};
 }
-function retry(){ if (!acct() && !document.getElementById("onl")) return; tries++; clearTimeout(timer); timer = setTimeout(connect, Math.min(30000, 1500 * Math.pow(2, Math.min(tries, 5)))); }
+function retry(){ if (N.banned || (!acct() && !document.getElementById("onl"))) return; tries++; clearTimeout(timer); timer = setTimeout(connect, Math.min(30000, 1500 * Math.pow(2, Math.min(tries, 5)))); }
+// ---- your progress lives on your account: every change is sent up, and a new device picks it up when you sign in ----
+var save0 = MG.save;
+MG.save = function(){ if (N.adopting) return; if (MG.S) MG.S.at = Date.now(); dirty = true; return save0.apply(this, arguments); };
+function flush(){ if (dirty && synced && N.me && ws && ws.readyState === 1) { dirty = false; send({t: "save", data: MG.S, at: MG.S.at || Date.now()}); } }
+setInterval(flush, 15000);
+document.addEventListener("visibilitychange", function(){ if (document.hidden) flush(); });
+window.addEventListener("pagehide", flush);
+function gotSave(m){
+  var S = MG.S, mine = S.acct === N.me.id, lat = S.at || 0, d = m.data;
+  if (d && (!mine || m.at > lat + 1000)) {
+    // the account's progress wins: load it in place of what this device has
+    try { if (sessionStorage.getItem("megs.adopt") === String(m.at)) throw 0; sessionStorage.setItem("megs.adopt", String(m.at)); } catch (e) { synced = true; return; }
+    d.acct = N.me.id; d.at = m.at;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) { return; }
+    N.adopting = true;
+    location.reload(); return;
+  }
+  S.acct = N.me.id; synced = true; dirty = true; flush();
+}
+function gotGifts(m){
+  var S = MG.S, U = MG.ui, got = [];
+  m.list.forEach(function(g){
+    if (g.kind === "coins") { S.coins += +g.val || 0; got.push((+g.val) + " coins"); }
+    else if (g.kind === "item" && MG.ITEM[g.val]) { S.inv[g.val] = S.inv[g.val] ? (+S.inv[g.val] || 1) + 1 : 1; got.push(MG.ITEM[g.val].n); }
+  });
+  MG.save(); if (MG.adminSync) MG.adminSync();
+  send({t: "gack", ids: m.list.map(function(g){ return g.id; })});
+  if (U && got.length) { U.toast("A gift from the Megs team: " + U.esc(got.join(", ")) + "."); if (U.top) U.top(); if (MG.sfx) MG.sfx("rare", 5); }
+}
 setInterval(function(){
   if (ws && ws.readyState === 1) ws.send("ping");
   // your look follows you: when you change kit or boots your friends see it
@@ -54,10 +83,14 @@ function recv(m){
   var U = MG.ui;
   if (m.t === "me") {
     N.me = m; N.err = "";
-    if (m.key) keep({id: m.id, key: m.key});
+    if (m.key) { keep({id: m.id, key: m.key}); if (MG.S) { MG.S.name = m.name; MG.save(); } }
+    if (MG.S && !!MG.S.admin !== !!m.admin) { MG.S.admin = !!m.admin; MG.save(); if (MG.adminSync) MG.adminSync(); }
     N.pushLook();
-  } else if (m.t === "err") {
-    if (m.c === "auth" || m.c === "name") N.err = m.msg; else if (U) U.toast(U.esc(m.msg));
+  } else if (m.t === "save") gotSave(m);
+  else if (m.t === "gift") gotGifts(m);
+  else if (m.t === "err") {
+    if (m.c === "banned") { N.banned = true; N.err = m.msg; if (U) U.toast(m.msg); }
+    else if (m.c === "auth" || m.c === "name") N.err = m.msg; else if (U) U.toast(U.esc(m.msg));
   } else if (m.t === "friends") { N.friends = m.list; N.reqs = m.reqs; N.sent = m.sent; }
   else if (m.t === "party") {
     var was = N.inParty();
@@ -72,6 +105,8 @@ function recv(m){
     if (m.c === "invited") U.toast("Invite sent.");
     else if (m.c === "declined") U.toast(U.esc(m.name || "They") + " said not now.");
     else if (m.c === "kicked") U.toast("You were removed from the party.");
+    else if (m.c === "admin") { U.toast("You are now an admin. Your admin skins are in your locker."); if (U.cur() === "home") U.go("home"); }
+    else if (m.c === "reported") U.toast("Thanks. An admin will take a look.");
   } else if (m.t === "search") N.found = m;
   (N.hooks[m.t] || []).forEach(function(f){ f(m); });
   changed();
@@ -82,6 +117,7 @@ N.hook = function(t, f){ (N.hooks[t] = N.hooks[t] || []).push(f); };
 // ---- everything on screen that shows online state ----
 function changed(){
   if (!MG.ui) return;
+  if (N.me && N.me.admin && MG.ui.cur() === "home" && !document.querySelector('.rlL [data-v="admin"]') && MG.ui.AFTER.home) MG.ui.AFTER.home();
   if (document.getElementById("onl")) panel();
   slots(); badge(); invites();
 }
@@ -109,7 +145,7 @@ function slots(){
     var p = o[i], key = p ? p.id + JSON.stringify(p.look) + p.name + (p.id === N.party.leader) + p.on : "empty" + !!N.me;
     if (el.getAttribute("data-k") === key) return;
     el.setAttribute("data-k", key);
-    el.innerHTML = p ? '<button class="rlF" data-a="onlMember" data-id="' + p.id + '"><canvas data-pid="' + p.id + '" width="240" height="320"></canvas><span class="rlFn"><b>' + U.esc(p.name) + '</b><small>' + (p.id === N.party.leader ? "Party leader" : p.on ? "In your party" : "Reconnecting...") + '</small></span></button>'
+    el.innerHTML = p ? '<button class="rlF" data-a="onlMember" data-id="' + p.id + '"><canvas data-pid="' + p.id + '" width="240" height="320"></canvas><span class="rlFn' + (p.admin ? " adm" : "") + '"><b>' + U.esc(p.name) + '</b>' + (p.admin ? '<span class="admB">ADMIN</span>' : "") + '<small>' + (p.id === N.party.leader ? "Party leader" : p.on ? "In your party" : "Reconnecting...") + '</small></span></button>'
       : '<button class="rlS" data-a="rlInvite">' + U.ic("users") + '<b>Invite a friend</b><small>' + (N.me ? "Pick from your friends" : "Make a username first") + '</small></button>';
   });
   if (more) more.innerHTML = o.length > 2 ? "+" + (o.length - 2) + " more in your party: " + o.slice(2).map(function(p){ return U.esc(p.name); }).join(", ") : "";
@@ -133,8 +169,8 @@ function panel(){
     if (a && (N.busy || N.on) && !N.err) { el.innerHTML = '<h2>Friends</h2><p class="mute">Connecting to the Megs server...</p>'; return; }
     h = '<h2>Make your username</h2><p class="mute">Friends find you by this name. Letters, numbers and _ only, 3 to 16 long. Use a made-up name, not your real one.</p>' +
       '<div class="row"><input id="onlName" maxlength="16" autocomplete="off" value="' + esc(((MG.S.name || "") + "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 16)) + '"><button class="btn" data-a="onlSignup">Create</button></div>' +
-      '<p class="onlMsg">' + esc(N.err) + '</p>' +
-      '<details class="onlAlt"><summary>Already have an account on another device?</summary><p class="mute">Paste the account code from Friends on that device.</p><div class="row"><input id="onlCode" autocomplete="off" placeholder="Account code"><button class="btn ghost" data-a="onlCode">Sign in</button></div></details>' +
+      '<p class="onlMsg">' + esc(N.err) + '</p><p class="mute">Your coins, items and pass are saved to your username, so you can carry on from any device.</p>' +
+      '<details class="onlAlt"><summary>Already have an account on another device?</summary><p class="mute">Paste the account code from Friends on that device. The progress saved to that account replaces what is on this device.</p><div class="row"><input id="onlCode" autocomplete="off" placeholder="Account code"><button class="btn ghost" data-a="onlCode">Sign in</button></div></details>' +
       (!N.on && !N.busy ? '<p class="mute">Can\'t reach the server right now. <button class="lnk" data-a="onlRetry">Try again</button></p>' : "");
     el.innerHTML = h;
     return;
@@ -143,7 +179,7 @@ function panel(){
   var inMine = function(id){ return N.party.members.some(function(p){ return p.id === id; }); };
   function row(f){
     var st = f.on ? (inMine(f.id) ? "In your party" : f.party ? "In a party" : "Online") : "Offline";
-    return '<div class="frow"><i class="dot' + (f.on ? " on" : "") + '"></i><span class="fn"><b>' + esc(f.name) + '</b><small>' + st + '</small></span>' +
+    return '<div class="frow"><i class="dot' + (f.on ? " on" : "") + '"></i><span class="fn"><b>' + esc(f.name) + (f.admin ? ' <span class="admB">ADMIN</span>' : "") + '</b><small>' + st + '</small></span>' +
       (f.on && !inMine(f.id) ? '<button class="btn sm" data-a="onlInv" data-id="' + f.id + '">Invite</button>' : "") +
       '<button class="btn sm ghost" data-a="onlDel" data-id="' + f.id + '" data-n="' + esc(f.name) + '">Remove</button></div>';
   }
@@ -157,7 +193,7 @@ function panel(){
     var sentTo = function(id){ return N.sent.some(function(f){ return f.id === id; }); };
     h += '<div class="row"><input id="onlQ" maxlength="16" autocomplete="off" placeholder="Search usernames" value="' + esc(N.q || "") + '"></div>';
     if (N.found && N.found.q && N.found.q === (N.q || "").toLowerCase().replace(/[^a-z0-9_]/g, "")) h += N.found.list.length ? N.found.list.map(function(f){
-      return '<div class="frow"><i class="dot' + (f.on ? " on" : "") + '"></i><span class="fn"><b>' + esc(f.name) + '</b></span>' + (f.friend || N.friends.some(function(x){ return x.id === f.id; }) ? '<span class="mute">Friends</span>' : sentTo(f.id) ? '<span class="mute">Request sent</span>' : '<button class="btn sm" data-a="onlAdd" data-id="' + f.id + '">Add friend</button>') + '</div>';
+      return '<div class="frow"><i class="dot' + (f.on ? " on" : "") + '"></i><span class="fn"><b>' + esc(f.name) + '</b></span>' + (f.friend || N.friends.some(function(x){ return x.id === f.id; }) ? '<span class="mute">Friends</span>' : sentTo(f.id) ? '<span class="mute">Request sent</span>' : '<button class="btn sm" data-a="onlAdd" data-id="' + f.id + '">Add friend</button>') + '<button class="btn sm ghost" data-a="onlRep" data-id="' + f.id + '" data-n="' + esc(f.name) + '">Report</button></div>';
     }).join("") : '<p class="mute">Nobody with a name starting like that.</p>';
     else h += '<p class="mute">Type at least 2 letters of their username.</p>';
   }
@@ -205,12 +241,36 @@ waitUi(function(){
     if (!p) return;
     U.modal('<h2>' + U.esc(p.name) + '</h2><p class="mute">' + (p.id === N.party.leader ? "Party leader" : "In your party") + '</p><div class="row center">' +
       (lead ? '<button class="btn" data-a="onlPromote" data-id="' + p.id + '">Make leader</button><button class="btn ghost" data-a="onlKick" data-id="' + p.id + '">Remove from party</button>' : "") +
-      '<button class="btn ghost" data-a="onlLeave">Leave party</button><button class="btn ghost" data-a="close">Close</button></div>');
+      '<button class="btn ghost" data-a="onlLeave">Leave party</button><button class="btn ghost" data-a="onlRep" data-id="' + p.id + '" data-n="' + U.esc(p.name) + '">Report</button><button class="btn ghost" data-a="close">Close</button></div>');
   };
+  ACT.onlRep = function(d){
+    U.modal('<h2>Report ' + U.esc(d.n || "player") + '</h2><p class="mute">Tell the admins what happened, like a rude username.</p><div class="row"><input id="repWhy" maxlength="200" autocomplete="off" placeholder="What happened?" style="flex:1"></div><div class="row center"><button class="btn red" data-a="onlRepGo" data-id="' + d.id + '">Send report</button><button class="btn ghost" data-a="close">Cancel</button></div>', "onlc");
+  };
+  ACT.onlRepGo = function(d){ send({t: "report", id: d.id, why: ((document.getElementById("repWhy") || {}).value || "").trim()}); U.close(); };
+  // the admin code goes in the promo code box
+  var pc0 = ACT.pcRedeem;
+  ACT.pcRedeem = function(){
+    var i = document.getElementById("pcode"), v = i ? i.value.trim().toUpperCase() : "";
+    if (/^MEGS-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/.test(v)) { if (!N.me) return U.toast("Make your username in Friends first."); send({t: "claim", code: v}); U.close(); return; }
+    return pc0.apply(this, arguments);
+  };
+  // new players pick a username straight away; anyone without one is asked again once a day
+  var begin0 = ACT.begin;
+  ACT.begin = function(){ var r = begin0.apply(this, arguments); if (!acct()) setTimeout(ACT.friends, 400); return r; };
+  setTimeout(function(){
+    var S = MG.S, d = MG.day ? MG.day() : 0;
+    if (acct() || !S || !S.name || document.getElementById("wname") || (S.n && S.n.askAcct === d)) return;
+    S.n.askAcct = d; MG.save(); if (U.cur() === "home" && document.getElementById("modal").hidden) ACT.friends();
+  }, 1500);
   ACT.onlPromote = function(d){ send({t: "promote", id: d.id}); U.close(); };
   ACT.onlKick = function(d){ send({t: "kick", id: d.id}); U.close(); };
   var ah = AFTER.home;
-  AFTER.home = function(a){ if (ah) ah(a); [].forEach.call(document.querySelectorAll(".rlSlot"), function(e){ e.removeAttribute("data-k"); }); slots(); badge(); };
+  AFTER.home = function(a){ if (ah) ah(a);
+    if (N.me && N.me.admin) {
+      var pl = document.querySelector(".rlMe .rlPl"), nav = document.querySelector(".rlL");
+      if (pl && !pl.classList.contains("adm")) { pl.classList.add("adm"); pl.querySelector("b").insertAdjacentHTML("afterend", '<span class="admB">ADMIN</span>'); }
+      if (nav && !nav.querySelector('[data-v="admin"]')) nav.insertAdjacentHTML("afterbegin", '<button class="rlb gold" data-a="go" data-v="admin">' + U.ic("shield") + '<span><b>Admin</b><small>Players, gifts and reports</small></span></button>');
+    } [].forEach.call(document.querySelectorAll(".rlSlot"), function(e){ e.removeAttribute("data-k"); }); slots(); badge(); };
   // equipping something sends your new look straight away
   var eq = MG.equip;
   MG.equip = function(id){ var r = eq.apply(this, arguments); if (r) setTimeout(N.pushLook, 0); return r; };
