@@ -190,7 +190,7 @@ body.scn .panel,body.brnd .panel{background:rgba(22,24,46,.84);backdrop-filter:b
 .slots{display:flex;gap:.5rem;margin-bottom:.6rem}.slot{background:#1b1e3a;border:2px solid #2a2d55;border-radius:12px;padding:.3rem;width:84px;color:#c9cde6;cursor:pointer}.slot.on{border-color:#fff}.slot canvas{width:100%;display:block}
 .pres{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.6rem}.pre{background:#1b1e3a;border:1px solid #2a2d55;border-radius:12px;padding:.7rem;display:flex;flex-direction:column;gap:.3rem}.pre small{color:#8a8ca8}
 canvas.pbn{display:block;width:100%;aspect-ratio:3/1;border-radius:12px;margin-top:.5rem}
-.card0{position:relative;margin-bottom:.8rem}.card0 canvas.pbn{aspect-ratio:18/5;margin:0}.cardt{position:absolute;left:1.2rem;bottom:1rem;display:flex;flex-direction:column;text-shadow:0 2px 10px rgba(0,0,0,.8)}.cardt b{font-size:1.6rem}
+.card0{position:relative;margin-bottom:.8rem}.cardrow{position:absolute;inset:0;padding:.8rem;display:flex;align-items:flex-end;gap:1rem}.cardrow .cardt{position:static}.pskin{position:relative;height:100%;aspect-ratio:4/5;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;border-radius:14px;overflow:hidden;background:radial-gradient(120% 90% at 50% 20%,color-mix(in srgb,var(--c) 45%,#1b1e44),#0b0d24);border:2px solid var(--c);box-shadow:0 0 18px color-mix(in srgb,var(--c) 45%,transparent)}.pskin canvas{position:absolute;inset:0;width:100%;height:100%}.pskin span{position:relative;width:100%;text-align:center;font-size:.7rem;font-weight:800;background:rgba(0,0,0,.55);padding:.15rem .3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card0 canvas.pbn{aspect-ratio:18/5;margin:0}.cardt{position:absolute;left:1.2rem;bottom:1rem;display:flex;flex-direction:column;text-shadow:0 2px 10px rgba(0,0,0,.8)}.cardt b{font-size:1.6rem}
 .pk .ic{width:40px;height:40px}
 .odds{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;margin:.6rem 0}
 .odds span{font-size:.72rem;color:var(--r);border:1px solid var(--r);border-radius:8px;padding:.2rem .45rem;font-weight:700}
@@ -459,27 +459,29 @@ kbd{display:inline-block;font:inherit;font-weight:800;font-size:.8em;background:
 <div id="modal" hidden></div>
 <div id="toasts"></div>
 
-<script src="engine.js?v=11"></script>
-<script src="data.js?v=9"></script>
+<script src="engine.js?v=12"></script>
+<script src="data.js?v=10"></script>
 <script src="render.js?v=11"></script>
-<script src="cosm.js?v=11"></script>
+<script src="cosm.js?v=12"></script>
 <script src="body.js?v=12"></script>
-<script src="meta.js?v=12"></script>
-<script src="season.js?v=10"></script>
-<script src="team.js?v=12"></script>
+<script src="meta.js?v=13"></script>
+<script src="season.js?v=11"></script>
+<script src="team.js?v=13"></script>
 <script src="play.js?v=9"></script>
-<script src="ui.js?v=13"></script>
-<script src="ui2.js?v=12"></script>
-<script src="scene.js?v=13"></script>
+<script src="ui.js?v=14"></script>
+<script src="ui2.js?v=13"></script>
+<script src="scene.js?v=14"></script>
 <script src="stadium.js?v=4"></script>
-<script src="rules.js?v=7"></script>
-<script src="pass.js?v=3"></script>
-<script src="home.js?v=4"></script>
-<script src="net.js?v=6"></script>
+<script src="rules.js?v=8"></script>
+<script src="pass.js?v=4"></script>
+<script src="home.js?v=5"></script>
+<script src="net.js?v=7"></script>
 <script src="ultra.js?v=3"></script>
 <script src="admin.js?v=2"></script>
 <script src="sig.js?v=1"></script>
-<script src="account.js?v=1"></script>
-<script src="economy.js?v=1"></script>
+<script src="account.js?v=2"></script>
+<script src="economy.js?v=2"></script>
+<script src="shop.js?v=1"></script>
+<script src="rank.js?v=1"></script>
 </body>
 </html>
