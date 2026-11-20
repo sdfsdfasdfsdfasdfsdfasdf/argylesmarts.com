@@ -497,6 +497,10 @@ M.goal = function(g){
   if (!bad && c.far && pts < 2) bad = 2;
   if (bad) { m.phase = "dead"; m.next = bad === 2 ? 1 - by : by; m.emit("nogoal", {why: bad}); return; }
   m.score[by] += pts; p.stats.goals++; if (pts === 2) p.stats.twos++; p.heat++; o.heat = 0;
+  // rare goals, worth extra rank points: top corner, volley, through the legs, off the post, a perfect strike
+  if (b.z > 1.4 && Math.abs(b.x) > GW - 0.5) p.stats.corner = (p.stats.corner || 0) + 1;
+  if (s && s.vol) p.stats.vgoal = (p.stats.vgoal || 0) + 1; if (s && s.megs) p.stats.mgoal = (p.stats.mgoal || 0) + 1;
+  if (s && s.hit) p.stats.post = (p.stats.post || 0) + 1; if (s && s.q === 2) p.stats.pgoal = (p.stats.pgoal || 0) + 1;
   m.phase = "goal"; m.next = c.take && !m.L ? by : 1 - by;
   if (c.golden || (c.target && m.score[by] >= c.target)) m.win = by;
   act(p, "celebrate", 9); act(o, "sad", 9); p.wind = -1; o.wind = -1;
