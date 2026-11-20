@@ -292,7 +292,7 @@ R.flair = function(g, P, J, HD, hip, s, sd, c, sg, t, phase){
   // Celestial: a halo and stars in orbit (no rays behind: they were too big and too slow)
   if (tier >= 7) {
     g.lineWidth = Math.max(1.5, s * 0.03); g.strokeStyle = "#ffe9a8";
-    for (i = 0; i < 20; i++) {
+    for (i = 0; i < (sd.halo === false ? 0 : 20); i++) {   // only skins that have a halo get one
       p = P(Math.cos(i * TAU / 20) * 0.2, Math.sin(i * TAU / 20) * 0.2, hip + 1.32 + 0.03 * Math.sin(t * 2)); q = P(Math.cos((i + 1) * TAU / 20) * 0.2, Math.sin((i + 1) * TAU / 20) * 0.2, hip + 1.32 + 0.03 * Math.sin(t * 2));
       if (front(p) !== !!phase) continue;
       g.globalAlpha = 0.25; g.lineWidth = Math.max(3, s * 0.08); g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
