@@ -33,7 +33,8 @@ R.flair = function(g, P, J, HD, hip, s, sd, c, sg, t, phase){
     a = i * TAU / 36; p = P(Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0.01); q = P(Math.cos(a + TAU / 36) * 0.55, Math.sin(a + TAU / 36) * 0.55, 0.01);
     g.strokeStyle = "hsl(" + ((i * 10 + t * 90) % 360) + ",100%,62%)"; g.globalAlpha = 0.7; g.lineWidth = Math.max(2, s * 0.045); g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke();
   }
-  for (i = 0; i < 6; i++) {
+  // (each Ultra has its own signature in sig.js; the shared mark is just the rainbow ring)
+  for (i = 0; i < 0; i++) {
     a = t * 1.1 + i * TAU / 6; p = P(Math.cos(a) * 0.66, Math.sin(a) * 0.66, hip + 0.55 + 0.2 * Math.sin(t * 2 + i));
     if ((p.d < ctr.d) !== !!phase) continue;
     k = r * (0.8 + 0.25 * Math.sin(t * 4 + i));
