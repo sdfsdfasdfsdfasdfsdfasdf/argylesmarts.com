@@ -225,7 +225,7 @@ MG.KINDS.splice(6, 0, ["boot", "Boots"], ["wrap", "Wraps"], ["sticker", "Sticker
 // ---- locker ----
 var stkSlot = 0;
 VIEW.locker = function(tab){
-  var s = S(), t = tab || "kit", tabs = [["kit", "Skins"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Scenes"], ["stadium", "Stadiums"], ["court", "Cages"], ["bp", "Blueprints"], ["pre", "Presets"], ["me", "Player"]],
+  var s = S(), t = tab || "kit", tabs = [["kit", "Skins"], ["hair", "Hair"], ["wrap", "Wraps"], ["boot", "Boots"], ["ball", "Balls"], ["trail", "Trails"], ["fx", "Celebrations"], ["emote", "Emotes"], ["sticker", "Stickers"], ["banner", "Banners"], ["scene", "Backgrounds"], ["stadium", "Stadiums"], ["court", "Cages"], ["bp", "Blueprints"], ["pre", "Presets"], ["me", "Player"]],
     all = MG.ITEMS.filter(function(it){ return it.t === t; }), list = all.filter(function(it){ return s.inv[it.id]; }), own = list.length, body;
   // only what you own is shown, so the locker stays quick however big the catalogue gets
   list.sort(function(a, b){ return a.r - b.r || (a.n < b.n ? -1 : 1); });
