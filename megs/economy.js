@@ -135,6 +135,7 @@ waitUi(function(){
         if (/pass XP$/.test(t)) p.textContent = "+" + x.xp + " pass XP";
         else if (/rank points$/.test(t)) { p.textContent = (x.rp > 0 ? "+" : "") + x.rp + " rank points"; p.className = "pill " + (x.rp > 0 ? "up" : x.rp < 0 ? "dn" : ""); }
       });
+      if (x.ranked && x.ranked.length) setTimeout(function(){ MG.sfx("rare", 6); toast("Rank rewards unlocked: " + x.ranked.map(function(id){ return esc((BY[id] || {}).n || id); }).join(", ")); }, 1200);
       if (x.capped && x.capped.length) toast("Daily limit reached for " + x.capped.map(function(c){ return {coins: "coins", xp: "pass XP", rp: "rank points"}[c]; }).join(" and ") + ". It resets tomorrow.");
     });
     return out;
