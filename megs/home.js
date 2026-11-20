@@ -10,7 +10,7 @@ waitUi(function(){
     var s = S(), pt = MG.passTier(), rd = MG.passReady(), qs = MG.quests(), qd = qs.filter(function(x){ return x.q.c; }).length, qr = qs.filter(function(x){ return x.done && !x.q.c; }).length, sc = MG.ITEM[s.eq.scene] || MG.ITEM.sc_night;
     var left = '<nav class="rlL">' +
       btn("friends", "", "users", "Friends", "Find and invite friends") +
-      btn("go", "locker", "shirt", "Locker", "Kits, boots, hair, stadiums") +
+      btn("go", "locker", "shirt", "Locker", "Skins, boots, hair, stadiums") +
       btn("go", "shop", "cart", "Shop", "Packs and the weekly shelf") +
       btn("go", "pass", "star", "Season Pass", "Tier " + pt + " of " + MG.PASS_N + (rd ? ' &middot; <i class="hot">' + rd + ' to claim</i>' : ""), " gold") +
       btn("rlChal", "", "target", "Challenges", qd + " of " + qs.length + " daily done" + (qr ? ' &middot; <i class="hot">' + qr + ' to claim</i>' : "")) +
@@ -21,20 +21,26 @@ waitUi(function(){
       btn("go", "help", "book", "How to play", "Moves and rules") + '</nav>';
     // the spots beside you hold your party; net.js fills them in
     var slot = function(i){ return '<div class="rlSlot" data-i="' + i + '"><button class="rlS" data-a="rlInvite">' + ic("users") + '<b>Invite a friend</b><small>Pick from your friends</small></button></div>'; };
-    var mid = '<div class="rlC"><div class="rlLine">' + slot(0) + '<div class="rlMe"><canvas id="hero" width="420" height="560"></canvas><div class="rlPl"><b>' + esc(s.name || "You") + '</b>' + MG.rankHTML(s.elo) +
-      '<small>' + esc(s.title) + ' &middot; Level ' + s.lvl + '</small></div><button class="btn sm ghost rlEd" data-a="go" data-v="locker">' + ic("shirt") + 'Edit look</button></div>' + slot(1) + '</div><p class="rlMore"></p></div>';
+    var mid = '<div class="rlC"><div class="rlParty"><div class="rlPh"><span>' + ic("users") + 'Party</span><small class="rlPc">' + (MG.net && MG.net.inParty && MG.net.inParty() ? "Together" : "Invite friends to play together") + '</small></div><div class="rlLine">' + slot(0) + '<div class="rlMe"><canvas id="hero" width="420" height="560"></canvas><div class="rlPl"><b>' + esc(s.name || "You") + '</b>' + MG.rankHTML(s.elo) +
+      '<small>' + esc(s.title) + ' &middot; ' + s.elo + ' rank points</small></div><button class="btn sm ghost rlEd" data-a="go" data-v="locker">' + ic("shirt") + 'Edit look</button></div>' + slot(1) + '</div><p class="rlMore"></p></div></div>';
     var right = '<div class="rlR"><div class="rlBox"><span class="kick">Season ' + MG.SEASON.n + ': ' + esc(MG.SEASON.name) + '</span><span class="bar"><i style="width:' + Math.round((MG.pass().xp % MG.PASS_XP) / MG.PASS_XP * 100) + '%"></i></span><small class="mute">Tier ' + pt + ' &middot; ' + (MG.pass().xp % MG.PASS_XP) + ' / ' + MG.PASS_XP + ' XP</small></div>' +
       '<button class="rlPlay" data-a="rlPlay">' + ic("play") + '<b>Play</b></button></div>';
+    var T = MG.TIERS, rk = MG.tier(s.elo), nx = T[rk + 1];
+    right = right.replace('<button class="rlPlay"', '<div class="rlBox rlRank" style="--c:' + T[rk].c + '"><span class="kick">Rank</span><div class="rlRk">' + MG.rankHTML(s.elo) + '<b>' + s.elo + '</b><small>rank points</small></div><span class="bar"><i style="width:' + Math.round((MG.rankProg ? MG.rankProg(s.elo) : 0) * 100) + '%"></i></span><small class="mute">' + (nx ? (nx.min - s.elo) + " to " + nx.n : "Top rank") + (MG.rankToday ? " &middot; today " + MG.rankToday() + " of " + MG.RP_DAY : "") + '</small></div><button class="rlPlay"');
     return '<div class="lob">' + left + mid + right + '</div>';
   };
   AFTER.home = function(){};
   // every way to play, in three plain groups: play a match now, take on a challenge, or just mess about.
   // Each card says what it is, how long it takes and what you get. Online modes sit at the bottom until they open.
   // [action, view, icon, name, what it is, colours, solo/party/both, tag]
+  // practice against computer players, any team size; nothing here touches your rank
   var NOW = [
-    ["go", "quick", "ball", "Quick Match", "You against one computer player. First to 5 goals.", "#2c8fa3,#15475a", "solo", "Start here"],
-    ["go", "team", "users", "5v5", "Your team of five against theirs, on a full pitch.", "#15803d,#0b3d24", "", "About 5 min"],
-    ["field", "", "pitch", "1v1 Full Pitch", "One against one, a goal at each end.", "#0e7490,#0b3b52", "solo", "About 3 min"]];
+    ["go", "quick", "ball", "Practice Solo", "1v1 in the cage against a computer player. First to 5.", "#2c8fa3,#15475a", "solo", "Start here"],
+    ["prac", "2", "users", "Practice Duos", "2v2 against computer players, full pitch.", "#0e7490,#0b3b52", "", "2v2"],
+    ["prac", "3", "users", "Practice Trios", "3v3 against computer players.", "#15803d,#0b3d24", "", "3v3"],
+    ["prac", "4", "users", "Practice Squads", "4v4 against computer players.", "#a16207,#5a3a06", "", "4v4"],
+    ["prac", "5", "users", "Practice Team", "5v5, the full team, two halves.", "#7c3aed,#3b1d7a", "", "5v5"],
+    ["field", "", "pitch", "Solo Full Pitch", "One against one, a goal at each end.", "#3d4370,#22264a", "solo", "1v1"]];
   var CHAL = [
     ["go", "campaign", "trophy", "Campaign", "Beat each club to reach the Galaxy Cup.", "#b9791a,#6b3d0c", "solo", "Story"],
     ["go", "ladder", "ladder", "The Ladder", "20 rivals in a row. Lose and you drop down.", "#1f8a5b,#0f4f3a", "solo", "Climb"],
@@ -43,16 +49,22 @@ waitUi(function(){
   var FUN = [
     ["practice", "", "ball", "Kickabout", "Practise moves. No clock, no score.", "#3d4370,#22264a", "solo", "Learn"],
     ["go", "party", "users", "Co-op", "Two players on one keyboard.", "#a23bb5,#4f1f6b", "", "Same device"]];
+  // ranked: the only matches that earn or lose rank points. A party plays 2v2 and up
+  var RANKED = [
+    ["rk", "1", "bolt", "Ranked Solo", "1v1 in the cage, first to 5. Long range counts double.", "#2b62d9,#1a2f7a", "solo", "1v1"],
+    ["rk", "2", "users", "Ranked Duos", "2v2: a keeper and a striker each, full pitch.", "#0e7490,#0b3b52", "", "2v2"],
+    ["rk", "3", "users", "Ranked Trios", "3v3: keeper, defender, striker.", "#15803d,#0b3d24", "", "3v3"],
+    ["rk", "4", "users", "Ranked Squads", "4v4: one at the back, two up front.", "#a16207,#5a3a06", "", "4v4"],
+    ["rk", "5", "users", "Ranked Team", "5v5: the full team, two halves.", "#b91c1c,#4a0d0d", "", "5v5"]];
   var ONLINE = [
-    ["soonOn", "ranked", "bolt", "Ranked 1v1", "Real players, real ranks.", "#2b62d9,#1a2f7a", "solo", "Next update"],
     ["soonOn", "custom", "gear", "Custom Game", "Your party, your rules.", "#7c3aed,#3b1d7a", "party", "Next update"]];
   function tile(x){ return '<button class="plT' + (x[0] === "soonOn" ? " soon" : "") + (x[7] === "Start here" ? " best" : "") + '" style="--g:linear-gradient(135deg,' + x[5] + ')" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : "") + '>' + ic(x[2]) + '<span><b>' + x[3] + '</b><small>' + x[4] + '</small></span><i>' + x[7] + '</i></button>'; }
   function group(name, sub, list, fit, cls){ list = list.filter(fit); return list.length ? '<section class="plG ' + (cls || "") + '"><h3>' + name + '<small>' + sub + '</small></h3><div class="plR">' + list.map(tile).join("") + '</div></section>' : ""; }
   VIEW.play = function(){
     var party = MG.net && MG.net.inParty(), fit = function(x){ return party ? x[6] !== "solo" : x[6] !== "party"; };
-    return '<div class="plv"><div class="plh"><button class="btn ghost" data-a="go" data-v="home">' + ic("back") + 'Back</button><h1>Play</h1><p class="mute">Every mode earns XP; wins earn coins.</p></div>' +
+    return '<div class="plv"><div class="plh"><button class="btn ghost" data-a="go" data-v="home">' + ic("back") + 'Back</button><h1>Play</h1><p class="mute">Every mode earns pass XP; wins earn coins; only Ranked earns rank points.</p></div>' +
       (party ? '<p class="mute">You are in a party, so modes for one player are hidden. Playing together online comes in the next update; for now these play on this device.</p>' : "") +
-      group("Play a match", "against the computer", NOW, fit) + group("Challenges", "longer runs with rewards", CHAL, fit) + group("Just for fun", "practise or play with a friend next to you", FUN, fit) +
+      group("Ranked", (MG.rankLine ? MG.rankLine() : "earn rank points"), RANKED, fit, "rkg") + group("Practice with AI", "against computer players, no rank points", NOW, fit) + group("Challenges", "longer runs with rewards", CHAL, fit) + group("Just for fun", "practise or play with a friend next to you", FUN, fit) +
       group("Online", "against real players, coming in the next update", ONLINE, fit, "dim") + '</div>';
   };
   ACT.rlPlay = function(){ U.go("play"); };
@@ -122,32 +134,37 @@ waitUi(function(){
     ".plT:hover{transform:translateY(-3px)}.plT .ic{width:34px;height:34px;flex:none}.plT span{display:flex;flex-direction:column;gap:.15rem}.plT b{font-size:1.15rem}.plT small{opacity:.88;font-size:.8rem;line-height:1.25}",
     ".plT i{position:absolute;top:.45rem;right:.6rem;font-style:normal;font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,0,0,.3);border-radius:999px;padding:.12rem .45rem}",
     ".plT.best{outline:3px solid #ffd23b;outline-offset:2px}.plT.best i{background:#ffd23b;color:#1a1405}.plG.dim .plT{filter:saturate(.45) brightness(.75);min-height:64px}",
+    "#view:has(.kickp),#view:has(.kickbar){padding-bottom:5.5rem}",
     ".kickp{position:sticky;bottom:10px;z-index:5;box-shadow:0 -8px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:1.2rem;padding:.6rem 1rem}.kickp>h3,.kickp>p{display:none}.kickp .set{flex:1;border:0;padding:0}.kickp .row{margin:0;order:-1}.kickbar{position:sticky;bottom:10px;z-index:5}",
     ".plh{display:flex;align-items:center;gap:1rem}.plh h1{margin:0;font-size:2.4rem;letter-spacing:.06em;text-transform:uppercase}",
     ".plv h3{margin:1rem 0 .4rem;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;color:#a9b0d6}.plv .rlGrid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.7rem}.plv .rlT{min-height:150px;padding:1rem;transform:skewX(-4deg)}.plv .rlT>*{transform:skewX(4deg)}.plv .rlT b{font-size:1.4rem}.plv .rlT .ic{width:36px;height:36px}",
     ".crv{min-height:calc(100vh - 175px)}.crc{display:flex;flex-direction:column;align-items:center;gap:.4rem;margin-top:8vh;text-align:center}.crc h1{font-size:4rem;letter-spacing:.2em;margin:.2rem 0 1rem}.crn{display:flex;flex-direction:column;gap:.6rem;font-size:1.8rem;margin:.4rem 0 1.4rem}",
     ".rku{display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center}.rku h2{margin:0;font-size:2rem}.rkb{display:block;width:min(360px,80vw);height:14px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.rkb i{display:block;height:100%;border-radius:999px}",
     "#rkc.pop,#rkn.pop{animation:rkp .5s ease-out}@keyframes rkp{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}",
-    ".lob{display:grid;grid-template-columns:240px minmax(0,1fr) 220px;gap:.8rem;min-height:calc(100vh - 175px);align-items:stretch}",
+    ".lob{display:grid;grid-template-columns:250px minmax(0,1fr) 230px;gap:1.2rem;min-height:calc(100vh - 175px);align-items:stretch}",
+    ".rlParty{position:relative;container-type:inline-size;width:100%;max-width:760px;padding:2.2rem 1rem 1rem;border-radius:22px;background:linear-gradient(180deg,rgba(43,79,214,.14),rgba(10,12,32,.55));border:1px solid rgba(120,140,255,.35);box-shadow:inset 0 0 40px rgba(59,110,245,.12),0 18px 40px -20px rgba(0,0,0,.7)}",
+    ".rlPh{position:absolute;top:.6rem;left:1rem;right:1rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem}.rlPh span{display:flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#9ab6ff}.rlPh .ic{width:16px;height:16px}.rlPh small{color:#a9b0d6;font-size:.72rem}",
+    ".rlRk{display:flex;align-items:center;gap:.5rem}.rlRk b{font-size:1.4rem;color:var(--c)}.rlRk small{color:#a9b0d6;font-size:.72rem}.rlRank .bar i{background:var(--c)}",
     ".rlL{display:flex;flex-direction:column;gap:.35rem;justify-content:center}",
     ".rlb{display:flex;align-items:center;gap:.7rem;text-align:left;color:#f2f2f7;background:linear-gradient(90deg,rgba(20,24,58,.92),rgba(20,24,58,.55));border:0;border-left:4px solid #3b6ef5;padding:.45rem .9rem .45rem .8rem;transform:skewX(-8deg);cursor:pointer;transition:transform .12s,background .12s;font:inherit}",
     ".rlb>*{transform:skewX(8deg)}.rlb .ic{width:26px;height:26px;flex:none;color:#9ab6ff}.rlb b{display:block;font-size:1.05rem;letter-spacing:.02em;text-transform:uppercase}.rlb small{display:block;color:#a9b0d6;font-size:.72rem}",
     ".rlb:hover,.rlb:focus-visible{background:linear-gradient(90deg,#2b4fd6,rgba(43,79,214,.55));transform:skewX(-8deg) translateX(6px)}.rlb.gold{border-left-color:#ffd23b}.rlb.gold .ic{color:#ffd23b}",
     ".rlC{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:1rem}",
-    ".rlLine{display:flex;align-items:flex-end;justify-content:center;gap:.9rem;width:100%}",
-    ".rlMe{display:flex;flex-direction:column;align-items:center;position:relative}.rlMe canvas#hero{width:min(300px,38vh);height:min(400px,50vh);filter:drop-shadow(0 18px 24px rgba(0,0,0,.55))}",
-    ".rlPl{display:flex;flex-direction:column;align-items:center;gap:.15rem;background:rgba(10,12,32,.82);border:1px solid #2f3466;border-radius:14px;padding:.45rem 1.1rem;margin-top:-.6rem;min-width:200px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}.rlPl b{font-size:1.25rem}.rlPl small{color:#a9b0d6}",
+    ".rlLine{display:flex;align-items:flex-end;justify-content:space-around;gap:.6rem;width:100%;min-width:0}",
+    ".rlMe{display:flex;flex-direction:column;align-items:center;position:relative}.rlMe canvas#hero{width:min(260px,34vh,40cqi);height:min(347px,45vh,53cqi);filter:drop-shadow(0 18px 24px rgba(0,0,0,.55))}",
+    ".rlPl{display:flex;flex-direction:column;align-items:center;gap:.15rem;background:rgba(10,12,32,.82);border:1px solid #2f3466;border-radius:14px;padding:.45rem 1.1rem;margin-top:-.6rem;min-width:min(200px,34cqi);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}.rlPl b{font-size:1.25rem}.rlPl small{color:#a9b0d6}",
     ".rlEd{margin-top:.5rem}",
-    ".rlS{width:150px;height:150px;aspect-ratio:1;border:2px dashed rgba(170,180,240,.35);border-radius:18px;background:rgba(14,16,40,.45);color:#c9cde6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;cursor:pointer;font:inherit}.rlS .ic{width:34px;height:34px;opacity:.8}.rlS small{color:#8a8fb5}.rlS:hover{border-color:#9ab6ff;background:rgba(43,79,214,.18)}",
+    ".rlS{width:clamp(84px,23cqi,150px);height:auto;aspect-ratio:1;border:2px dashed rgba(170,180,240,.35);border-radius:18px;background:rgba(14,16,40,.45);color:#c9cde6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;cursor:pointer;font:inherit}.rlS .ic{width:34px;height:34px;opacity:.8}.rlS small{color:#8a8fb5}.rlS:hover{border-color:#9ab6ff;background:rgba(43,79,214,.18)}",
     ".rlT.soon{filter:saturate(.45) brightness(.8)}.rlM h3{margin:.8rem 0 .4rem;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;color:#a9b0d6}",
     ".rlSc{margin:.6rem 0 0;font-size:.8rem}.lnk{background:none;border:0;color:#9ab6ff;text-decoration:underline;cursor:pointer;font:inherit;padding:0}",
     ".rlR{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:1rem;padding-bottom:1rem}",
     ".rlBox{background:rgba(10,12,32,.82);border:1px solid #2f3466;border-radius:14px;padding:.7rem .9rem;display:flex;flex-direction:column;gap:.35rem}",
-    ".rlPlay{align-self:flex-end;display:flex;align-items:center;justify-content:center;gap:.6rem;width:210px;height:84px;border:0;border-radius:14px;cursor:pointer;color:#14163a;font:inherit;background:linear-gradient(135deg,#ffe066,#ffb21e);box-shadow:0 10px 30px -6px rgba(255,190,40,.7),inset 0 -5px 0 rgba(0,0,0,.18);transform:skewX(-8deg);transition:transform .12s}",
+    ".rlPlay{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:.6rem;width:auto;height:84px;border:0;border-radius:14px;cursor:pointer;color:#14163a;font:inherit;background:linear-gradient(135deg,#ffe066,#ffb21e);box-shadow:0 10px 30px -6px rgba(255,190,40,.7),inset 0 -5px 0 rgba(0,0,0,.18);transform:skewX(-8deg);transition:transform .12s}",
     ".rlPlay>*{transform:skewX(8deg)}.rlPlay b{font-size:2rem;letter-spacing:.08em;text-transform:uppercase}.rlPlay .ic{width:38px;height:38px}.rlPlay:hover{transform:skewX(-8deg) scale(1.04)}",
     ".rlM h2{margin-top:0}.rlGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem}",
     ".rlT{display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;min-height:92px;padding:.7rem;border:0;border-radius:14px;color:#fff;text-align:left;cursor:pointer;background:var(--g);font:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}.rlT .ic{width:28px;height:28px;opacity:.9}.rlT b{font-size:1.1rem}.rlT small{color:rgba(255,255,255,.8)}.rlT:hover{filter:brightness(1.15)}",
-    "@media(max-width:900px){.lob{grid-template-columns:1fr;min-height:0}.rlL{order:2;display:grid;grid-template-columns:1fr 1fr}.rlC{order:1}.rlR{order:3}.rlS{display:none}.rlPlay{align-self:stretch;width:auto}}"
+    "@media(max-width:1180px){.lob{grid-template-columns:220px minmax(0,1fr) 200px;gap:.8rem}.rlb small{display:none}.rlb{padding:.4rem .7rem}}",
+    "@media(max-width:900px){.lob{grid-template-columns:1fr;min-height:0}.rlParty{padding-top:2rem}.rlL{order:2;display:grid;grid-template-columns:1fr 1fr}.rlC{order:1}.rlR{order:3}.rlS{display:none}.rlPlay{align-self:stretch;width:auto}}"
   ].join("\n");
   document.head.appendChild(st);
   if (U.cur && U.cur() === "home") U.go("home");
