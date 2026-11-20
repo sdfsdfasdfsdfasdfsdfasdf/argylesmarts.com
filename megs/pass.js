@@ -9,19 +9,24 @@ function bySrc(src){ return I.filter(function(it){ return it.src === src; }).sor
 function spread(list, n){ var out = [], i; if (list.length <= n) return list.slice(); for (i = 0; i < n; i++) out.push(list[Math.round(i * (list.length - 1) / (n - 1))]); return out; }
 // which free pack each fifth tier gives: mostly Street, a few Pro, one Elite at the end
 var FPK = [["street", 1], ["street", 1], ["street", 3], ["pro", 1], ["street", 3], ["pro", 1], ["street", 3], ["pro", 2], ["street", 5], ["elite", 1]];
+// does this account have the premium track this season (nobody can buy it yet)
+MG.premOwned = function(){ var s = S(); return !!(MG.PREMIUM || (s && s.prem === MG.SEASON.n)); };
+// the whole pass holds exactly 10 skins (every fifth premium tier) and 10 random packs, all Elite or better (free track)
+var PPK = [["elite", 1], ["elite", 1], ["elite", 1], ["champ", 1], ["elite", 2], ["elite", 1], ["champ", 1], ["elite", 2], ["champ", 1], ["galaxy", 1]];
 MG.passTiers = function(){
   if (MG._pt) return MG._pt;
-  var fr = bySrc("pass"), pr = bySrc("season"), n = MG.PASS_N, free = spread(fr, 10), prem, out = [], k, f, slot;
-  // what is left of the free track moves to the premium pool; the premium track then takes one item per tier
-  fr.forEach(function(it){ if (free.indexOf(it) < 0) pr.push(it); });
-  pr.sort(function(a, b){ return a.r - b.r || (a.id < b.id ? -1 : 1); });
-  prem = spread(pr, n);
-  pr.forEach(function(it){ if (prem.indexOf(it) < 0 && free.indexOf(it) < 0) it.later = 1; });   // kept for a later season
+  var all = bySrc("pass").concat(bySrc("season")), n = MG.PASS_N, out = [], k, f, slot;
+  all.sort(function(a, b){ return a.r - b.r || (a.id < b.id ? -1 : 1); });
+  var kits = spread(all.filter(function(it){ return it.t === "kit"; }), 10), rest = all.filter(function(it){ return it.t !== "kit"; });
+  var free = spread(rest.filter(function(it){ return it.r <= 3; }), 10), prem = spread(rest.filter(function(it){ return free.indexOf(it) < 0; }), 40);
+  all.forEach(function(it){ if (kits.indexOf(it) < 0 && free.indexOf(it) < 0 && prem.indexOf(it) < 0) it.later = 1; });   // kept for a later season
   for (k = 0; k < n; k++) {
-    slot = Math.floor(k / 5); f = {k: k, free: [], coins: 0, pack: null, prem: prem[k] ? [prem[k]] : [], pcoins: 0};
+    slot = Math.floor(k / 5); f = {k: k, free: [], coins: 0, pack: null, bp: 0, prem: [], pcoins: 0};
+    f.prem = [k % 5 === 4 ? kits[slot] : prem[k - slot]].filter(Boolean);
     if (k % 5 === 4 && free[slot]) f.free = [free[slot]];
-    else if (k % 5 === 1) f.pack = {id: FPK[slot][0], n: FPK[slot][1]};
+    else if (k % 5 === 1) f.pack = {id: PPK[slot][0], n: PPK[slot][1]};
     else if (k % 5 === 2) f.coins = 150 + k * 10;
+    else if (k % 5 === 3) f.bp = k >= 25 ? 2 : 1;   // Celestial blueprints
     out.push(f);
   }
   return MG._pt = out;
@@ -39,7 +44,7 @@ MG.passClaim = function(k){
 };
 
 // tiers waiting to be claimed: only the ones with something on them count
-MG.passReady = function(){ var p = MG.pass(), t = MG.passTier(), tiers = MG.passTiers(), n = 0, k, x; for (k = 0; k < t; k++) { x = tiers[k]; if (!p.got[k] && (x.free.length || x.coins || x.pack)) n++; } return n; };
+MG.passReady = function(){ var p = MG.pass(), t = MG.passTier(), tiers = MG.passTiers(), n = 0, k, x; for (k = 0; k < t; k++) { x = tiers[k]; if (!p.got[k] && (x.free.length || x.coins || x.pack || x.bp)) n++; } return n; };
 function waitUi(f){ if (MG.ui && MG.ui.VIEW && MG.packSpin) f(); else setTimeout(function(){ waitUi(f); }, 0); }
 waitUi(function(){
   var U = MG.ui, VIEW = U.VIEW, ACT = U.ACT, AFTER = U.AFTER, go = U.go, toast = U.toast, coin = U.coin, esc = U.esc, ic = U.ic;
@@ -47,14 +52,20 @@ waitUi(function(){
   function pkName(id){ var p = MG.PACKS.filter(function(x){ return x.id === id; })[0]; return p ? p.n : "Pack"; }
   var pass0 = VIEW.pass;
   // one reward box: always the same size, whatever is in it
+  // every reward says what kind of thing it is, and each kind has its own look
+  var KIND = {kit: "Skin", wrap: "Wrap", boot: "Boots", ball: "Ball", trail: "Trail", fx: "Goal FX", emote: "Emote", sticker: "Sticker", banner: "Banner", hair: "Hair", scene: "Background", stadium: "Stadium", court: "Cage"};
+  var BPI = '<svg viewBox="0 0 64 64" class="bpsv"><rect x="6" y="10" width="46" height="44" rx="3" fill="#123a8a" stroke="#9cc4ff" stroke-width="2"/><path d="M52 14h4a2 2 0 0 1 2 2v34a6 6 0 0 1-6 6" fill="none" stroke="#9cc4ff" stroke-width="2"/>' +
+    '<path d="M6 21h46M6 32h46M6 43h46M17 10v44M28 10v44M39 10v44" stroke="#5f8fdc" stroke-width=".8" opacity=".7"/><path d="M29 18l3.6 7.4 8.1 1.2-5.9 5.7 1.4 8.1-7.2-3.8-7.2 3.8 1.4-8.1-5.9-5.7 8.1-1.2z" fill="none" stroke="#e8f2ff" stroke-width="1.8" stroke-linejoin="round"/></svg>';
   function cell(kind, x, st, pm){
-    var it, h;
+    var it, h, off = pm && !MG.premOwned() ? " off" : "";
     if (kind === "item") {
-      it = x; h = '<button class="pc it' + (it.r >= 5 ? " rare" : "") + (pm ? " pm" : "") + '" style="--r:' + rar(it).c + '" data-a="pitem" data-id="' + it.id + '"><span class="pv">' + U.vis(it, "") + '</span><span class="pn">' + esc(it.n) + '</span><span class="pr">' + rar(it).n + '</span>';
+      it = x; h = '<button class="pc it k-' + it.t + (it.r >= 5 ? " rare" : "") + (pm ? " pm" : "") + off + '" style="--r:' + rar(it).c + '" data-a="pitem" data-id="' + it.id + '"><span class="pty">' + (KIND[it.t] || "Item") + '</span><span class="pv">' + (it.t === "banner" ? '<span class="bnp"><i></i>' + U.vis(it, "") + '</span>' : it.t === "scene" ? '<span class="frm">' + U.vis(it, "") + '</span>' : U.vis(it, "")) + '</span><span class="pn">' + esc(it.n) + '</span><span class="pr">' + rar(it).n + '</span>';
     } else if (kind === "pack") {
-      h = '<div class="pc pk pk-' + x.id + '"><span class="pv"><span class="pki">' + ic("gift") + '</span>' + (x.n > 1 ? '<b class="pkn">x' + x.n + '</b>' : "") + '</span><span class="pn">' + pkName(x.id) + '</span><span class="pr">Free ' + (x.n > 1 ? x.n + " pulls" : "pull") + '</span>';
+      h = '<div class="pc pk pk-' + x.id + '"><span class="pty">Pack</span><span class="pv"><span class="pki">' + ic("gift") + '</span>' + (x.n > 1 ? '<b class="pkn">x' + x.n + '</b>' : "") + '</span><span class="pn">' + pkName(x.id) + '</span><span class="pr">Free ' + (x.n > 1 ? x.n + " pulls" : "pull") + '</span>';
     } else if (kind === "coin") {
-      h = '<div class="pc cn"><span class="pv"><span class="cni">' + ic("coin") + '</span></span><span class="pn">' + x + ' coins</span><span class="pr">Coins</span>';
+      h = '<div class="pc cn"><span class="pty">Coins</span><span class="pv"><span class="cni">' + ic("coin") + '</span></span><span class="pn">' + x + ' coins</span><span class="pr">Coins</span>';
+    } else if (kind === "bp") {
+      h = '<div class="pc bpc"><span class="pty">Blueprint</span><span class="pv">' + BPI + (x > 1 ? '<b class="pkn">x' + x + '</b>' : "") + '</span><span class="pn">Celestial blueprint' + (x > 1 ? "s" : "") + '</span><span class="pr">Any Celestial</span>';
     } else h = '<div class="pc em"><span class="pv"></span><span class="pn"></span><span class="pr"></span>';
     if (st === "lock") h += '<span class="plk">' + ic("lock") + '</span>';
     if (pm) h += '<span class="pmr">' + ic("star") + '</span>';
@@ -73,14 +84,15 @@ waitUi(function(){
   VIEW.pass = function(){
     var p = MG.pass(), t = MG.passTier(), tiers = MG.passTiers(), into = p.xp % MG.PASS_XP, ready = MG.passReady(), old = pass0(), wk = old.lastIndexOf('<div class="cols">'), items = 0, packs = 0;
     tiers.forEach(function(x){ items += x.free.length; if (x.pack) packs++; });
+    var bps = 0; tiers.forEach(function(x){ bps += x.bp || 0; });
     var head = '<section class="ph"><div class="phl"><span class="kick">Season ' + MG.SEASON.n + ' &middot; runs until Season ' + (MG.SEASON.n + 1) + ' is released</span><h2>' + esc(MG.SEASON.name) + ' Pass</h2>' +
       '<div class="pst"><div class="ptier"><small>Tier</small><b>' + t + '</b><small>of ' + MG.PASS_N + '</small></div><div class="pxp"><div class="pbar"><i style="width:' + (t >= MG.PASS_N ? 100 : Math.round(into / MG.PASS_XP * 100)) + '%"></i><span>' + (t >= MG.PASS_N ? "Pass complete" : into + " / " + MG.PASS_XP + " XP to tier " + (t + 1)) + '</span></div>' +
-      '<p class="mute">Pass XP comes from every match, quests and weekly challenges. Free track: ' + items + ' items, ' + packs + ' free packs and coins. Premium: one item on every tier.</p></div></div></div>' +
+      '<p class="mute">Pass XP comes from every match, quests and weekly challenges. Free track: ' + items + ' items, ' + packs + ' random packs, ' + bps + ' Celestial blueprints and coins. Premium: an item on every tier, with a skin every fifth tier (10 skins). Everything here is only in the Season ' + MG.SEASON.n + ' pass: never in packs or the shop.</p></div></div></div>' +
       prem() + '</section>';
     var bar = '<div class="pnav"><button class="btn ghost sm" data-a="pscroll" data-d="-1">' + ic("back") + '</button><button class="btn ghost sm" data-a="pjump">My tier</button><button class="btn ghost sm pfw" data-a="pscroll" data-d="1">' + ic("back") + '</button>' +
       (ready ? '<button class="btn gold" data-a="pclaimall">Claim all (' + ready + ')</button>' : "") + '</div>';
     var track = '<div class="ptrack" id="ptrack"><div class="prow lbl"><span class="plab prem">Premium</span><span class="plab mid"></span><span class="plab">Free</span></div>' + tiers.map(function(x){
-      var open = t > x.k, got = p.got[x.k], cur = x.k === t, fk = x.free.length ? "item" : x.pack ? "pack" : x.coins ? "coin" : "", fv = x.free[0] || x.pack || x.coins;
+      var open = t > x.k, got = p.got[x.k], cur = x.k === t, fk = x.free.length ? "item" : x.pack ? "pack" : x.coins ? "coin" : x.bp ? "bp" : "", fv = x.free[0] || x.pack || x.coins || x.bp;
       return '<div class="pcol' + (open ? " open" : "") + (got ? " got" : "") + (cur ? " cur" : "") + '">' +
         cell(x.prem.length ? "item" : "", x.prem[0], "lock", 1) +
         '<div class="pnode"><i class="pl"></i><b>' + (x.k + 1) + '</b></div>' +
@@ -130,6 +142,7 @@ waitUi(function(){
     ".pc.pm{border:2px solid #d9a93a;background:linear-gradient(180deg,color-mix(in srgb,var(--r) 30%,#2a1d08) 0%,#1d1406 60%,#140d03 100%);box-shadow:inset 0 0 0 1px rgba(255,220,130,.25),inset 0 3px 0 var(--r)}.pc.pm.rare{box-shadow:inset 0 0 0 1px rgba(255,220,130,.25),inset 0 3px 0 var(--r),0 0 20px -6px #ffc23b}.pc.pm .pn{color:#ffeec4}",
     ".pmr{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#ffd23b,#ff9d2e);display:grid;place-items:center;box-shadow:0 0 8px rgba(255,200,60,.6)}.pmr .ic{width:13px;height:13px;color:#2a1a04}",
     ".pc.cn{border-color:#5a4a1a;background:linear-gradient(180deg,#1b1e3a,#2a2410)}.cni .ic{width:54px;height:54px;color:#ffd23b;stroke-width:2.2}.pc.cn .pr{color:#ffd23b}",
+    ".pc.pk-champ{border-color:#ffb938;background:linear-gradient(180deg,#3a2a0c,#16182e)}.pk-champ .pki{background:linear-gradient(135deg,#ffd23b,#e07a10)}.pc.pk-galaxy{border-color:#b266ff;background:linear-gradient(180deg,#2a1257,#16182e);box-shadow:0 0 16px -6px #b266ff}.pk-galaxy .pki{background:radial-gradient(circle at 30% 30%,#f0d6ff,#7a3dff 55%,#1a0a40)}",
     ".pc.pk{border-color:#3b6ef5;background:linear-gradient(180deg,#1b2350,#16182e)}.pc.pk-pro{border-color:#ff8a3d;background:linear-gradient(180deg,#3a2414,#16182e)}.pc.pk-elite{border-color:#c88aff;background:linear-gradient(180deg,#2e1a52,#16182e)}",
     ".pki{display:grid;place-items:center;width:70px;height:70px;border-radius:18px;background:linear-gradient(135deg,#5b7cff,#3b2ab5)}.pk-pro .pki{background:linear-gradient(135deg,#ffb04a,#e8542a)}.pk-elite .pki{background:linear-gradient(135deg,#e2a8ff,#7a3dff)}.pki .ic{width:40px;height:40px;color:#fff}.pkn{position:absolute;right:10px;bottom:4px;background:#ffd23b;color:#14163a;border-radius:8px;padding:0 .35rem;font-size:.8rem}.pc.pk .pr{color:#9ab6ff}",
     ".plk{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(10,11,26,.8);display:grid;place-items:center}.plk .ic{width:13px;height:13px;color:#e6c48a}",
@@ -137,7 +150,15 @@ waitUi(function(){
     ".pnode{position:relative;display:grid;place-items:center}.pnode .pl{position:absolute;left:-.3rem;right:-.3rem;top:50%;height:4px;margin-top:-2px;background:#2a2d55}.pcol.open .pnode .pl{background:linear-gradient(90deg,#b266ff,#ffd23b)}",
     ".pnode b{position:relative;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:.78rem;background:#14163a;border:2px solid #2a2d55;color:#8a8ca8}.pcol.open .pnode b{border-color:#ffd23b;color:#ffd23b}.pcol.cur .pnode b{background:#ffd23b;color:#14163a;box-shadow:0 0 14px #ffd23b}",
     ".pcol:not(.open) .pc{filter:saturate(.75) brightness(.85)}.pcol.cur .pc{outline:2px solid rgba(255,210,59,.5);outline-offset:2px}",
-    ".pcl{display:flex;align-items:center;justify-content:center}"
+    ".pcl{display:flex;align-items:center;justify-content:center}",
+    // what kind of reward: a small label on top, and a different frame for banners, backgrounds and blueprints
+    ".pty{position:absolute;top:8px;left:50%;transform:translateX(-50%);max-width:68px;overflow:hidden;white-space:nowrap;font-size:.47rem;font-weight:900;letter-spacing:.02em;text-transform:uppercase;padding:.08rem .35rem;border-radius:999px;background:rgba(8,9,24,.78);color:#dfe3ff;z-index:1}",
+    ".pc .pv{margin-top:14px}.pc.k-banner .pty{background:#7a2bb8;color:#fff}.pc.k-scene .pty{background:#1f7a5a;color:#fff}.pc.k-kit .pty{background:#2b55c9;color:#fff}.pc.pk .pty{background:#3b6ef5;color:#fff}.pc.bpc .pty{background:#1d4fb0;color:#fff}.pc.cn .pty{background:#7a5a10;color:#ffe7a3}",
+    ".bnp{position:relative;display:block;padding-left:7px}.bnp i{position:absolute;left:0;top:-6px;bottom:-14px;width:4px;border-radius:2px;background:linear-gradient(#e6e8f5,#8a8ca8)}.pc .bnp canvas{height:auto!important;width:96px!important;max-height:none;aspect-ratio:3/1!important;clip-path:polygon(0 0,100% 0,88% 50%,100% 100%,0 100%);animation:bnw 3s ease-in-out infinite;transform-origin:left center}@keyframes bnw{50%{transform:skewY(2deg) scaleX(.97)}}",
+    ".frm{display:block;padding:4px;border-radius:4px;background:linear-gradient(135deg,#c9a46a,#7a5a2a);box-shadow:0 4px 10px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.25)}.pc .frm canvas{width:92px!important;height:auto!important;aspect-ratio:9/5!important;max-height:none;border-radius:2px}",
+    ".pc.bpc{border-color:#4f8dff;background-color:#0b1638;background-image:linear-gradient(rgba(156,196,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(156,196,255,.08) 1px,transparent 1px),linear-gradient(180deg,#0f2a66,#0b1638);background-size:12px 12px,12px 12px,auto}.bpsv{width:70px;height:70px}.pc.bpc .pr{color:#9cc4ff}",
+    // no premium pass: the premium track is still there to look at, just greyed out
+    ".pc.pm.off{filter:grayscale(.65) brightness(.72)!important;opacity:.85}.pc.pm.off .pmr{filter:grayscale(1)}"
   ].join("\n");
   document.head.appendChild(st);
   // the tier ring fills with progress
