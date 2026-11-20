@@ -15,9 +15,9 @@ MG.SET0 = {music: 0.35, vol: 0.7, sfx: 1, crowd: 0.6, mute: 0, shake: 1, flash: 
   auto: 1, tsize: 1, top: 0.8, lefty: 0, buzz: 1, pad: 1, target: 5, two: 1, take: 1, sc: 12, clock: 0, diff: 1, dtap: 0,
   kv: 3,
   // k1: you against the computer. kp and k2: the two players in a party game on one keyboard
-  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "Space", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftLeft"},
+  k1: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "Space", a: "KeyH", b: "KeyL", c: "KeyJ", d: "KeyK", sp: "ShiftLeft"},
   kp: {up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", sh: "KeyR", a: "KeyT", b: "KeyY", c: "KeyF", d: "KeyG", sp: "ShiftLeft"},
-  k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "KeyJ", a: "KeyK", b: "KeyL", c: "KeyI", d: "KeyO", sp: "ShiftRight"}};
+  k2: {up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", sh: "Enter", a: "Slash", b: "Period", c: "Semicolon", d: "Quote", sp: "ShiftRight"}};
 MG.LEVELS = ["Beginner", "Rookie", "Easy", "Casual", "Decent", "Solid", "Tough", "Hard", "Elite", "Brutal", "Unfair"];
 
 function fresh(){
@@ -38,6 +38,8 @@ MG.load = function(){
   for (k in S.eq) if (typeof S.eq[k] === "string" && k !== "scene" && k !== "stadium" && !MG.ITEM[S.eq[k]]) { if (fresh().eq[k]) S.eq[k] = fresh().eq[k]; else delete S.eq[k]; }
   if (!o || !o.set || o.set.kv !== 3) { ["k1", "kp", "k2"].forEach(function(k){ S.set[k] = JSON.parse(JSON.stringify(MG.SET0[k])); }); S.set.kv = 3; }   // the key layout changed: start everyone on the new one
   if (S.set.kv2 !== 1) { if (S.set.k1.sh === "KeyJ") S.set.k1.sh = "Space"; S.set.kv2 = 1; }   // shooting moved from J to the space bar
+  // K I O L moved to H J K L; player two moves off those keys so the two don't clash
+  if (S.set.kv3 !== 1) { var o1 = S.set.k1, o2 = S.set.k2; if (o1.a === "KeyK" && o1.b === "KeyL" && o1.c === "KeyI" && o1.d === "KeyO") { o1.a = "KeyH"; o1.c = "KeyJ"; o1.d = "KeyK"; } if (o2 && o2.sh === "KeyJ" && o2.a === "KeyK") Object.assign(o2, {sh: "Enter", a: "Slash", b: "Period", c: "Semicolon", d: "Quote"}); S.set.kv3 = 1; }
   // a blank or missing key would leave the player unable to move: put the default back
   ["k1", "kp", "k2"].forEach(function(m){ var d0 = MG.SET0[m], kk = S.set[m] = S.set[m] || {}, k; for (k in d0) if (typeof kk[k] !== "string" || !kk[k]) kk[k] = d0[k]; });
   MG.quests(); MG.unlocks();
