@@ -14,6 +14,7 @@ waitUi(function(){
   function apply(w, redraw){
     var S = MG.S; if (!S || !w) return;
     S.coins = w.coins; S.inv = w.inv; S.seen = w.seen; S.bp = w.bp; S.pity = w.pity; S.pass = w.pass; S.free = w.free; S.codes = w.codes;
+    if (w.rp != null) { S.elo = w.rp; S.peak = Math.max(S.peak || 0, w.rp); S.rpd = w.rpd || S.rpd; }
     Object.keys(S.eq || {}).forEach(function(k){ var id = S.eq[k]; if (id && BY[id] && !w.inv[id] && id !== "custom" && DEF[BY[id].t]) S.eq[k] = DEF[BY[id].t]; });
     MG.adminSync(); MG.save(); if (U.top) U.top();
     if (redraw && LIVE[U.cur()] && document.getElementById("modal").hidden) U.go(U.cur(), U.arg && U.arg());
@@ -71,9 +72,11 @@ waitUi(function(){
     call("pass", {ks: ks}).then(function(r){
       if (!r.ok) return toast(esc(r.msg));
       var items = [], c = 0, pulls = [];
-      r.res.got.forEach(function(g){ items = items.concat(g.items.map(function(id){ return BY[id]; }).filter(Boolean)); c += g.coins; pulls = pulls.concat(g.pulls.map(pull)); });
+      var bps = [];
+      r.res.got.forEach(function(g){ items = items.concat(g.items.map(function(id){ return BY[id]; }).filter(Boolean)); c += g.coins; pulls = pulls.concat(g.pulls.map(pull)); (g.bps || []).forEach(function(x){ bps.push(x.replace(/^Blueprint: (\S+)/, function(a, id){ return "Blueprint: " + ((BY[id] || {}).n || id); })); }); });
       MG.sfx("coin");
       if (items.length || c) toast((items.length ? items.map(function(it){ return esc(it.n); }).join(", ") : "") + (items.length && c ? " and " : "") + (c ? coin(c) : ""));
+      if (bps.length) setTimeout(function(){ toast(bps.map(esc).join(", ")); }, 400);
       if (pulls.length) MG.packSpin(pulls, title); else U.go("pass");
     });
   }
@@ -95,20 +98,44 @@ waitUi(function(){
 
   // ---- earning: the server pays out, and only what a real game can earn ----
   MG.BP_CHANCE = 0;   // blueprints from wins are rolled by the server now
-  var xpq = 0, xpt = 0;
+  // pass XP that isn't from a match goes up with what it was for (quests, weekly challenges, the campaign)
+  var xpq = {}, xpt = 0, inMatch = 0;
+  MG.xpWhy = "";
   var add0 = MG.passAdd;
   MG.passAdd = function(x){
     var r = add0.apply(this, arguments);
-    if (N.signed() && x > 0) { xpq += x; clearTimeout(xpt); xpt = setTimeout(function(){ var n = xpq; xpq = 0; while (n > 0) { call("xp", {n: Math.min(3000, n)}); n -= 3000; } }, 800); }
+    if (N.signed() && x > 0 && !inMatch) { var k = MG.xpWhy || "other"; xpq[k] = (xpq[k] || 0) + x; clearTimeout(xpt); xpt = setTimeout(function(){ var q = xpq; xpq = {}; Object.keys(q).forEach(function(why){ call("xp", {n: q[why], why: why}); }); }, 800); }
     return r;
+  };
+  function why(fn, k){ var f0 = MG[fn]; if (!f0) return; MG[fn] = function(){ var w0 = MG.xpWhy; MG.xpWhy = k; try { return f0.apply(this, arguments); } finally { MG.xpWhy = w0; } }; }
+  why("claim", "quest"); why("weekClaim", "week"); why("campDone", "camp");
+  // every match gets a ticket when it kicks off; the rewards at the end are worked out by the server
+  var tk = null, play0 = MG.play;
+  MG.play = function(o){
+    tk = null;
+    if (N.signed() && o) call("start", {ranked: o.ranked ? 1 : 0, team: o.team ? 1 : 0, size: o.size || (o.team ? 5 : 1), mode: o.mode || ""}).then(function(r){ if (r.ok) tk = r.res.tk; });
+    return play0.apply(this, arguments);
   };
   var fin0 = MG.finish;
   MG.finish = function(res){
-    var S = MG.S, c0 = S.coins, out = fin0.apply(this, arguments);
+    var S = MG.S, c0 = S.coins, out;
+    inMatch = 1; try { out = fin0.apply(this, arguments); } finally { inMatch = 0; }
     if (!N.signed() || res.party || res.practice) return out;
-    S.coins = c0;   // the 50 coins for a win come from the server
-    call("win", {win: !!res.win}).then(function(r){
-      if (r.ok && r.res.bp) { var it = BY[r.res.bp.id]; if (it) toast("Blueprint found: <b>" + esc(it.n) + "</b> (" + r.res.bp.n + " of " + MG.BP_N + ")" + (r.res.bp.seen ? "" : ". Find it in a pack to be able to build it.")); }
+    S.coins = c0;   // what a match pays comes from the server
+    var me = res.me || {}, keep = {};
+    ["goals", "megs", "ankles", "perfect", "tackles", "blocks", "pok", "twos", "corner", "mgoal", "vgoal", "post", "pgoal"].forEach(function(k){ keep[k] = me[k] || 0; });
+    call("end", {tk: tk, res: {win: !!res.win, draw: !!res.draw, sc: res.sc, me: keep}}).then(function(r){
+      tk = null;
+      if (!r.ok) { toast(esc(r.msg)); return; }
+      var x = r.res;
+      if (x.bp) { var it = BY[x.bp.id]; if (it) toast("Blueprint found: <b>" + esc(it.n) + "</b> (" + x.bp.n + " of " + MG.BP_N + ")" + (x.bp.seen ? "" : ". Find it in a pack to be able to build it.")); }
+      // the results screen shows what the server actually paid
+      var rw = document.querySelector(".res .rw");
+      if (rw) [].forEach.call(rw.querySelectorAll(".pill"), function(p){ var t = p.textContent;
+        if (/pass XP$/.test(t)) p.textContent = "+" + x.xp + " pass XP";
+        else if (/rank points$/.test(t)) { p.textContent = (x.rp > 0 ? "+" : "") + x.rp + " rank points"; p.className = "pill " + (x.rp > 0 ? "up" : x.rp < 0 ? "dn" : ""); }
+      });
+      if (x.capped && x.capped.length) toast("Daily limit reached for " + x.capped.map(function(c){ return {coins: "coins", xp: "pass XP", rp: "rank points"}[c]; }).join(" and ") + ". It resets tomorrow.");
     });
     return out;
   };
