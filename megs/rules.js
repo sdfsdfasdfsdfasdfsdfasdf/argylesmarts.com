@@ -191,7 +191,7 @@ waitUi(function(){
       if (!k) return toast("That code did not work.");
       s.codes = s.codes || {}; if (s.codes[hx]) return toast("You already used that code.");
       s.codes[hx] = 1;
-      if (k === "all") { I.forEach(function(it){ s.inv[it.id] = 1; if (it.cel) { s.seen[it.id] = 1; s.bp[it.id] = MG.BP_N; } }); toast("Code redeemed: every item is now in your locker."); }
+      if (k === "all") { I.forEach(function(it){ if (it.adm) return; s.inv[it.id] = 1; if (it.cel) { s.seen[it.id] = 1; s.bp[it.id] = MG.BP_N; } }); toast("Code redeemed: every item is now in your locker."); }
       else if (k === "coins") { s.coins += 50000; toast("Code redeemed: " + coin("+50000")); }
       MG.save(); MG.sfx("rare", 7); close(); if (U.top) U.top(); go(U.cur(), U.arg());
     });
