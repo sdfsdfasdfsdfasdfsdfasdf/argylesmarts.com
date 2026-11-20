@@ -57,7 +57,7 @@ add("kit", "ladder", "Ladder Legend", 3, {p: "crown", c: ["#17171c", "#ffb938", 
 add("kit", "apex", "Apex", 4, {p: "chevron", c: ["#17171c", "#ff4f7a", "#17171c"], f: "ember", how: "Reach Legend rank", need: ["peak", 2000]});
 add("kit", "one", "Number One", 4, {p: "crown", c: ["#ffffff", "#ffd766", "#b8860b"], f: "spark", how: "Sit on top of the ranked board", need: ["first", 1]});
 add("kit", "s67", "Six Seven", 5, {p: "n67", c: ["#3d1f8a", "#ffd23b", "#1a0d33"], f: "star", how: "Hidden somewhere on this site", need: ["s67", 1]});
-add("kit", "custom", "Custom Kit", 3, {p: "custom", c: ["#3b6ef5", "#f2f2f7", "#1f2a55"], how: "Win a cup to open the Kit Maker", need: ["cups", 1]});
+add("kit", "custom", "Custom Skin", 3, {p: "custom", c: ["#3b6ef5", "#f2f2f7", "#1f2a55"], how: "Win a cup to open the Skin Maker", need: ["cups", 1]});
 // balls. c: [base, marks...], s: mark style, g: glow
 add("ball", "classic", "Classic", 0, {c: ["#f7f7fa", "#17171c"], s: 0});
 add("ball", "street", "Street", 0, {c: ["#ff8a3d", "#17171c"], s: 0});
@@ -233,7 +233,7 @@ MG.ARCH = [
   ["All-Rounder", "Good at everything, great at nothing.", [5, 5, 5, 5, 6, 5]]
 ];
 MG.MODES = {
-  ranked: {n: "Ranked 1v1", d: "First to 5. Long range counts double. Elo on the line.", cfg: {}},
+  ranked: {n: "Ranked Solo", d: "First to 5. Long range counts double. Rank points on the line.", cfg: {}},
   quick: {n: "Quick Match", d: "First to 3 against a rival as tough as you like.", cfg: {target: 3}},
   panna: {n: "Panna KO", d: "First to 3, but a nutmeg ends it on the spot.", cfg: {target: 3, panna: true}, arc: 1},
   golden: {n: "Golden Goal", d: "One goal. That is the whole game.", cfg: {target: 1, golden: true}, arc: 1},
