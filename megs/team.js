@@ -9,6 +9,8 @@ function gauss(r){ return (r() + r() + r() - 1.5) * 1.15; }
 function wrap(a){ while (a > PI) a -= TAU; while (a < -PI) a += TAU; return a; }
 // home spots for a 1-2-2 shape, attacking towards +x: [x share of the pitch, y share of the half width]
 var SHAPE = [[0.03, 0], [0.22, -0.42], [0.22, 0.42], [0.47, -0.36], [0.47, 0.36]], ROLE = ["GK", "DEF", "DEF", "FWD", "FWD"];
+// smaller teams: which of the five spots are used (a keeper always plays); the rest sit out
+var ON = {2: [0, 3], 3: [0, 1, 3], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4]};
 
 // cfg: {half: real seconds per half, lv: [a, b] skill 0 to 10, mate: skill of a human side's team-mates, human: [bool, bool], names: [[5], [5]], seed, first}
 function TeamMatch(cfg){
@@ -22,8 +24,11 @@ function TeamMatch(cfg){
     k = i < 5 ? 0 : 1; lv = c.human[k] && i % 5 !== 0 ? c.mate : c.lv[k];
     p = {i: i, tm: k, role: i % 5, x: 0, y: 0, vx: 0, vy: 0, fa: k ? PI : 0, act: "", at: 0, ad: 0, ax: 1, ay: 0, stride: 0, jock: 0, wind: -1, legs: 0, prot: 0, stam: 1, en: 1, spr: 0, nop: 0, grab: 0, hold: 0,
       lv: lv, sk: lv / 10, name: c.names ? c.names[k][i % 5] : "", num: [1, 4, 5, 9, 10][i % 5], ai: {t: 0, dec: 0, rx: 0, ry: 0, shotX: null, rel: 0, pass: 0, aim: 0}, aimX: 0, aimH: 0, stats: {}};
+    p.out = (ON[c.n] || ON[5]).indexOf(i % 5) < 0 ? 1 : 0;
     m.p.push(p);
   }
+  // a defender or forward without a partner plays down the middle
+  m.p.forEach(function(p){ var mate = {1: 2, 2: 1, 3: 4, 4: 3}[p.role]; p.solo = mate && m.p[p.tm * 5 + mate].out ? 1 : 0; if (p.out) { p.x = -80; p.y = -80; } });
   m.kickoff(c.first || 0);
 }
 var M = TeamMatch.prototype;
@@ -33,7 +38,7 @@ M.ox = function(tm){ return tm ? L : 0; };            // the goal this team defe
 M.dir = function(tm){ return tm ? -1 : 1; };
 M.home = function(p){
   var m = this, s = SHAPE[p.role], d = m.dir(p.tm), bx = m.b.x, att = m.poss() === p.tm, x, y;
-  x = m.ox(p.tm) + d * s[0] * L; y = s[1] * H * (p.tm ? -1 : 1);
+  x = m.ox(p.tm) + d * s[0] * L; y = s[1] * H * (p.tm ? -1 : 1) * (p.solo ? 0.1 : 1);
   if (p.role) {
     x += (bx - L / 2) * 0.45 + d * (att ? (p.role > 2 ? 10 : 6) : -3);
     y += (m.b.y - y) * (att ? 0.15 : 0.32);
@@ -45,8 +50,8 @@ M.poss = function(){ var b = this.b; return b.own >= 0 ? this.p[b.own].tm : b.lt
 M.place = function(kt){
   var m = this, i, p, h;
   for (i = 0; i < 10; i++) {
-    p = m.p[i]; h = SHAPE[p.role];
-    p.x = m.ox(p.tm) + m.dir(p.tm) * h[0] * L * 0.9; p.y = h[1] * H * (p.tm ? -1 : 1) * 0.9; if (p.role) p.x = p.tm ? Math.max(p.x, L / 2 + 1.5) : Math.min(p.x, L / 2 - 1.5);
+    p = m.p[i]; h = SHAPE[p.role]; if (p.out) continue;
+    p.x = m.ox(p.tm) + m.dir(p.tm) * h[0] * L * 0.9; p.y = h[1] * H * (p.tm ? -1 : 1) * 0.9 * (p.solo ? 0.1 : 1); if (p.role) p.x = p.tm ? Math.max(p.x, L / 2 + 1.5) : Math.min(p.x, L / 2 - 1.5);
     p.vx = p.vy = 0; p.fa = p.tm ? PI : 0; p.act = ""; p.wind = -1; p.nop = 0; p.grab = 0; p.hold = 0; p.ai.shotX = null;
   }
 };
@@ -61,11 +66,11 @@ M.kickoff = function(kt){
 M.restart = function(kind, tm, x, y){
   var m = this, b = m.b, best = null, bd = 1e9, i, p, d;
   if (kind === "gk") { best = m.p[tm * 5]; x = m.ox(tm) + m.dir(tm) * 5.5; y = 0; }
-  else for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; d = hyp(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } }
+  else for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (p.out) continue; d = hyp(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } }
   best.x = x - m.dir(tm) * 0.4 * (kind === "gk" ? 0 : 1); best.y = y; best.vx = best.vy = 0;
   b.x = x; b.y = y; b.z = BR; b.vx = b.vy = b.vz = 0; b.own = best.i; b.last = best.i; b.lt = tm; b.to = -1; b.shot = null;
   best.fa = Math.atan2(-y * 0.5, m.dir(tm) * 3);
-  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.tm !== tm) { d = hyp(p.x - x, p.y - y); if (d < 5) { p.x = x + (p.x - x) / (d || 1) * 5; p.y = clamp(y + (p.y - y) / (d || 1) * 5, -H + 0.5, H - 0.5); p.x = clamp(p.x, 0.5, L - 0.5); } } }
+  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; if (p.tm !== tm) { d = hyp(p.x - x, p.y - y); if (d < 5) { p.x = x + (p.x - x) / (d || 1) * 5; p.y = clamp(y + (p.y - y) / (d || 1) * 5, -H + 0.5, H - 0.5); p.x = clamp(p.x, 0.5, L - 0.5); } } }
   best.prot = 0.8; best.ai.must = kind === "gk" ? 1 : kind === "throw" ? 1 : 0;
   m.phase = "restart"; m.pt = 0.9; m.ctl[tm] = best.i;
   m.emit("out", {kind: kind, by: tm});
@@ -75,9 +80,9 @@ M.restart = function(kind, tm, x, y){
 M.step = function(){
   var m = this, dt = DT, b = m.b, i, p, live, pt;
   m.t += dt;
-  if (m.phase === "over") { for (i = 0; i < 10; i++) m.move(m.p[i], dt, 1); return; }
+  if (m.phase === "over") { for (i = 0; i < 10; i++) if (!m.p[i].out) m.move(m.p[i], dt, 1); return; }
   if (m.phase === "goal" || m.phase === "half") {
-    m.pt -= dt; m.ball(dt); for (i = 0; i < 10; i++) m.move(m.p[i], dt, 1);
+    m.pt -= dt; m.ball(dt); for (i = 0; i < 10; i++) if (!m.p[i].out) m.move(m.p[i], dt, 1);
     if (m.pt <= 0) {
       if (m.phase === "half") m.kickoff(1 - m.cfg.first);
       else if (m.end) m.full(); else m.kickoff(m.next);
@@ -86,7 +91,7 @@ M.step = function(){
   }
   if (m.phase === "kick" || m.phase === "restart") {
     m.pt -= dt; m.carry(m.p[b.own], dt);
-    for (i = 0; i < 10; i++) { p = m.p[i]; if (i !== b.own) { m.think(p, dt, 1); m.move(p, dt, 0); } else { p.vx = p.vy = 0; } }
+    for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; if (i !== b.own) { m.think(p, dt, 1); m.move(p, dt, 0); } else { p.vx = p.vy = 0; } }
     if (m.pt <= 0) { pt = m.phase; m.phase = "live"; if (pt === "kick") m.emit("go"); }
     return;
   }
@@ -96,8 +101,8 @@ M.step = function(){
     m.full(); return;
   }
   m.control(dt);
-  for (i = 0; i < 10; i++) { p = m.p[i]; if (m.ctl[p.tm] === i && m.cfg.human[p.tm]) m.human(p, dt); else m.think(p, dt, 0); }
-  for (i = 0; i < 10; i++) m.move(m.p[i], dt, 0);
+  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; if (m.ctl[p.tm] === i && m.cfg.human[p.tm]) m.human(p, dt); else m.think(p, dt, 0); }
+  for (i = 0; i < 10; i++) if (!m.p[i].out) m.move(m.p[i], dt, 0);
   m.collide(); m.crease(); m.contest(dt); m.ball(dt); m.pick();
 };
 M.full = function(){ var m = this, w = m.score[0] > m.score[1] ? 0 : m.score[1] > m.score[0] ? 1 : -1; m.phase = "over"; m.win = w; m.emit("over", {win: w}); };
@@ -108,11 +113,15 @@ M.control = function(dt){
   for (tm = 0; tm < 2; tm++) {
     if (!m.cfg.human[tm]) continue;
     inp = m.inp[tm]; pr = m.prev[tm]; m.ctlT[tm] -= dt; cur = m.p[m.ctl[tm]] || m.p[tm * 5 + 3];
-    if (b.own >= 0 && m.p[b.own].tm === tm && b.own % 5) { m.ctl[tm] = b.own; continue; }
-    if (b.own < 0 && b.to >= 0 && m.p[b.to].tm === tm && b.to % 5) { m.ctl[tm] = b.to; m.ctlT[tm] = 0.5; continue; }
     best = null; bd = 1e9; alt = null;
-    for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; d = hyp(p.x - b.x, p.y - b.y) + (m.ox(tm) - p.x) * m.dir(tm) * -0.1; if (d < bd) { alt = best; bd = d; best = p; } else if (!alt || d < hyp(alt.x - b.x, alt.y - b.y)) alt = p; }
-    if (inp.c && !pr.c) { m.ctl[tm] = best === cur ? alt.i : best.i; m.ctlT[tm] = 1.2; continue; }
+    for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (p.out) continue; d = hyp(p.x - b.x, p.y - b.y) + (m.ox(tm) - p.x) * m.dir(tm) * -0.1; if (d < bd) { alt = best; bd = d; best = p; } else if (!alt || d < hyp(alt.x - b.x, alt.y - b.y)) alt = p; }
+    // the switch button always works
+    if (inp.c && !pr.c) { var to = best === cur ? alt || best : best; if (to) { m.ctl[tm] = to.i; m.ctlT[tm] = 1.2; } continue; }
+    // while your team has the ball, or a pass is on its way to a team-mate, you stay on your own player:
+    // the team-mate with the ball plays on by themselves
+    if (b.own >= 0 && m.p[b.own].tm === tm) continue;
+    if (b.own < 0 && b.to >= 0 && m.p[b.to].tm === tm) continue;
+    // defending: hand control to whoever is clearly closest to the ball
     if (m.ctlT[tm] <= 0 && best !== cur && hyp(cur.x - b.x, cur.y - b.y) - bd > 2.5) { m.ctl[tm] = best.i; m.ctlT[tm] = 0.6; }
     if (!(m.ctl[tm] % 5)) m.ctl[tm] = best.i;
   }
@@ -170,12 +179,12 @@ M.keeper = function(tm){
 M.option = function(p, x, y){
   var m = this, b = m.b, best = null, bs = -1e9, l = hyp(x, y), i, q, lx, ly, d, s, open, j, o, seg, f;
   for (i = p.tm * 5; i < p.tm * 5 + 5; i++) {
-    q = m.p[i]; if (q === p) continue;
+    q = m.p[i]; if (q === p || q.out) continue;
     lx = q.x + q.vx * 0.5 + m.dir(p.tm) * (q.role ? 1.5 : 0); ly = q.y + q.vy * 0.5; d = hyp(lx - b.x, ly - b.y);
     if (d < 2.5 || d > 38) continue;
     open = 9;
     for (j = (1 - p.tm) * 5; j < (1 - p.tm) * 5 + 5; j++) {
-      o = m.p[j]; seg = segD(b.x, b.y, lx, ly, o.x, o.y); open = Math.min(open, seg * 1.4, hyp(o.x - lx, o.y - ly));
+      o = m.p[j]; if (o.out) continue; seg = segD(b.x, b.y, lx, ly, o.x, o.y); open = Math.min(open, seg * 1.4, hyp(o.x - lx, o.y - ly));
     }
     f = (lx - b.x) * m.dir(p.tm);
     s = open * (m.cfg.human[p.tm] ? 0.9 : 0.55) + f * 0.09 - d * 0.035 - (q.role ? 0 : 2.2);
@@ -235,7 +244,7 @@ M.think = function(p, dt, frozen){
   h = m.home(p);
   if (att) {
     // make a run into space ahead of the ball
-    if (p.role > 2) { h.x = clamp(b.x + dir * (8 + 4 * sk), 4, L - 4); if (Math.abs(h.x - gx) < 6) h.x = gx - dir * 6; h.y = (p.role === 3 ? -1 : 1) * (p.tm ? -1 : 1) * (7 + 3 * Math.sin(m.t * 0.4 + p.i)); }
+    if (p.role > 2) { h.x = clamp(b.x + dir * (8 + 4 * sk), 4, L - 4); if (Math.abs(h.x - gx) < 6) h.x = gx - dir * 6; h.y = (p.role === 3 ? -1 : 1) * (p.tm ? -1 : 1) * (7 + 3 * Math.sin(m.t * 0.4 + p.i)) * (p.solo ? 0.3 : 1); }
     go(p, h.x, h.y, m.spd(p, 0) * 0.85);
     return;
   }
@@ -254,11 +263,11 @@ M.think = function(p, dt, frozen){
   go(p, h.x, h.y, m.spd(p, 0) * 0.8);
 };
 // how clear the line from the ball to the middle of the goal is (distance to the nearest outfield opponent)
-M.lane = function(p){ var m = this, b = m.b, gx = m.gx(p.tm), best = 9, i; for (i = (1 - p.tm) * 5 + 1; i < (1 - p.tm) * 5 + 5; i++) best = Math.min(best, segD(b.x, b.y, gx, 0, m.p[i].x, m.p[i].y)); return best; };
-M.nearOpp = function(p, x, y){ var m = this, bd = 1e9, bo = null, i, o, d; for (i = (1 - p.tm) * 5; i < (1 - p.tm) * 5 + 5; i++) { o = m.p[i]; d = hyp(o.x - x, o.y - y); if (d < bd) { bd = d; bo = o; } } return {d: bd, x: bo.x, y: bo.y, p: bo}; };
-M.chaser = function(tm){ var m = this, b = m.b, bd = 1e9, bp = null, i, p, d; for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (m.cfg.human[tm] && m.ctl[tm] === i) continue; d = hyp(p.x - b.x, p.y - b.y); if (d < bd) { bd = d; bp = p; } } return bp; };
-M.order = function(tm){ var m = this, b = m.b, a = [], i; for (i = tm * 5 + 1; i < tm * 5 + 5; i++) if (!(m.cfg.human[tm] && m.ctl[tm] === i)) a.push(m.p[i]); return a.sort(function(x, y){ return hyp(x.x - b.x, x.y - b.y) - hyp(y.x - b.x, y.y - b.y); }); };
-M.mark = function(p){ var m = this, bd = 1e9, bo = null, i, o, d; for (i = (1 - p.tm) * 5 + 1; i < (1 - p.tm) * 5 + 5; i++) { o = m.p[i]; if (o.i === m.b.own) continue; d = hyp(o.x - p.x, o.y - p.y) + Math.abs(o.x - m.ox(p.tm)) * 0.3; if (d < bd) { bd = d; bo = o; } } return bo; };
+M.lane = function(p){ var m = this, b = m.b, gx = m.gx(p.tm), best = 9, i; for (i = (1 - p.tm) * 5 + 1; i < (1 - p.tm) * 5 + 5; i++) if (!m.p[i].out) best = Math.min(best, segD(b.x, b.y, gx, 0, m.p[i].x, m.p[i].y)); return best; };
+M.nearOpp = function(p, x, y){ var m = this, bd = 1e9, bo = null, i, o, d; for (i = (1 - p.tm) * 5; i < (1 - p.tm) * 5 + 5; i++) { o = m.p[i]; if (o.out) continue; d = hyp(o.x - x, o.y - y); if (d < bd) { bd = d; bo = o; } } return {d: bd, x: bo.x, y: bo.y, p: bo}; };
+M.chaser = function(tm){ var m = this, b = m.b, bd = 1e9, bp = null, i, p, d; for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (p.out || (m.cfg.human[tm] && m.ctl[tm] === i)) continue; d = hyp(p.x - b.x, p.y - b.y); if (d < bd) { bd = d; bp = p; } } return bp; };
+M.order = function(tm){ var m = this, b = m.b, a = [], i; for (i = tm * 5 + 1; i < tm * 5 + 5; i++) if (!m.p[i].out && !(m.cfg.human[tm] && m.ctl[tm] === i)) a.push(m.p[i]); return a.sort(function(x, y){ return hyp(x.x - b.x, x.y - b.y) - hyp(y.x - b.x, y.y - b.y); }); };
+M.mark = function(p){ var m = this, bd = 1e9, bo = null, i, o, d; for (i = (1 - p.tm) * 5 + 1; i < (1 - p.tm) * 5 + 5; i++) { o = m.p[i]; if (o.out || o.i === m.b.own) continue; d = hyp(o.x - p.x, o.y - p.y) + Math.abs(o.x - m.ox(p.tm)) * 0.3; if (d < bd) { bd = d; bo = o; } } return bo; };
 function go(p, x, y, v){ p.tx = clamp(x, 0.4, L - 0.4); p.ty = clamp(y, -H + 0.4, H - 0.4); p.tv = v; }
 
 // ---- keepers ----
@@ -308,7 +317,7 @@ M.move = function(p, dt, idle){
 M.collide = function(){
   var m = this, i, j, a, c, dx, dy, d;
   for (i = 0; i < 10; i++) for (j = i + 1; j < 10; j++) {
-    a = m.p[i]; c = m.p[j]; dx = c.x - a.x; dy = c.y - a.y; d = hyp(dx, dy);
+    a = m.p[i]; c = m.p[j]; if (a.out || c.out) continue; dx = c.x - a.x; dy = c.y - a.y; d = hyp(dx, dy);
     if (d < 0.7 && d > 0.001) { d = (0.7 - d) / d * 0.5; a.x -= dx * d; a.y -= dy * d; c.x += dx * d; c.y += dy * d; }
   }
 };
@@ -323,7 +332,7 @@ M.contest = function(dt){
   if (b.own < 0) return;
   o = m.p[b.own];
   for (i = (1 - o.tm) * 5; i < (1 - o.tm) * 5 + 5; i++) {
-    p = m.p[i]; d = hyp(b.x - p.x, b.y - p.y);
+    p = m.p[i]; if (p.out) continue; d = hyp(b.x - p.x, b.y - p.y);
     if (p.act === "tackle" && !p.didT && p.at < 0.3 && d < 1.15) {
       // from in front or the side is a fair tackle; from behind it rarely comes off
       p.didT = 1; w = 0.46 + 0.25 * (p.sk - o.sk) + (o.wind >= 0 ? 0.2 : 0) - (o.prot > 0 ? 0.4 : 0) - ((p.x - o.x) * Math.cos(o.fa) + (p.y - o.y) * Math.sin(o.fa) < -0.2 ? 0.3 : 0);
@@ -340,7 +349,7 @@ M.pick = function(){
   var m = this, b = m.b, best = null, bd = 1e9, i, p, d, r;
   if (b.own >= 0) return;
   for (i = 0; i < 10; i++) {
-    p = m.p[i]; if (p.nop > 0 || p.act === "stumble") continue;
+    p = m.p[i]; if (p.out || p.nop > 0 || p.act === "stumble") continue;
     r = p.role === 0 && Math.abs(b.x - m.ox(p.tm)) < BOXL && Math.abs(b.y) < BOXW ? (p.act === "lunge" ? 1.25 : 0.9) : i === b.to ? 0.95 : b.to >= 0 && m.cfg.human[b.lt] && p.tm !== b.lt ? 0.38 : 0.6;   // a human's pass is hard to cut out
     d = hyp(b.x - p.x, b.y - p.y);
     if (d < r && b.z < (p.role === 0 ? 2.5 : 1.0) && d < bd) { bd = d; best = p; }
@@ -412,6 +421,8 @@ M.netIn = function(){
 M.goal = function(tm){
   var m = this, b = m.b, s = b.shot, p = m.p[b.last];
   m.score[tm]++; m.stats[tm].goals++; if (s) m.stats[tm].ont++;
+  // rare goals: into the top corner, or a perfect strike
+  if (p && p.tm === tm) { if (b.z > 1.6 && Math.abs(b.y) > GW - 0.8) m.stats[tm].corner = (m.stats[tm].corner || 0) + 1; if (s && s.q === 2) m.stats[tm].pgoal = (m.stats[tm].pgoal || 0) + 1; }
   b.net = tm ? 1 : 2; b.vx *= 0.4; b.shot = null;
   m.phase = "goal"; m.pt = 3.2; m.next = 1 - tm; m.end = 0;
   m.emit("goal", {by: tm, q: s ? s.q : 0, who: p && p.tm === tm ? p.name : "", own: p && p.tm !== tm, x: b.y, z: b.z, top: b.z > 1.6, wide: Math.abs(b.y) > GW - 0.8});
@@ -422,7 +433,7 @@ M.goal = function(tm){
 // ---- results, for the menus ----
 M.result = function(){
   var m = this, s = m.stats, me = s[0], th = s[1];
-  function conv(x){ return {shots: x.shots, goals: x.goals, twos: 0, perfect: x.perfect, green: x.green, megs: 0, ankles: 0, tackles: x.tackles, blocks: x.saves + x.blocks, poss: x.poss, passes: x.passes, pok: x.pok, saves: x.saves, ont: x.ont}; }
+  function conv(x){ return {shots: x.shots, goals: x.goals, twos: 0, perfect: x.perfect, green: x.green, megs: 0, ankles: 0, tackles: x.tackles, blocks: x.saves + x.blocks, poss: x.poss, passes: x.passes, pok: x.pok, corner: x.corner || 0, pgoal: x.pgoal || 0, saves: x.saves, ont: x.ont}; }
   return {win: m.win === 0, draw: m.win === -1, winner: m.win, sc: [m.score[0], m.score[1]], me: conv(me), them: conv(th), top: 0, t: m.t, team: 1};
 };
 M.clockText = function(){ var m = this, s = Math.min(45, m.clock / m.cfg.half * 45) + (m.half - 1) * 45, mm = Math.floor(s), ss = Math.floor((s - mm) * 60); return (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss; };
@@ -541,14 +552,18 @@ V.draw = function(m, dt){
   var v = this, g = v.g, b = m.b, c = v.cam, ents = [], i, p, q, a, s, sd, k, ctl, list, gr, tx, ty;
   v.t += dt; v.cheer = Math.max(0, (v.cheer || 0) - dt * 0.4);
   if (m.phase === "goal") v.cheer = 1;
-  tx = clamp(b.x, 16, L - 16); ty = H + 27 + clamp(b.y, -H, H) * 0.35;
-  c.x += (tx - c.x) * Math.min(1, dt * 2.6); c.y += (ty - c.y) * Math.min(1, dt * 1.8);
+  // the camera sits close and follows the ball; the other mode keeps both the ball and your player in view
+  var cmode = MG.S && MG.S.set ? MG.S.set.tcam || 0 : 0, me = m.cfg && m.cfg.human && m.cfg.human[0] && m.ctl[0] >= 0 ? m.p[m.ctl[0]] : null, gx = b.x, gy = b.y, cz = 14;
+  if (cmode === 1 && me) { var ddx = me.x - b.x, ddy = me.y - b.y; gx = b.x + ddx / 2; gy = b.y + ddy / 2; cz = clamp(13 + hyp(ddx * 0.55, ddy * 1.1) * 0.6, 14, 28); }
+  gx = clamp(gx, 7, L - 7); gy = clamp(gy, -H + 3, H - 3);
+  tx = gx; ty = gy + cz / Math.tan(c.a);
+  c.x += (tx - c.x) * Math.min(1, dt * 3); c.y += (ty - c.y) * Math.min(1, dt * 2.6); c.z += (cz - c.z) * Math.min(1, dt * 2.2);
   g.setTransform(v.dpr, 0, 0, v.dpr, 0, 0); g.lineCap = g.lineJoin = "round";
   if (v.shake > 0 && v.o.shake) { v.shake -= dt; g.translate((Math.random() - 0.5) * v.shake * 14, (Math.random() - 0.5) * v.shake * 14); }
   v.back(m); v.pitch(); v.crease(m);
   v.goalBack(L, 1); v.goalBack(0, -1);
   // shadows
-  for (i = 0; i < 10; i++) { p = m.p[i]; q = v.pr(p.x, p.y, 0); g.fillStyle = "rgba(0,10,0,.3)"; g.beginPath(); g.ellipse(q.x + q.s * 0.25, q.y, q.s * 0.42, q.s * 0.13, 0, 0, TAU); g.fill(); }
+  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; q = v.pr(p.x, p.y, 0); g.fillStyle = "rgba(0,10,0,.3)"; g.beginPath(); g.ellipse(q.x + q.s * 0.25, q.y, q.s * 0.42, q.s * 0.13, 0, 0, TAU); g.fill(); }
   q = v.pr(b.x, b.y, 0); g.fillStyle = "rgba(0,10,0," + (0.35 / (1 + b.z * 0.5)) + ")"; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.2 * (1 + b.z * 0.15), q.s * 0.08, 0, 0, TAU); g.fill();
   // markers on the ground under the players each human is steering
   for (k = 0; k < 2; k++) {
@@ -558,7 +573,7 @@ V.draw = function(m, dt){
     g.globalAlpha = p.tired ? 0.55 + 0.35 * Math.sin(v.t * 12) : 0.95; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.6, q.s * 0.2, 0, -PI / 2, -PI / 2 + TAU * clamp(p.en == null ? 1 : p.en, 0.001, 1)); g.stroke(); g.globalAlpha = 1;
   }
   // players and ball, far to near
-  for (i = 0; i < 10; i++) ents.push([v.pr(m.p[i].x, m.p[i].y, 0).d, i]);
+  for (i = 0; i < 10; i++) if (!m.p[i].out) ents.push([v.pr(m.p[i].x, m.p[i].y, 0).d, i]);
   ents.push([v.pr(b.x, b.y, 0).d, -1]);
   ents.sort(function(x, y){ return y[0] - x[0]; });
   for (i = 0; i < ents.length; i++) {
@@ -632,8 +647,21 @@ V.stickers = function(m, dt){
 V.radar = function(m){
   var v = this, g = v.g, w = Math.min(180, v.w * 0.22), h = w * H * 2 / L, x0 = v.w / 2 - w / 2, y0 = v.h - h - 10, i, p, k;
   g.fillStyle = "rgba(8,9,22,.55)"; g.fillRect(x0 - 3, y0 - 3, w + 6, h + 6); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 1; g.strokeRect(x0, y0, w, h); g.beginPath(); g.moveTo(x0 + w / 2, y0); g.lineTo(x0 + w / 2, y0 + h); g.stroke();
-  for (i = 0; i < 10; i++) { p = m.p[i]; g.fillStyle = v.ring[p.tm]; k = m.cfg.human[p.tm] && m.ctl[p.tm] === i ? 4 : 2.6; g.beginPath(); g.arc(x0 + p.x / L * w, y0 + (p.y + H) / (2 * H) * h, k, 0, TAU); g.fill(); }
+  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; g.fillStyle = v.ring[p.tm]; k = m.cfg.human[p.tm] && m.ctl[p.tm] === i ? 4 : 2.6; g.beginPath(); g.arc(x0 + p.x / L * w, y0 + (p.y + H) / (2 * H) * h, k, 0, TAU); g.fill(); }
   g.fillStyle = "#fff"; g.beginPath(); g.arc(x0 + m.b.x / L * w, y0 + (m.b.y + H) / (2 * H) * h, 2.4, 0, TAU); g.fill();
 };
 MG.TeamView = TV;
+// the camera button in team matches: follow the ball, or keep the ball and your player both in view (V on the keyboard)
+(function(){
+  var f = document.querySelector("#stage .field"); if (!f) return;
+  var bt = document.createElement("button"); bt.className = "hbtn"; bt.id = "bcam"; bt.hidden = true; bt.style.cssText = "right:auto;left:12px;width:auto;padding:0 .7rem;font:700 .75rem/1 inherit;color:#fff";
+  f.appendChild(bt);
+  function label(){ var md = MG.S && MG.S.set ? MG.S.set.tcam || 0 : 0; bt.textContent = md ? "Camera: ball + you" : "Camera: ball"; }
+  function flip(){ if (!MG.S) return; MG.S.set.tcam = MG.S.set.tcam ? 0 : 1; label(); if (MG.save) MG.save(); }
+  bt.addEventListener("click", function(e){ e.preventDefault(); flip(); bt.blur(); });
+  document.addEventListener("keydown", function(e){ if (e.code === "KeyV" && !bt.hidden && !e.repeat && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) flip(); });
+  var play0 = MG.play;
+  if (play0) MG.play = function(o){ bt.hidden = !(o && o.team); label(); return play0.apply(this, arguments); };
+  else setTimeout(function wait(){ if (!MG.play) return setTimeout(wait, 50); var p0 = MG.play; MG.play = function(o){ bt.hidden = !(o && o.team); label(); return p0.apply(this, arguments); }; }, 0);
+})();
 })();
