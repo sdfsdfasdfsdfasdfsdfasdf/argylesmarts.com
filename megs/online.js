@@ -96,9 +96,19 @@ waitUi(function(){
     var g1 = G;
     loading(ttl, sides, n, mine.side, function(){ if (G !== g1) return; if (n === 1) start1(mt, sides); else startTeam(mt, n, sides); });   // 1v1 is in the cage, 2v2 and up on a field sized to the teams
   });
+  // ---- an admin watching someone's online match ----
+  function endWatch(msg){ N.send({t: "adm", op: "unwatch"}); G = null; MG.stop(); U.go("admin"); if (msg) U.toast(msg); }
+  N.hook("watch", function(mt){
+    if (!/^(rk|pk|pv)\d$/.test(mt.mode)) return U.toast("That match can't be watched.");
+    if (MG.now()) MG.stop();
+    var n = +mt.mode.slice(2), sides = [0, 1].map(function(s){ return mt.members.filter(function(x){ return x.side === s && !x.left; }); });
+    G = {mt: mt, rk: !!mt.ranked, pv: /^pv/.test(mt.mode), n: n, side: 0, host: false, watch: true, who: mt.who || "a player", seq: 0, last: null, tgt: null, evq: [], end: null, inSent: "", inAt: 0, gone: {}};
+    U.toast("Watching " + esc(G.who) + ". Press Esc and Quit to stop.");
+    if (n === 1) start1(mt, sides); else startTeam(mt, n, sides);
+  });
   N.hook("gone", function(m){
     if (!G || m.mid !== G.mt.id) return;
-    if (m.host && !G.host) { U.toast("The host left the match."); var g = G; G = null; MG.stop(); U.go("home"); return g; }
+    if (m.host && !G.host) { U.toast("The host left the match."); var g = G; G = null; MG.stop(); if (g.watch) N.send({t: "adm", op: "unwatch"}); U.go(g.watch ? "admin" : "home"); return g; }
     G.gone[m.id] = 1;
     // someone left: a computer player takes over their player
     var r = MG.now(); if (G.host && r && r.m && r.m.xh) { var i = G.idx && G.idx[m.id]; if (i != null) delete r.m.xh[i]; }
@@ -112,7 +122,7 @@ waitUi(function(){
   // 1v1 in the cage, two real players
   function start1(mt, sides){
     var seed = (mt.opts && mt.opts.seed) || 1, a = sides[0][0], b = sides[1][0], src = [null, null], o, info;
-    src[G.side] = KEYS;
+    if (!G.watch) src[G.side] = KEYS;
     var pvm = G.pv, nm1 = pvm ? "Party 1v1" : "Ranked Solo";
     info = oo(nm1, G.side ? a.name : b.name, 1); if (pvm) info.again = function(){ ACT.pv1(); };
     o = {name: nm1, sub: "Online: " + a.name + " v " + b.name, cfg: {}, mode: pvm ? "quick" : "ranked", ranked: pvm ? 0 : 1, sides: [sideOf(a), sideOf(b)], st: [EVEN, EVEN], ai: [null, null], src: src, court: S().eq.court, ball: S().eq.ball, first: seed % 2, forfeit: 0, live: 1,
@@ -134,7 +144,7 @@ waitUi(function(){
     // anyone on the pitch who isn't a real player is labelled a bot
     [0, 1].forEach(function(s){ ON[n].forEach(function(r){ var i = s * 5 + r; if (xh.indexOf(i) < 0 && teams[s][r]) teams[s][r] = Object.assign({}, teams[s][r], {name: String(teams[s][r].name || "Player").split(" ")[0] + " (bot)"}); }); });
     G.idx = idx; G.myI = idx[N.me.id]; var G0 = G;
-    var src = [null, null]; src[G.side] = KEYS;
+    var src = [null, null]; if (!G.watch) src[G.side] = KEYS;
     var title = G.pv ? "Party 1v1" : (G.rk ? "Ranked " : "Practice ") + MG.SIZE_N[n], info = oo(title, names2[1 - G.side], n);
     if (G.pv) info.again = function(){ ACT.pv1(); }; else if (!G.rk) info.again = function(){ ACT.prac({v: n}); };
     var o = {team: 1, ranked: G.rk ? 1 : 0, size: n, mode: G.rk ? "rteam" : "team", name: title, sub: "Online: " + names2[0] + " v " + names2[1], first: seed % 2, ball: S().eq.ball,
@@ -155,6 +165,11 @@ waitUi(function(){
 
   // ---- running the match: the host simulates, everyone else follows ----
   function go(o){
+    if (G && G.watch) {
+      // an admin watching: nothing is earned or lost, and leaving just stops watching
+      o.name = "Watching " + G.who; o.forfeit = 0; o.ranked = 0;
+      o.done = function(){ endWatch("The match is over."); }; o.quit = function(){ endWatch(""); };
+    }
     allow = 1; try { MG.play(o); } finally { allow = 0; }
     var r = MG.now(); if (!r || !r.m || !G) return;
     var m = r.m;
@@ -204,6 +219,7 @@ waitUi(function(){
   }
   // everyone else sends their keys when they change, and at least four times a second
   function sendInput(m){
+    if (G.watch) return;   // watching: no keys go anywhere
     var inp = G.team ? m.inp[G.side] : m.p[G.side].inp, v = [inp.mx || 0, inp.my || 0, inp.sp || 0, inp.sh || 0, inp.a || 0, inp.b || 0, inp.c || 0, inp.d || 0].map(function(x){ return Math.round(x * 100) / 100; }), key = v.join(","), now = Date.now();
     if (key === G.inSent && now - G.inAt < 250) return;
     G.inSent = key; G.inAt = now;
