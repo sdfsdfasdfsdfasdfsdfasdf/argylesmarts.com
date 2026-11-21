@@ -33,6 +33,7 @@ const BAD = ["fuck", "shit", "bitch", "cunt", "nigg", "fag", "rape", "porn", "di
 // rk1 to rk5 are Ranked Solo, Duos, Trios, Squads and Team; nobody found in 15 seconds means computer players fill in
 const MODES = { r1: { size: 1, ranked: 1, solo: 1 }, q1: { size: 1 }, q5: { size: 5 }, rk1: { size: 1, ranked: 1, solo: 1 }, rk2: { size: 2, ranked: 1 }, rk3: { size: 3, ranked: 1 }, rk4: { size: 4, ranked: 1 }, rk5: { size: 5, ranked: 1 },
   // a party practising together against computer players: starts at once, never mixed with anyone else
+  pv1: { size: 1, versus: 1 },   // a party of two playing each other, just for fun
   pk2: { size: 2, prac: 1 }, pk3: { size: 3, prac: 1 }, pk4: { size: 4, prac: 1 }, pk5: { size: 5, prac: 1 } };
 const WAIT_BOTS = 15000;
 // skins only admins can wear; anyone else has them taken off their look
@@ -40,7 +41,7 @@ const ADMIN_ITEMS = ["s67", "ad_arch", "ad_gm", "ad_gold", "ad_dev", "ad_found"]
 // the one-time code that makes an account an admin (only its hash is here); it works for two accounts, then never again
 const ADMIN_CLAIM = "ae02b0532d12090d920867735c86201b8a0ae3bc6c250feff7a279030ddc87b8", ADMIN_MAX = 2;
 const now = () => Date.now();
-const MIN_VER = 3;
+const MIN_VER = 4;
 // ---------- the bank: the server owns every account's coins and items, and opens the packs ----------
 // Accounts made before this went live keep what they had; newer ones bring only a little guest progress with them.
 const CUTOFF = 1795140000000, SEASON = 1, START_COINS = 500;
@@ -181,6 +182,8 @@ export class Hub extends DurableObject {
     }
     // once: ranks move to rank points, and everyone starts again at zero (Bronze)
     if (!this.sql.exec("SELECT 1 FROM meta WHERE k = 'rp1'").toArray().length) { this.sql.exec("UPDATE users SET rating = 0"); this.sql.exec("INSERT INTO meta(k, v) VALUES('rp1', ?)", String(now())); }
+    // accounts made after the switch to rank points started at 1000 by mistake
+    if (!this.sql.exec("SELECT 1 FROM meta WHERE k = 'rp2'").toArray().length) { this.sql.exec("UPDATE users SET rating = 0 WHERE rating = 1000"); this.sql.exec("INSERT INTO meta(k, v) VALUES('rp2', '1')"); }
     this.fails = new Map();
     // keep-alive pings are answered without waking the object, so idle players cost nothing
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
@@ -317,7 +320,7 @@ export class Hub extends DurableObject {
       if (e) return this.send(ws, { t: "err", c: "name", msg: e });
       if (this.sql.exec("SELECT 1 FROM users WHERE lname = ?", name.toLowerCase()).toArray().length) return this.send(ws, { t: "err", c: "name", msg: "That name is taken" });
       const id = rid(8), salt = rid(16);
-      this.sql.exec("INSERT INTO users(id, name, lname, look, created, seen, pw) VALUES(?, ?, ?, ?, ?, ?, ?)", id, name, name.toLowerCase(), "{}", now(), now(), salt + ":" + await passHash(String(m.pass), salt));
+      this.sql.exec("INSERT INTO users(id, name, lname, look, created, seen, pw, rating) VALUES(?, ?, ?, ?, ?, ?, ?, 0)", id, name, name.toLowerCase(), "{}", now(), now(), salt + ":" + await passHash(String(m.pass), salt));
       return this.session(ws, a, id);
     }
     if (m.t === "login") {
@@ -416,7 +419,7 @@ export class Hub extends DurableObject {
     const t = now();
     for (const mode of Object.keys(MODES)) {
       const M = MODES[mode], q = rows.filter((r) => r.mode === mode);
-      if (M.prac) continue;
+      if (M.prac || M.versus) continue;
       if (M.size === 1) {
         // pair players; ranked widens the rating window the longer you wait
         const used = new Set();
@@ -425,7 +428,7 @@ export class Hub extends DurableObject {
           let best = null;
           for (const b of q) {
             if (b === a || used.has(b.leader)) continue;
-            const win = M.ranked && t - Math.min(a.at, b.at) < WAIT_BOTS - 1500 ? 100 + (t - Math.min(a.at, b.at)) / 1000 * 15 : 1e9;
+            const win = 1e9;   // anyone waiting gets a real opponent; the closest in rank points goes first
             const d = Math.abs(a.rating - b.rating);
             if (d <= win && (!best || d < Math.abs(a.rating - best.rating))) best = b;
           }
@@ -573,6 +576,16 @@ export class Hub extends DurableObject {
     if (op === "reports") {
       const list = this.sql.exec("SELECT id, f, t, why, at FROM reports ORDER BY id DESC LIMIT 50").toArray().map((r) => ({ ...r, fn: (this.user(r.f) || {}).name, tn: (this.user(r.t) || {}).name, tb: !!(this.user(r.t) || {}).banned }));
       return out({ list });
+    }
+    if (op === "fun") {
+      // harmless pranks an admin can send to someone online: the game does them for a few seconds
+      const FUN = ["shake", "horn", "flip", "confetti", "spin", "invert", "rainbow", "tiny", "megs", "goal", "disco", "balls", "jelly", "say", "upside", "blur"];
+      const k = String(m.k || ""), u = this.user(id);
+      if (FUN.indexOf(k) < 0 || !u) return out({ ok: false, msg: "Unknown prank or player." });
+      if (!this.online(id)) return out({ ok: false, msg: u.name + " isn't online." });
+      this.funAt = this.funAt || {}; if (now() - (this.funAt[uid] || 0) < 700) return out({ ok: false, msg: "Slow down a little." }); this.funAt[uid] = now();
+      this.to(id, { t: "fun", k, txt: String(m.txt || "").replace(/[<>]/g, "").slice(0, 80), from: (this.user(uid) || {}).name || "An admin" });
+      return out({ ok: true, k, name: u.name });
     }
     if (op === "rdel") { this.sql.exec("DELETE FROM reports WHERE id = ?", +m.rid); return out({ rid: +m.rid }); }
     if (!u) return this.send(ws, { t: "err", c: "adm", msg: "No such player." });
@@ -870,10 +883,15 @@ export class Hub extends DurableObject {
       if (L !== uid) return this.send(ws, { t: "err", c: "queue", msg: "Only the party leader can start" });
       if (this.myMatch(uid)) return this.send(ws, { t: "err", c: "queue", msg: "You are already in a match" });
       const unit = this.unitOf(L);
+      if (M.versus) {
+        if (unit.length !== 2) return this.send(ws, { t: "err", c: "queue", msg: "Party 1v1 needs exactly two players in the party." });
+        if (unit.some((id) => !this.online(id) || this.myMatch(id))) return this.send(ws, { t: "err", c: "queue", msg: "Both players need to be online and out of a match." });
+        return this.startMatch(mode, [[unit[0]], [unit[1]]], false);
+      }
       if (M.solo && unit.length > 1) return this.send(ws, { t: "err", c: "queue", msg: "Ranked Solo is for one player. A party plays Duos and up." });
       if (unit.length > M.size) return this.send(ws, { t: "err", c: "queue", msg: "Your party is too big for that mode" });
       if (unit.some((id) => !this.online(id))) return this.send(ws, { t: "err", c: "queue", msg: "Everyone in the party needs to be online" });
-      const r = this.user(L).rating;
+      const r = this.wal(L).rp || 0;
       this.sql.exec("INSERT OR REPLACE INTO queue(leader, mode, n, rating, at) VALUES(?, ?, ?, ?, ?)", L, mode, unit.length, r, now());
       for (const id of unit) this.to(id, { t: "queue", on: true, mode });
       return this.tryMatch();
