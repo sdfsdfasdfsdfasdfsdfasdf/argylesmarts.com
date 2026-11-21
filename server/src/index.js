@@ -486,6 +486,7 @@ export class Hub extends DurableObject {
     return { t: "match", id: mt.id, mode: mt.mode, ranked: !!mt.ranked, host: mt.host, you: uid, opts: mt.opts || null,
       members: mt.members.map((m) => ({ ...this.pub(m.id), side: m.side, left: !!m.left })) };
   }
+  unwatch(uid) { if (!this.watch) return; for (const k in this.watch) { this.watch[k].delete(uid); if (!this.watch[k].size) delete this.watch[k]; } }
   leaveMatch(uid, dropped) {
     const mt = this.myMatch(uid);
     if (!mt) return;
@@ -499,6 +500,7 @@ export class Hub extends DurableObject {
     this.sql.exec("UPDATE matches SET members = ? WHERE id = ?", JSON.stringify(mt.members), mt.id);
     const rest = mt.members.filter((m) => !m.left);
     for (const m of rest) this.to(m.id, { t: "gone", mid: mt.id, id: uid, host: mt.host === uid, dropped: !!dropped });
+    if (this.watch && this.watch[mt.id]) for (const a of this.watch[mt.id]) this.to(a, { t: "gone", mid: mt.id, id: uid, host: mt.host === uid, dropped: !!dropped });
     if (!rest.length || mt.host === uid) this.sql.exec("UPDATE matches SET done = 1 WHERE id = ?", mt.id);
   }
   // ranked: rating changes once every player has reported and the reports agree (a quitter counts as a loss)
@@ -577,6 +579,17 @@ export class Hub extends DurableObject {
       const list = this.sql.exec("SELECT id, f, t, why, at FROM reports ORDER BY id DESC LIMIT 50").toArray().map((r) => ({ ...r, fn: (this.user(r.f) || {}).name, tn: (this.user(r.t) || {}).name, tb: !!(this.user(r.t) || {}).banned }));
       return out({ list });
     }
+    if (op === "watch") {
+      // watch someone's online match: the host's picture of the game is copied to the admin too
+      const u = this.user(id), mt = u && this.myMatch(id);
+      if (!u) return out({ ok: false, msg: "No such player." });
+      if (!mt) return out({ ok: false, msg: u.name + " isn't in an online match right now. Games against bots on their own device can't be watched." });
+      if (this.myMatch(uid)) return out({ ok: false, msg: "Finish your own match first." });
+      this.unwatch(uid); this.watch = this.watch || {}; (this.watch[mt.id] = this.watch[mt.id] || new Set()).add(uid);
+      this.to(uid, { ...this.matchMsg(mt, uid), t: "watch", who: u.name });
+      return out({ ok: true, name: u.name });
+    }
+    if (op === "unwatch") { this.unwatch(uid); return out({ ok: true }); }
     if (op === "fun") {
       // harmless pranks an admin can send to someone online: the game does them for a few seconds
       const FUN = ["shake", "horn", "flip", "confetti", "spin", "invert", "rainbow", "tiny", "megs", "goal", "disco", "balls", "jelly", "say", "upside", "blur"];
@@ -914,6 +927,9 @@ export class Hub extends DurableObject {
       const mt = this.myMatch(uid); if (!mt) return;
       const s = JSON.stringify({ t: "m", from: uid, d: m.d });
       for (const x of mt.members) if (x.id !== uid && !x.left && (!m.to || m.to === x.id)) for (const w of this.socks(x.id)) { try { w.send(s); } catch (e) {} }
+      // admins watching get the host's broadcasts too
+      const ws2 = this.watch && this.watch[mt.id];
+      if (ws2 && mt.host === uid && !m.to) for (const a of ws2) for (const w of this.socks(a)) { try { w.send(s); } catch (e) {} }
       return;
     }
     if (t === "result") {
