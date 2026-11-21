@@ -133,14 +133,14 @@ function wire(){
     }
     keys[c] = 1;
     if (/^Digit[1-4]$/.test(c) && !e.repeat && !run.paused) sticker(run, 0, MG.S.eq.stk[+c.slice(5) - 1]);
-    if ((c === "Escape" || c === "KeyP") && !e.repeat && !run.over) pause(!run.paused);
+    if ((c === "Escape" || c === "KeyP") && !e.repeat && !run.over) pause(!run.menu);
     if (/^Arrow|^Space$|^Slash$|^Quote$/.test(c)) e.preventDefault();
   });
   window.addEventListener("keyup", function(e){ keys[MG.code(e)] = 0; });
   window.addEventListener("blur", function(){ keys = {}; });
   window.addEventListener("blur", function(){ keys = {}; });
-  document.addEventListener("visibilitychange", function(){ if (document.hidden && run && !run.over && !run.paused) pause(true); });
-  $("bpause").addEventListener("click", function(){ if (run && !run.over) pause(!run.paused); });
+  document.addEventListener("visibilitychange", function(){ if (document.hidden && run && !run.over && !run.paused && !run.o.live) pause(true); });
+  $("bpause").addEventListener("click", function(){ if (run && !run.over) pause(!run.menu); });
   $("pause").addEventListener("click", function(e){
     var b = e.target.closest("[data-p]"), a = b && b.getAttribute("data-p"), r = run, o, res;
     if (!a || !r) return;
@@ -215,11 +215,13 @@ MG.applySet = function(){
 };
 function pause(on){
   var r = run, b = $("pause");
-  r.paused = on; b.hidden = !on; keys = {};
+  // against real people the game can't stop: the menu opens but the match keeps going
+  r.menu = on; r.paused = r.o.live ? false : on; b.hidden = !on; keys = {};
   if (on) {
     b.querySelector("[data-p=mute]").textContent = "Sound: " + (MG.S.set.mute ? "off" : "on");
-    b.querySelector("[data-p=restart]").style.display = r.o.forfeit ? "none" : "";
-    $("pnote").textContent = r.o.forfeit ? "Quitting now counts as a loss." : "";
+    b.querySelector("[data-p=restart]").style.display = r.o.forfeit || r.o.live ? "none" : "";
+    var rs = b.querySelector("[data-p=resume]"); if (rs) rs.textContent = r.o.live ? "Back to the game" : "Resume";
+    $("pnote").textContent = r.o.live ? "You're playing real people, so the match keeps going. Leaving now counts as a forfeit and earns nothing." : r.o.forfeit ? "Quitting now counts as a loss and earns nothing." : "";
   } else r.last = performance.now();
   MG.applySet();
 }
