@@ -121,10 +121,11 @@ waitUi(function(){
     var S = MG.S, c0 = S.coins, out;
     inMatch = 1; try { out = fin0.apply(this, arguments); } finally { inMatch = 0; }
     if (!N.signed() || res.party || res.practice) return out;
+    if (res.quit && res.online) { tk = null; return out; }   // the server already counted that forfeit when you left
     S.coins = c0;   // what a match pays comes from the server
     var me = res.me || {}, keep = {};
     ["goals", "megs", "ankles", "perfect", "tackles", "blocks", "pok", "twos", "corner", "mgoal", "vgoal", "post", "pgoal"].forEach(function(k){ keep[k] = me[k] || 0; });
-    call("end", {tk: tk, res: {win: !!res.win, draw: !!res.draw, sc: res.sc, me: keep}}).then(function(r){
+    call("end", {tk: tk, res: {win: !res.quit && !!res.win, draw: !res.quit && !!res.draw, quit: res.quit ? 1 : 0, sc: res.sc, me: keep}}).then(function(r){
       tk = null;
       if (!r.ok) { toast(esc(r.msg)); return; }
       var x = r.res;
