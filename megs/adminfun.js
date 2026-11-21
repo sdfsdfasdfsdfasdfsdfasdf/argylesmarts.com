@@ -78,7 +78,48 @@ function ball(g, x, y, r, a){
   g.fillStyle = "#14163a"; g.beginPath(); for (var i = 0; i < 5; i++) { var q = -Math.PI / 2 + i * TAU / 5; g.lineTo(Math.cos(q) * r * 0.42, Math.sin(q) * r * 0.42); } g.fill();
   g.restore();
 }
+// ---- drawn sounds: y (0 top, 1 bottom) maps to a pitch on a log scale, like a spectrogram ----
+var LOF = 150, HIF = 6000;
+function yHz(y){ return LOF * Math.pow(HIF / LOF, 1 - y); }
+function hzY(f){ return 1 - Math.log(f / LOF) / Math.log(HIF / LOF); }
+// strokes: [[[seconds, hertz], ...], ...]; plays each line as a smooth sine voice
+function playDrawn(strokes, preview){
+  try {
+    var st = (MG.S && MG.S.set) || {}; if (st.mute && !preview) return;
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
+    var t0 = actx.currentTime + 0.05, lv = 0.1 * (st.vol == null ? 0.7 : st.vol) / 0.7 / Math.sqrt(Math.max(1, strokes.length));
+    strokes.forEach(function(s){
+      var o = actx.createOscillator(), g = actx.createGain(), a = s[0][0], z = s[s.length - 1][0];
+      o.type = "sine"; o.frequency.setValueAtTime(s[0][1], t0 + a);
+      s.forEach(function(p){ o.frequency.linearRampToValueAtTime(p[1], t0 + p[0]); });
+      g.gain.setValueAtTime(0.0001, t0 + a); g.gain.exponentialRampToValueAtTime(lv, t0 + a + 0.03); g.gain.setValueAtTime(lv, t0 + Math.max(a + 0.04, z - 0.04)); g.gain.exponentialRampToValueAtTime(0.0001, t0 + z + 0.02);
+      o.connect(g); g.connect(actx.destination); o.start(t0 + a); o.stop(t0 + z + 0.05);
+    });
+  } catch (e) {}
+}
+// the pad (and the picture on the receiving screen): dark with note lines, each drawn line coloured by its pitch
+function padDraw(cv, play, strokes){
+  if (!cv) return; var g = cv.getContext("2d"), w = cv.width, h = cv.height, i;
+  g.fillStyle = "#05061a"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "rgba(255,255,255,.07)"; g.lineWidth = 1;
+  [200, 400, 800, 1600, 3200].forEach(function(f){ var y = hzY(f) * h; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); g.fillStyle = "rgba(255,255,255,.3)"; g.font = "11px sans-serif"; g.fillText(f + " Hz", 6, y - 3); });
+  for (i = 1; i < 3; i++) { g.beginPath(); g.moveTo(w * i / 3, 0); g.lineTo(w * i / 3, h); g.stroke(); }
+  (strokes || PAD.strokes).forEach(function(s){
+    g.lineWidth = 6; g.lineCap = g.lineJoin = "round";
+    for (var j = 1; j < s.length; j++) { var p = s[j - 1], q = s[j]; g.strokeStyle = "hsl(" + Math.round(300 - (1 - q[1]) * 260) + ",95%,62%)"; g.shadowColor = g.strokeStyle; g.shadowBlur = 10; g.beginPath(); g.moveTo(p[0] * w, p[1] * h); g.lineTo(q[0] * w, q[1] * h); g.stroke(); }
+    g.shadowBlur = 0;
+  });
+  if (play > 0 && play < 1) { g.fillStyle = "rgba(255,255,255,.8)"; g.fillRect(play * w - 1, 0, 2, h); }
+}
+var PAD = {strokes: []};
+// on the receiving screen: the drawing glows over the game while it plays
+function showDrawn(strokes){
+  var cv = document.createElement("canvas"), t0 = performance.now(), pts = strokes.map(function(s){ return s.map(function(p){ return [p[0] / 3, hzY(p[1])]; }); });
+  cv.className = "fxCv"; cv.width = innerWidth; cv.height = innerHeight; cv.style.opacity = ".85"; document.body.appendChild(cv);
+  (function f(){ var t = (performance.now() - t0) / 1000; if (t > 3.6) { cv.remove(); return; } var g = cv.getContext("2d"); padDraw(cv, t / 3, pts); g.globalCompositeOperation = "destination-out"; g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(0, 0, cv.width, cv.height); g.globalCompositeOperation = "source-over"; requestAnimationFrame(f); })();
+}
 var RUN = {
+  draw: function(m){ var s = Array.isArray(m.s) ? m.s : []; if (!s.length) return; playDrawn(s); showDrawn(s); },
   shake: function(){ body("animation:fxShake .45s linear 4", 1900); },
   horn: function(){ horn(1.4); },
   squeal: function(){ squeal(); },
@@ -104,7 +145,7 @@ waitUi(function(){
   var U = MG.ui, ACT = U.ACT, VIEW = U.VIEW, N = MG.net, esc = U.esc, tabOn = false;
   N.hook("fun", function(m){ var f = RUN[m.k]; if (!f) return; try { f(m); } catch (e) {} from(m.from || "an admin"); });
   N.hook("adm", function(m){ if (m.op === "watch" && !m.ok) U.toast(esc(m.msg || "Couldn't watch that.")); });
-  N.hook("adm", function(m){ if (m.op === "fun") U.toast(m.ok ? "Sent " + esc((FUN.filter(function(x){ return x[0] === m.k; })[0] || [0, m.k])[1]) + " to " + esc(m.name) + "." : esc(m.msg || "Couldn't send that.")); });
+  N.hook("adm", function(m){ if (m.op === "fun") U.toast(m.ok ? "Sent " + (m.k === "draw" ? "your sound" : esc((FUN.filter(function(x){ return x[0] === m.k; })[0] || [0, m.k])[1])) + " to " + esc(m.name) + "." : esc(m.msg || "Couldn't send that.")); });
 
   // ---- the Friends tab on the admin page ----
   var adm0 = VIEW.admin;
@@ -115,20 +156,46 @@ waitUi(function(){
     var btn = '<button class="tab' + (tabOn ? " on" : "") + '" data-a="admFr">Friends' + (N.friends && N.friends.length ? " (" + N.friends.length + ")" : "") + '</button>';
     // every player found by a search gets a Watch button too
     h = h.replace(/(data-a="admCoins" data-id="([^"]+)">Give coins<\/button>)/g, '$1<button class="btn sm gold" data-a="admWatch" data-id="$2">Watch their match</button>');
-    h = h.replace(/(<input type="text" maxlength="64" placeholder="New passcode" id="ap_([^"]+)">)/g, function(all, a, id){ return '<button class="btn sm" data-a="admFun" data-id="' + id + '" data-k="squeal">High pitch</button><button class="btn sm" data-a="admFun" data-id="' + id + '" data-k="shake">Shake</button><button class="btn sm" data-a="admFun" data-id="' + id + '" data-k="horn">Air horn</button></div><div class="row">' + a; });
+    h = h.replace(/(<input type="text" maxlength="64" placeholder="New passcode" id="ap_([^"]+)">)/g, function(all, a, id){ return pranks(id) + '</div><div class="row">' + a; });
     if (!tabOn) return h.slice(0, j) + btn + h.slice(j);
     var end = h.lastIndexOf('<p class="mute">Coming next');
     return h.slice(0, i) + tabs + btn + "</div>" + friends() + (end > 0 ? h.slice(end) : "</div>");
   };
+  // every prank for one player: pick one from the list, or draw a sound
+  function pranks(id){
+    return '<select id="afs_' + id + '">' + FUN.filter(function(x){ return x[0] !== "say"; }).map(function(x){ return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join("") + '</select>' +
+      '<button class="btn sm" data-a="admFunSel" data-id="' + id + '">Send prank</button><input maxlength="80" placeholder="Message for their screen" id="afx_' + id + '"><button class="btn sm gold" data-a="admFun" data-id="' + id + '" data-k="say">Send message</button><button class="btn sm gold" data-a="admDraw" data-id="' + id + '">Draw a sound</button>';
+  }
   function friends(){
     var list = (N.friends || []).slice().sort(function(a, b){ return (b.on ? 1 : 0) - (a.on ? 1 : 0); });
     if (!list.length) return '<p class="mute">You have no friends added yet. Add some from the Friends screen, then they show up here.</p>';
     return '<p class="mute">Open a friend to give coins or items, rename them or ban them. Pranks only reach friends who are online, last a few seconds and show who sent them.</p><div class="admL">' + list.map(function(f){
       return '<div class="admU"><div class="admH"><b>' + esc(f.name) + '</b><small>' + (f.on ? '<i class="dot on"></i> Online' : "Offline") + '</small><button class="btn sm gold" ' + (f.on ? 'data-a="admWatch" data-id="' + f.id + '"' : "disabled") + ' style="margin-left:auto">Watch</button><button class="btn sm ghost" data-a="admOpen" data-n="' + esc(f.name) + '">Open tools</button></div>' +
         '<div class="row fxRow">' + FUN.filter(function(x){ return x[0] !== "say"; }).map(function(x){ return '<button class="btn sm' + (f.on ? "" : " ghost") + '"' + (f.on ? ' data-a="admFun" data-id="' + f.id + '" data-k="' + x[0] + '"' : " disabled") + ' title="' + x[2] + '">' + x[1] + '</button>'; }).join("") + '</div>' +
-        '<div class="row"><input maxlength="80" placeholder="A message for their screen" id="afx_' + f.id + '"' + (f.on ? "" : " disabled") + '><button class="btn sm gold"' + (f.on ? ' data-a="admFun" data-id="' + f.id + '" data-k="say"' : " disabled") + '>Send message</button></div></div>';
+        '<div class="row"><input maxlength="80" placeholder="A message for their screen" id="afx_' + f.id + '"' + (f.on ? "" : " disabled") + '><button class="btn sm gold"' + (f.on ? ' data-a="admFun" data-id="' + f.id + '" data-k="say"' : " disabled") + '>Send message</button><button class="btn sm gold"' + (f.on ? ' data-a="admDraw" data-id="' + f.id + '" data-n="' + esc(f.name) + '"' : " disabled") + '>Draw a sound</button></div></div>';
     }).join("") + '</div>';
   }
+  ACT.admFunSel = function(d, b){ var id = b.getAttribute("data-id"), e = document.getElementById("afs_" + id); if (e) N.send({t: "adm", op: "fun", id: id, k: e.value, txt: ""}); };
+  // ---- draw a sound: time runs left to right (3 seconds), pitch bottom to top, like a spectrogram ----
+  PAD.id = null; PAD.cur = null;
+  ACT.admDraw = function(d, b){
+    PAD.id = b.getAttribute("data-id"); PAD.name = b.getAttribute("data-n") || ""; PAD.strokes = [];
+    U.modal('<div class="sdraw"><h2>Draw a sound' + (PAD.name ? ' for ' + esc(PAD.name) : "") + '</h2><p class="mute">Draw lines: left to right is time (3 seconds), higher up is a higher note. Several lines play together. It plays at their volume, and not at all if they have muted the game.</p>' +
+      '<canvas id="sdc" width="720" height="320"></canvas><div class="row"><button class="btn ghost" data-a="sdClear">Clear</button><button class="btn ghost" data-a="sdPlay">Hear it</button><button class="btn gold" data-a="sdSend">Send</button><button class="btn ghost" data-a="sdClose">Close</button></div></div>', "sdw");
+    var cv = document.getElementById("sdc"); padDraw(cv, 0);
+    function pos(e){ var r = cv.getBoundingClientRect(), p = e.touches ? e.touches[0] : e; return [MG.clamp((p.clientX - r.left) / r.width, 0, 1), MG.clamp((p.clientY - r.top) / r.height, 0, 1)]; }
+    function start(e){ e.preventDefault(); if (PAD.strokes.length >= 12) return U.toast("That's the most lines one sound can have."); PAD.cur = [pos(e)]; PAD.strokes.push(PAD.cur); padDraw(cv, 0); }
+    function move(e){ if (!PAD.cur) return; e.preventDefault(); var q = pos(e), l = PAD.cur[PAD.cur.length - 1]; if (Math.abs(q[0] - l[0]) + Math.abs(q[1] - l[1]) > 0.006 && PAD.cur.length < 150) { PAD.cur.push(q); padDraw(cv, 0); } }
+    function end(){ PAD.cur = null; }
+    cv.addEventListener("mousedown", start); cv.addEventListener("mousemove", move); window.addEventListener("mouseup", end);
+    cv.addEventListener("touchstart", start, {passive: false}); cv.addEventListener("touchmove", move, {passive: false}); cv.addEventListener("touchend", end);
+  };
+  // turn the drawing into [seconds, hertz] points; lines drawn right to left are put in time order
+  function toSound(){ return PAD.strokes.filter(function(s){ return s.length > 1; }).map(function(s){ var a = s.map(function(q){ return [Math.round(q[0] * 3 * 100) / 100, Math.round(yHz(q[1]))]; }); if (a[0][0] > a[a.length - 1][0]) a.reverse(); return a; }); }
+  ACT.sdClear = function(){ PAD.strokes = []; padDraw(document.getElementById("sdc"), 0); };
+  ACT.sdPlay = function(){ var s = toSound(); if (!s.length) return U.toast("Draw a line first."); playDrawn(s, true); var cv = document.getElementById("sdc"), t0 = performance.now(); (function f(){ var t = (performance.now() - t0) / 1000; if (!document.getElementById("sdc")) return; padDraw(cv, t / 3); if (t < 3.1) requestAnimationFrame(f); else padDraw(cv, 0); })(); };
+  ACT.sdSend = function(){ var s = toSound(); if (!s.length) return U.toast("Draw a line first."); N.send({t: "adm", op: "fun", id: PAD.id, k: "draw", s: s}); };
+  ACT.sdClose = function(){ U.close(); };
   ACT.admWatch = function(d, b){ N.send({t: "adm", op: "watch", id: b.getAttribute("data-id")}); };
   ACT.admFr = function(){ tabOn = true; U.go("admin"); };
   var tab0 = ACT.admTab; ACT.admTab = function(){ tabOn = false; return tab0.apply(this, arguments); };
@@ -139,6 +206,6 @@ waitUi(function(){
     N.send({t: "adm", op: "fun", id: id, k: k, txt: txt});
   };
   N.hook("friends", function(){ if (tabOn && U.cur && U.cur() === "admin") U.go("admin"); });
-  var st = document.createElement("style"); st.textContent = ".fxRow{flex-wrap:wrap;gap:.35rem}.fxRow .btn{padding:.3rem .6rem}"; document.head.appendChild(st);
+  var st = document.createElement("style"); st.textContent = ".fxRow{flex-wrap:wrap;gap:.35rem}.fxRow .btn{padding:.3rem .6rem}.sdraw #sdc{display:block;width:100%;max-width:720px;aspect-ratio:9/4;border-radius:12px;cursor:crosshair;touch-action:none;background:#05061a;margin:.4rem 0 .6rem}.sdraw .row{gap:.5rem;flex-wrap:wrap}.card.sdw{width:min(800px,94vw);max-width:none}"; document.head.appendChild(st);
 });
 })();
