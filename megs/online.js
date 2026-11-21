@@ -21,38 +21,33 @@ waitUi(function(){
     if (party() && N.party.leader !== N.me.id) return U.toast("The party leader picks the mode.");
     N.send({t: "queue", mode: "rk" + n});
   };
+  // ---- searching: shown in the lobby's right column, not a separate screen ----
+  // Q: {mode, t0, ends, lob: {sides, size}}; F: the "match found" roster for a few seconds before kick-off
+  var F = null;
+  function title(mode){ var n = +String(mode).slice(2) || 1; return /^pv/.test(mode) ? "Party 1v1" : (/^pk/.test(mode) ? "Practice " : "Ranked ") + MG.SIZE_N[n]; }
+  function draw(){ if (MG.qdraw) MG.qdraw(); }
   function waiting(mode){
-    var n = +String(mode).slice(2) || 1, lead = !party() || N.party.leader === N.me.id, t0 = Date.now();
-    U.modal('<div class="center wq"><div class="spin"></div><h2>Waiting for ' + (party() ? "players and team mates" : "players") + '...</h2><p class="mute">Ranked ' + MG.SIZE_N[n] + ' (' + n + 'v' + n + '). Anyone not found in 15 seconds is a bot (computer player).</p><p class="wqt"><b id="wqt">0</b> seconds</p><div id="wqr"></div>' +
-      (lead ? '<button class="btn ghost" data-a="wqCancel">Cancel</button>' : '<p class="mute">The party leader can cancel.</p>') + '</div>');
-    if (Q) clearInterval(Q.timer);
-    Q = {mode: mode, timer: setInterval(function(){ var e = document.getElementById("wqt"); if (e) e.textContent = Math.floor((Date.now() - t0) / 1000); var x = document.getElementById("wqe"); if (x && Q && Q.ends) x.textContent = "Bots fill any empty spots in " + Math.max(0, Math.ceil((Q.ends - Date.now()) / 1000)) + " s"; }, 250)};
-  }
-  // 2v2 and up: who has joined so far, and how long until bots fill the rest
-  var LCSS = '<style>.qlob{display:flex;gap:14px;align-items:flex-start;margin:12px 0 4px;text-align:left}.qlob h4{margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}.qlob>div{flex:none!important;width:42%!important;min-width:0}.qlob .vs{align-self:center;flex:none;font-weight:800;opacity:.6}.qlob li{list-style:none;padding:6px 10px;margin:0 0 5px;border-radius:9px;background:rgba(255,255,255,.08);font-weight:700}.qlob li.bot{opacity:.65;font-weight:500;font-style:italic}.qlob li.open{opacity:.45;border:1px dashed rgba(255,255,255,.35);background:none;font-weight:500}.qlob li.me{outline:2px solid var(--acc,#ffd23f)}.qlob ul{margin:0;padding:0}.lobb{height:6px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:12px}.lobb i{display:block;height:100%;background:var(--acc,#ffd23f);width:0;transition:width 2.4s linear}</style>';
-  function col(title, list, n, fill){
-    var me = N.me ? N.me.name : "", h = '<div><h4>' + esc(title) + '</h4><ul>', i;
-    for (i = 0; i < n; i++) h += list[i] ? '<li class="' + (list[i] === me ? "me" : "") + '">' + esc(list[i]) + '</li>' : '<li class="' + (fill ? "bot" : "open") + '">' + (fill ? "Bot" : "Waiting for a player...") + '</li>';
-    return h + '</ul></div>';
+    Q = {mode: mode, t0: Date.now(), ends: 0, lob: null, pk: /^pk/.test(mode)};
+    if (U.cur && U.cur() !== "home") U.go("home"); else draw();
   }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
   N.hook("lobby", function(m){
     if (!Q || Q.mode !== m.mode) return;
-    var me = N.me ? N.me.name : "", mine = m.sides[1].indexOf(me) >= 0 ? 1 : 0, r = document.getElementById("wqr"), joined = m.sides[0].length + m.sides[1].length;
-    Q.ends = m.ends; var tq = document.querySelector(".wqt"); if (tq) tq.style.display = "none";
-    if (r) r.innerHTML = LCSS + '<p class="mute" style="margin:8px 0 0">' + joined + ' of ' + (m.size * 2) + ' players found. Still looking for the rest...</p><div class="qlob">' + col("Your team", m.sides[mine], m.size) + '<span class="vs">VS</span>' + col("Other team", m.sides[1 - mine], m.size) + '</div><p class="mute" id="wqe"></p>';
+    var me = N.me ? N.me.name : "", mine = m.sides[1].indexOf(me) >= 0 ? 1 : 0;
+    Q.ends = m.ends; Q.lob = {size: m.size, mine: m.sides[mine], other: m.sides[1 - mine]}; draw();
   });
-  // once everyone is in: a short loading screen with both teams, any bots marked as bots
-  function loading(title, sides, n, mySide, cb){
-    var nm = function(x){ return x.name || "Player"; }, a = sides[mySide].map(nm), b = sides[1 - mySide].map(nm);
-    U.modal(LCSS + '<div class="center wq lobw"><span class="kick">' + esc(title) + '</span><h2>Match found</h2><div class="qlob">' + col("Your team", a, n, 1) + '<span class="vs">VS</span>' + col("Other team", b, n, 1) + '</div>' +
-      (a.length + b.length < n * 2 ? '<p class="mute">Not everyone showed up, so bots (computer players) fill the empty spots.</p>' : '<p class="mute">Everyone here is a real player. Good luck.</p>') + '<div class="lobb"><i id="lobi"></i></div></div>');
-    setTimeout(function(){ var i = document.getElementById("lobi"); if (i) i.style.width = "100%"; }, 30);
-    setTimeout(function(){ if (document.querySelector(".lobw")) U.close(); cb(); }, 2700);
+  // once everyone is in: a few seconds showing both teams, any bots marked as bots, then kick-off
+  function loading(ttl, sides, n, mySide, cb){
+    var nm = function(x){ return x.name || "Player"; };
+    Q = null; F = {title: ttl, n: n, mine: sides[mySide].map(nm), other: sides[1 - mySide].map(nm), t0: Date.now()};
+    if (U.cur && U.cur() !== "home") U.go("home"); else draw();
+    setTimeout(function(){ F = null; cb(); }, 2700);
   }
-  function unwait(){ if (Q) clearInterval(Q.timer); Q = null; if (document.querySelector(".wq")) U.close(); }
+  function unwait(){ Q = null; draw(); }
   ACT.wqCancel = function(){ N.send({t: "unqueue"}); unwait(); };
-  N.hook("queue", function(m){ if (m.on && /^rk\d$/.test(m.mode)) waiting(m.mode); else if (m.on && /^pk\d$/.test(m.mode)) U.modal('<div class="center wq"><div class="spin"></div><h2>Starting with your party...</h2></div>'); else unwait(); });
+  N.hook("queue", function(m){ if (m.on && /^(rk|pk)\d$/.test(m.mode)) waiting(m.mode); else unwait(); });
+  MG.onlineQ = function(){ return {q: Q, found: F, title: title}; };
+  MG.onlineSigned = signed;
 
   // ---- in a party: only party games, and only the leader starts them ----
   function leader(){ return !party() || N.party.leader === N.me.id; }
@@ -60,6 +55,13 @@ waitUi(function(){
   MG.play = function(o){
     if (party() && !allow) { U.toast(leader() ? "You're in a party, so only party games can be played. Leave the party to play this on your own." : "You're in a party. The party leader picks the game."); U.go("play"); return; }
     return play0.apply(this, arguments);
+  };
+  // a party of two can play each other: no rank points, starts at once
+  ACT.pv1 = function(){
+    if (!party()) return U.toast("Party 1v1 is for a party of two.");
+    if (!leader()) return U.toast("The party leader starts the game.");
+    if (N.party.members.length !== 2) return U.toast("Party 1v1 needs exactly two players in the party.");
+    N.send({t: "queue", mode: "pv1"});
   };
   var prac0 = ACT.prac;
   ACT.prac = function(d){
@@ -76,6 +78,7 @@ waitUi(function(){
     return '<div class="plh"><button class="btn ghost" data-a="go" data-v="home">' + ic("back") + 'Back</button><h1>Play</h1></div>' +
       '<section class="panel ptip"><b>' + (lead ? "You lead the party (" + n + " players)." : "You're in a party. The party leader picks the game, and you join it automatically.") + '</b> <span class="mute">Only games you can play together are shown. Leave the party to play anything else.</span></section>' +
       '<section class="plG rkg"><h3>Ranked<small>your party against other players; computer players fill any gaps after 15 seconds</small></h3><div class="plR">' + K.map(function(k){ return tile("rk", k, "Ranked " + MG.SIZE_N[k], "Your party together, for rank points.", C[k]); }).join("") + '</div></section>' +
+      (n === 2 ? '<section class="plG"><h3>Party 1v1<small>you two play each other in the cage, no rank points</small></h3><div class="plR"><button class="plT' + (lead ? "" : " soon") + '" style="--g:linear-gradient(135deg,#be185d,#4a0d2e)"' + (lead ? ' data-a="pv1"' : "") + '>' + ic("bolt") + '<span><b>Party 1v1</b><small>Friend against friend.</small></span><i>1v1</i></button></div></section>' : "") +
       '<section class="plG"><h3>Practice with AI<small>your party together against computer players, no rank points</small></h3><div class="plR">' + K.map(function(k){ return tile("prac", k, "Practice " + MG.SIZE_N[k], "Warm up together.", C[k]); }).join("") + '</div></section>';
   };
   N.hook("err", function(m){ if (m.c === "queue") unwait(); });
@@ -83,15 +86,15 @@ waitUi(function(){
   // ---- a match was made ----
   N.hook("match", function(mt){
     unwait();
-    if (!/^(rk|pk)\d$/.test(mt.mode) || !N.me) return;
+    if (!/^(rk|pk|pv)\d$/.test(mt.mode) || !N.me) return;
     var n = +mt.mode.slice(2), me = N.me.id, mine = mt.members.filter(function(x){ return x.id === me; })[0];
     if (!mine) return;
     var sides = [0, 1].map(function(s){ return mt.members.filter(function(x){ return x.side === s && !x.left; }); });
-    var title = (mt.ranked ? "Ranked " : "Practice ") + MG.SIZE_N[n];
-    if (sides[0].length + sides[1].length < 2) { N.send({t: "mleave"}); return loading(title, sides, n, mine.side, function(){ mt.ranked ? rk0({v: n}) : prac0({v: n}); }); }   // nobody else: the usual match against bots
-    G = {mt: mt, rk: !!mt.ranked, n: n, side: mine.side, host: mt.host === me, seq: 0, last: null, tgt: null, evq: [], end: null, inSent: "", inAt: 0, gone: {}};
+    var ttl = title(mt.mode);
+    if (sides[0].length + sides[1].length < 2) { N.send({t: "mleave"}); return loading(ttl, sides, n, mine.side, function(){ mt.ranked ? rk0({v: n}) : prac0({v: n}); }); }   // nobody else: the usual match against bots
+    G = {mt: mt, rk: !!mt.ranked, pv: /^pv/.test(mt.mode), n: n, side: mine.side, host: mt.host === me, seq: 0, last: null, tgt: null, evq: [], end: null, inSent: "", inAt: 0, gone: {}};
     var g1 = G;
-    loading(title, sides, n, mine.side, function(){ if (G !== g1) return; startTeam(mt, n, sides); });   // 1v1 too: every Classic game is on the field, sized to the teams
+    loading(ttl, sides, n, mine.side, function(){ if (G !== g1) return; if (n === 1) start1(mt, sides); else startTeam(mt, n, sides); });   // 1v1 is in the cage, 2v2 and up on a field sized to the teams
   });
   N.hook("gone", function(m){
     if (!G || m.mid !== G.mt.id) return;
@@ -110,9 +113,10 @@ waitUi(function(){
   function start1(mt, sides){
     var seed = (mt.opts && mt.opts.seed) || 1, a = sides[0][0], b = sides[1][0], src = [null, null], o, info;
     src[G.side] = KEYS;
-    info = oo("Ranked Solo", G.side ? a.name : b.name, 1);
-    o = {name: "Ranked Solo", sub: "Online: " + a.name + " v " + b.name, cfg: {}, mode: "ranked", ranked: 1, sides: [sideOf(a), sideOf(b)], st: [EVEN, EVEN], ai: [null, null], src: src, court: S().eq.court, ball: S().eq.ball, first: seed % 2, forfeit: 0, live: 1,
-      done: function(res){ finish(res, function(r){ var out = MG.finish({mode: "ranked", win: r.win, me: r.me, sc: r.sc, opp: {id: -9, name: info.foe.name, elo: 0}, top: r.top || 0, ranked: 1});
+    var pvm = G.pv, nm1 = pvm ? "Party 1v1" : "Ranked Solo";
+    info = oo(nm1, G.side ? a.name : b.name, 1); if (pvm) info.again = function(){ ACT.pv1(); };
+    o = {name: nm1, sub: "Online: " + a.name + " v " + b.name, cfg: {}, mode: pvm ? "quick" : "ranked", ranked: pvm ? 0 : 1, sides: [sideOf(a), sideOf(b)], st: [EVEN, EVEN], ai: [null, null], src: src, court: S().eq.court, ball: S().eq.ball, first: seed % 2, forfeit: 0, live: 1,
+      done: function(res){ finish(res, function(r){ var out = MG.finish({mode: pvm ? "quick" : "ranked", win: r.win, me: r.me, sc: r.sc, opp: {id: -9, name: info.foe.name, elo: 0}, top: r.top || 0, ranked: pvm ? 0 : 1});
         MG.sfx(r.win ? "win" : "lose"); U.go("result", {o: info, foe: {name: info.foe.name}, res: r, out: out}); }); },
       quit: function(){ forfeit(o, info); }};
     go(o, function(m){ return G.side; });
@@ -131,8 +135,8 @@ waitUi(function(){
     [0, 1].forEach(function(s){ ON[n].forEach(function(r){ var i = s * 5 + r; if (xh.indexOf(i) < 0 && teams[s][r]) teams[s][r] = Object.assign({}, teams[s][r], {name: String(teams[s][r].name || "Player").split(" ")[0] + " (bot)"}); }); });
     G.idx = idx; G.myI = idx[N.me.id]; var G0 = G;
     var src = [null, null]; src[G.side] = KEYS;
-    var title = (G.rk ? "Ranked " : "Practice ") + MG.SIZE_N[n], info = oo(title, names2[1 - G.side], n);
-    if (!G.rk) info.again = function(){ ACT.prac({v: n}); };
+    var title = G.pv ? "Party 1v1" : (G.rk ? "Ranked " : "Practice ") + MG.SIZE_N[n], info = oo(title, names2[1 - G.side], n);
+    if (G.pv) info.again = function(){ ACT.pv1(); }; else if (!G.rk) info.again = function(){ ACT.prac({v: n}); };
     var o = {team: 1, ranked: G.rk ? 1 : 0, size: n, mode: G.rk ? "rteam" : "team", name: title, sub: "Online: " + names2[0] + " v " + names2[1], first: seed % 2, ball: S().eq.ball,
       cfg: {half: 90, n: n, lv: [cl[0].lv, cl[1].lv], mate: 6, human: [false, false], xh: xh, names: [teams[0].map(function(t){ return t.name; }), teams[1].map(function(t){ return t.name; })], seed: seed, first: seed % 2},
       sides: [{name: names2[0]}, {name: names2[1]}], teams: teams, src: src, st: [], ai: [], forfeit: 0, live: 1,
