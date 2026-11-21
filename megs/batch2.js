@@ -6,13 +6,18 @@ var MG = window.MG, R = MG.R, BY = MG.ITEM, TAU = Math.PI * 2;
 // ---- the Season 1 loading screen: shown while the game starts ----
 (function(){
   var d = document.createElement("div"); d.id = "s1load";
-  d.innerHTML = '<canvas id="s1c"></canvas><div class="s1t"><span>Season 1</span><b>KICKOFF</b><i class="s1b"><em></em></i><small>Loading the cage...</small></div>';
+  d.innerHTML = '<canvas id="s1c"></canvas><div class="s1logo"><b>MEGS</b><small>Cage football and 5v5</small></div><div class="s1t"><span>Season 1</span><b>KICKOFF</b><i class="s1b"><em></em></i><small id="s1m">Loading the cage...</small><button class="s1go" id="s1go" hidden>Start</button></div>';
   var st = document.createElement("style");
   st.textContent = "#s1load{position:fixed;inset:0;z-index:9000;background:radial-gradient(120% 90% at 30% 20%,#3b2bd6 0%,#16124a 45%,#06071a 100%);display:grid;place-items:center;transition:opacity .5s}#s1load.out{opacity:0;pointer-events:none}" +
     "#s1c{position:absolute;inset:0;width:100%;height:100%}.s1t{position:relative;text-align:center;color:#fff;display:flex;flex-direction:column;align-items:center;gap:.3rem;margin-top:38vh}" +
     ".s1t span{font-size:.9rem;font-weight:900;letter-spacing:.4em;text-transform:uppercase;color:#ffd23b}.s1t b{font-size:clamp(2.4rem,9vw,5.5rem);font-style:italic;font-weight:900;letter-spacing:.04em;line-height:.95;text-shadow:0 6px 30px rgba(59,110,245,.8),0 0 2px #fff}" +
-    ".s1b{display:block;width:min(320px,70vw);height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:.8rem}.s1b em{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd23b,#ff9d2e);animation:s1fill 1.6s ease-out forwards}@keyframes s1fill{to{width:100%}}" +
-    ".s1t small{color:#a9b0d6;font-size:.8rem;margin-top:.2rem}";
+    ".s1b{display:block;width:min(320px,70vw);height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:.8rem}.s1b em{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd23b,#ff9d2e);animation:s1fill 3.8s cubic-bezier(.3,.1,.3,1) forwards}@keyframes s1fill{to{width:100%}}" +
+    ".s1t small{color:#a9b0d6;font-size:.8rem;margin-top:.2rem}" +
+    ".s1logo{position:absolute;top:5vh;left:0;right:0;text-align:center;display:flex;flex-direction:column;align-items:center;pointer-events:none;animation:s1in .9s cubic-bezier(.2,1.4,.4,1) both}" +
+    ".s1logo b{font-size:clamp(3.6rem,13vw,9rem);font-weight:900;font-style:italic;letter-spacing:.06em;line-height:.9;background:linear-gradient(180deg,#fff6c2 0%,#ffd23b 45%,#ff8a1e 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 0 #14163a) drop-shadow(0 12px 30px rgba(255,160,40,.55));transform:skewX(-8deg)}" +
+    ".s1logo small{margin-top:.5rem;font-size:.8rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;color:#cfd6ff;opacity:.85}@keyframes s1in{from{opacity:0;transform:scale(.6) translateY(-20px)}to{opacity:1;transform:none}}" +
+    ".s1go{margin-top:.9rem;padding:.75rem 3.2rem;border:0;border-radius:14px;font:inherit;font-size:1.5rem;font-weight:900;font-style:italic;letter-spacing:.14em;text-transform:uppercase;color:#14163a;background:linear-gradient(135deg,#ffe066,#ffb21e);box-shadow:0 10px 30px -6px rgba(255,190,40,.8);cursor:pointer;transform:skewX(-8deg);animation:s1pulse 1.4s ease-in-out infinite}" +
+    ".s1go:hover{filter:brightness(1.08)}.s1go[hidden]{display:none}@keyframes s1pulse{0%,100%{transform:skewX(-8deg) scale(1)}50%{transform:skewX(-8deg) scale(1.06)}}";
   document.head.appendChild(st);
   document.body.appendChild(d);
   var cv = d.querySelector("canvas"), t0 = performance.now(), done = false;
@@ -39,10 +44,20 @@ var MG = window.MG, R = MG.R, BY = MG.ITEM, TAU = Math.PI * 2;
   }
   requestAnimationFrame(art);
   function hide(){ if (done) return; done = true; d.classList.add("out"); setTimeout(function(){ d.remove(); }, 600); }
-  var shown = performance.now();
-  window.addEventListener("load", function(){ setTimeout(hide, Math.max(0, 1700 - (performance.now() - shown))); });
-  setTimeout(hide, 6000);
-  d.addEventListener("click", hide);
+  // the bar fills over a few seconds while the game gets ready, then a Start button takes you in
+  var shown = performance.now(), loaded = false, ready = false, go = d.querySelector("#s1go"), msg = d.querySelector("#s1m");
+  var STEPS = ["Loading the cage...", "Laying the grass...", "Lacing the boots...", "Pumping up the ball...", "Switching on the floodlights..."];
+  var tick = setInterval(function(){ var k = Math.min(STEPS.length - 1, Math.floor((performance.now() - shown) / 800)); if (msg && !ready) msg.textContent = STEPS[k]; if (document.readyState === "complete") loaded = true; arm(); }, 200);
+  function arm(){
+    if (ready || !loaded || performance.now() - shown < 3900) return;
+    ready = true; clearInterval(tick);
+    d.querySelector(".s1b").style.display = "none"; if (msg) msg.textContent = "Ready";
+    go.hidden = false; try { go.focus(); } catch (e) {}
+  }
+  window.addEventListener("load", function(){ loaded = true; setTimeout(arm, Math.max(0, 3950 - (performance.now() - shown))); });
+  setTimeout(function(){ loaded = true; arm(); }, 9000);   // never stuck: a slow load still gets its Start button
+  go.addEventListener("click", hide);
+  document.addEventListener("keydown", function k(e){ if (ready && !done && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); hide(); document.removeEventListener("keydown", k); } });
 })();
 
 // ---- rank backgrounds: the rank's colours with its badge ----
