@@ -10,12 +10,21 @@ function wrap(a){ while (a > PI) a -= TAU; while (a < -PI) a += TAU; return a; }
 // home spots for a 1-2-2 shape, attacking towards +x: [x share of the pitch, y share of the half width]
 var SHAPE = [[0.03, 0], [0.22, -0.42], [0.22, 0.42], [0.47, -0.36], [0.47, 0.36]], ROLE = ["GK", "DEF", "DEF", "FWD", "FWD"];
 // smaller teams: which of the five spots are used (a keeper always plays); the rest sit out
-var ON = {2: [0, 3], 3: [0, 1, 3], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4]};
+var ON = {1: [3], 2: [0, 3], 3: [0, 1, 3], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4]};
+// the pitch grows with the team size: 1v1 is a small field, 5v5 the full one. [length, width, goal] shares of the full size
+var FS = {1: [0.5, 0.55, 0.72], 2: [0.62, 0.66, 0.84], 3: [0.75, 0.78, 0.92], 4: [0.87, 0.89, 1], 5: [1, 1, 1]}, CC = 7, FN = 5;
+function field(n){
+  var f = FS[n] || FS[5]; FN = FS[n] ? n : 5;
+  L = 72 * f[0]; H = 22 * f[1]; GW = 3.4 * f[2]; BOXL = 14 * f[1]; BOXW = 11 * f[1]; SPOT = 10 * f[1]; SMALL = Math.max(GW + 1, 5 * f[1]); CC = 7 * f[1];
+  MG.TK.L = L; MG.TK.H = H; MG.TK.GW = GW; MG.TK.n = FN;
+}
+MG.teamField = field;
 
 // cfg: {half: real seconds per half, lv: [a, b] skill 0 to 10, mate: skill of a human side's team-mates, human: [bool, bool], names: [[5], [5]], seed, first}
 function TeamMatch(cfg){
   var m = this, c = m.cfg = {half: 150, lv: [5, 5], mate: 6, human: [true, false], names: null, first: 0}, k, i, p, lv;
   for (k in cfg) c[k] = cfg[k];
+  field(c.n || 5);
   m.team = true; m.r = MG.rng(c.seed == null ? Math.floor(Math.random() * 1e9) : c.seed);
   m.p = []; m.ev = []; m.score = [0, 0]; m.half = 1; m.clock = 0; m.t = 0; m.inp = [{}, {}]; m.prev = [{}, {}]; m.ctl = [-1, -1]; m.ctlT = [0, 0];
   m.stats = [0, 1].map(function(){ return {shots: 0, ont: 0, goals: 0, passes: 0, pok: 0, tackles: 0, saves: 0, poss: 0, perfect: 0, green: 0, blocks: 0}; });
@@ -67,7 +76,7 @@ M.kickoff = function(kt){
 };
 M.restart = function(kind, tm, x, y){
   var m = this, b = m.b, best = null, bd = 1e9, i, p, d;
-  if (kind === "gk") { best = m.p[tm * 5]; x = m.ox(tm) + m.dir(tm) * 5.5; y = 0; }
+  if (kind === "gk") { best = m.p[tm * 5]; if (best.out) best = m.p[tm * 5 + 3]; x = m.ox(tm) + m.dir(tm) * Math.min(5.5, BOXL * 0.4); y = 0; }
   else for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (p.out) continue; d = hyp(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } }
   best.x = x - m.dir(tm) * 0.4 * (kind === "gk" ? 0 : 1); best.y = y; best.vx = best.vy = 0;
   b.x = x; b.y = y; b.z = BR; b.vx = b.vy = b.vz = 0; b.own = best.i; b.last = best.i; b.lt = tm; b.to = -1; b.shot = null;
@@ -176,6 +185,7 @@ M.shoot = function(p, sx){
 // the keeper of a side reads a shot: when it will reach the line, where, and whether he can get there
 M.keeper = function(tm){
   var m = this, b = m.b, k = m.p[tm * 5], gx = m.ox(tm), T, yc, zc;
+  if (k.out) return;   // 1v1 has no keepers
   if (!b.vx || (gx - b.x) / b.vx <= 0) return;
   T = (gx - b.x) / b.vx; yc = b.y + b.vy * T; zc = b.z + b.vz * T - 4.9 * T * T;
   k.ai.dive = {t: m.t + 0.26 + 0.2 * (1 - k.sk) + m.r() * 0.14, y: clamp(yc, -GW - 0.3, GW + 0.3), z: zc, T: m.t + T};
@@ -529,12 +539,12 @@ V.pitch = function(){
   c = "rgba(255,255,255,.88)";
   v.line([0, -H, 0, L, -H, 0, L, H, 0, 0, H, 0, 0, -H, 0], 0.12, c);
   v.line([L / 2, -H, 0, L / 2, H, 0], 0.12, c);
-  a = []; for (i = 0; i <= 40; i++) a.push(L / 2 + Math.cos(i * TAU / 40) * 7, Math.sin(i * TAU / 40) * 7, 0); v.line(a, 0.12, c);
+  a = []; for (i = 0; i <= 40; i++) a.push(L / 2 + Math.cos(i * TAU / 40) * CC, Math.sin(i * TAU / 40) * CC, 0); v.line(a, 0.12, c);
   [0, 1].forEach(function(s){
     var x0 = s ? L : 0, d = s ? -1 : 1, arc = [], j;
     v.line([x0, -BOXW, 0, x0 + d * BOXL, -BOXW, 0, x0 + d * BOXL, BOXW, 0, x0, BOXW, 0], 0.12, c);
     v.line([x0, -SMALL, 0, x0 + d * 4.5, -SMALL, 0, x0 + d * 4.5, SMALL, 0, x0, SMALL, 0], 0.12, c);
-    for (j = -10; j <= 10; j++) { var aa = j / 10 * 0.93; if (Math.cos(aa) * 7 + SPOT > BOXL) arc.push(x0 + d * (SPOT + Math.cos(aa) * 7), Math.sin(aa) * 7, 0); }
+    for (j = -10; j <= 10; j++) { var aa = j / 10 * 0.93; if (Math.cos(aa) * CC + SPOT > BOXL) arc.push(x0 + d * (SPOT + Math.cos(aa) * CC), Math.sin(aa) * CC, 0); }
     if (arc.length) v.line(arc, 0.12, c);
     v.poly([x0 + d * SPOT - 0.15, -0.15, 0, x0 + d * SPOT + 0.15, -0.15, 0, x0 + d * SPOT + 0.15, 0.15, 0, x0 + d * SPOT - 0.15, 0.15, 0], c);
   });
