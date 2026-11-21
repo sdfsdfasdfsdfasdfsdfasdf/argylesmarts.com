@@ -28,6 +28,13 @@ function ac(){
   nz = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); d = nz.getChannelData(0); for (i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   return AC;
 }
+// iPad and iPhone keep web sound off until the page is touched: wake the sound on every tap, with a silent blip
+(function(){
+  function unlock(){
+    try { if (!ac()) return; if (AC.state !== "running") AC.resume(); var b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0); } catch (e) {}
+  }
+  ["touchend", "pointerup", "click", "keydown"].forEach(function(k){ window.addEventListener(k, unlock, true); });
+})();
 // a soft note: a short fade in (no click) and a smooth fade out
 function tone(f0, f1, d, type, g, at){
   var t = AC.currentTime + (at || 0), o = AC.createOscillator(), e = AC.createGain();
