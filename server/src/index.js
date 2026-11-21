@@ -31,14 +31,16 @@ const RESERVED = ["admin", "moderator", "megs", "system", "server", "support", "
 const BAD = ["fuck", "shit", "bitch", "cunt", "nigg", "fag", "rape", "porn", "dick", "pussy", "whore", "slut", "nazi", "hitler"];
 // team size per online mode; r1 is ranked (1v1, solo only)
 // rk1 to rk5 are Ranked Solo, Duos, Trios, Squads and Team; nobody found in 15 seconds means computer players fill in
-const MODES = { r1: { size: 1, ranked: 1, solo: 1 }, q1: { size: 1 }, q5: { size: 5 }, rk1: { size: 1, ranked: 1, solo: 1 }, rk2: { size: 2, ranked: 1 }, rk3: { size: 3, ranked: 1 }, rk4: { size: 4, ranked: 1 }, rk5: { size: 5, ranked: 1 } };
+const MODES = { r1: { size: 1, ranked: 1, solo: 1 }, q1: { size: 1 }, q5: { size: 5 }, rk1: { size: 1, ranked: 1, solo: 1 }, rk2: { size: 2, ranked: 1 }, rk3: { size: 3, ranked: 1 }, rk4: { size: 4, ranked: 1 }, rk5: { size: 5, ranked: 1 },
+  // a party practising together against computer players: starts at once, never mixed with anyone else
+  pk2: { size: 2, prac: 1 }, pk3: { size: 3, prac: 1 }, pk4: { size: 4, prac: 1 }, pk5: { size: 5, prac: 1 } };
 const WAIT_BOTS = 15000;
 // skins only admins can wear; anyone else has them taken off their look
 const ADMIN_ITEMS = ["s67", "ad_arch", "ad_gm", "ad_gold", "ad_dev", "ad_found"];
 // the one-time code that makes an account an admin (only its hash is here); it works for two accounts, then never again
 const ADMIN_CLAIM = "ae02b0532d12090d920867735c86201b8a0ae3bc6c250feff7a279030ddc87b8", ADMIN_MAX = 2;
 const now = () => Date.now();
-const MIN_VER = 2;
+const MIN_VER = 3;
 // ---------- the bank: the server owns every account's coins and items, and opens the packs ----------
 // Accounts made before this went live keep what they had; newer ones bring only a little guest progress with them.
 const CUTOFF = 1795140000000, SEASON = 1, START_COINS = 500;
@@ -115,7 +117,7 @@ function rankGive(w) { const k = rankTier(Math.max(w.rp || 0, w.rpk || 0)), got 
 const RARE = [["corner", 5], ["mgoal", 6], ["vgoal", 4], ["post", 3], ["pgoal", 2], ["twos", 2]];
 const num = (v, hi) => Math.max(0, Math.min(hi, Math.floor(+v || 0)));
 function cleanRes(r) {
-  r = r && typeof r === "object" ? r : {}; const me = r.me && typeof r.me === "object" ? r.me : {}, o = { win: !!r.win, draw: !r.win && !!r.draw, sc: [num((r.sc || [])[0], 40), num((r.sc || [])[1], 40)], me: {} };
+  r = r && typeof r === "object" ? r : {}; const me = r.me && typeof r.me === "object" ? r.me : {}, o = { quit: !!r.quit, win: !r.quit && !!r.win, draw: !r.quit && !r.win && !!r.draw, sc: [num((r.sc || [])[0], 40), num((r.sc || [])[1], 40)], me: {} };
   for (const k of ["goals", "megs", "ankles", "perfect", "tackles", "blocks", "pok", "twos", "corner", "mgoal", "vgoal", "post", "pgoal"]) o.me[k] = num(me[k], 60);
   for (const k of ["goals", "twos", "corner", "mgoal", "vgoal", "post", "pgoal"]) o.me[k] = Math.min(o.me[k], o.sc[0] + 1);
   if (o.win && o.sc[0] < o.sc[1]) o.win = false;
@@ -414,6 +416,7 @@ export class Hub extends DurableObject {
     const t = now();
     for (const mode of Object.keys(MODES)) {
       const M = MODES[mode], q = rows.filter((r) => r.mode === mode);
+      if (M.prac) continue;
       if (M.size === 1) {
         // pair players; ranked widens the rating window the longer you wait
         const used = new Set();
@@ -422,22 +425,37 @@ export class Hub extends DurableObject {
           let best = null;
           for (const b of q) {
             if (b === a || used.has(b.leader)) continue;
-            const win = M.ranked ? 100 + (t - Math.min(a.at, b.at)) / 1000 * 15 : 1e9;
+            const win = M.ranked && t - Math.min(a.at, b.at) < WAIT_BOTS - 1500 ? 100 + (t - Math.min(a.at, b.at)) / 1000 * 15 : 1e9;
             const d = Math.abs(a.rating - b.rating);
             if (d <= win && (!best || d < Math.abs(a.rating - best.rating))) best = b;
           }
           if (best) { used.add(a.leader); used.add(best.leader); this.startMatch(mode, [[a.leader], [best.leader]], !!M.ranked); }
         }
-      } else if (q.length >= 2) {
-        // fill two sides with whole parties, oldest first; the game fills the empty spots with computer players
-        const A = [], B = [];
-        for (const r of q) { const u = this.unitOf(r.leader); if (A.length + u.length <= M.size && A.length <= B.length) A.push(...u); else if (B.length + u.length <= M.size) B.push(...u); else if (A.length + u.length <= M.size) A.push(...u); }
-        if (A.length && B.length) this.startMatch(mode, [A, B], false);
+      } else if (q.length) {
+        // fill teammates first, then the other side, oldest first; start when both sides are full,
+        // or once the oldest has waited 15 seconds (computer players fill the empty spots)
+        const A = [], B = [], took = [];
+        for (const r of q) {
+          const u = this.unitOf(r.leader);
+          if (A.length + u.length <= M.size) A.push(...u); else if (B.length + u.length <= M.size) B.push(...u); else continue;
+          took.push(r.leader);
+        }
+        const full = A.length === M.size && B.length === M.size, old = t - q[0].at >= WAIT_BOTS;
+        if (full || old) { if (this.lob) delete this.lob[mode]; this.startMatch(mode, [A, B], !!M.ranked); continue; }
+        // still gathering: tell everyone waiting who has joined so far and how long is left
+        const sig = mode + ":" + A.join(",") + "|" + B.join(",");
+        this.lob = this.lob || {};
+        if (this.lob[mode] !== sig) {
+          this.lob[mode] = sig;
+          const nm = (id) => (this.user(id) || {}).name || "Player";
+          const msg = { t: "lobby", mode, size: M.size, sides: [A.map(nm), B.map(nm)], ends: q[0].at + WAIT_BOTS };
+          for (const id of [...A, ...B]) this.to(id, msg);
+        }
       }
     }
     // anyone still waiting after 15 seconds plays with computer players instead
     for (const r of this.sql.exec("SELECT leader, mode, at FROM queue ORDER BY at").toArray()) {
-      const M = MODES[r.mode]; if (!M || t - r.at < WAIT_BOTS) continue;
+      const M = MODES[r.mode]; if (!M || (M.size > 1 && !M.prac) || t - r.at < (M.prac ? 0 : WAIT_BOTS)) continue;
       this.startMatch(r.mode, [this.unitOf(r.leader), []], !!M.ranked);
     }
     if (this.sql.exec("SELECT 1 FROM queue").toArray().length) await this.ctx.storage.setAlarm(now() + 1000);
@@ -469,6 +487,12 @@ export class Hub extends DurableObject {
     const mt = this.myMatch(uid);
     if (!mt) return;
     const me = mt.members.find((m) => m.id === uid); me.left = 1;
+    // walking out of (or dropping from) a ranked game against people that isn't over is a forfeit: it costs rank points
+    if (mt.ranked && !mt.done && !me.pen && mt.members.length > 1) {
+      me.pen = 1; const w = this.wal(uid); w.rp = Math.max(0, (w.rp || 0) - 16); w.tk = null; this.putWal(uid, w);
+      this.sql.exec("UPDATE users SET rating = ? WHERE id = ?", w.rp, uid);
+      for (const ws of this.socks(uid)) this.send(ws, { t: "wal", wal: this.walOut(w) });
+    }
     this.sql.exec("UPDATE matches SET members = ? WHERE id = ?", JSON.stringify(mt.members), mt.id);
     const rest = mt.members.filter((m) => !m.left);
     for (const m of rest) this.to(m.id, { t: "gone", mid: mt.id, id: uid, host: mt.host === uid, dropped: !!dropped });
@@ -599,9 +623,13 @@ export class Hub extends DurableObject {
       if (!t || t.id !== String(m.tk || "")) return fail("That match didn't start properly, so it can't pay out.");
       w.tk = null;
       // a match can't be over faster than a real one
-      const min = t.team ? 60000 : t.ranked ? 40000 : 15000;
+      const min = t.team ? 60000 : t.ranked ? 40000 : 15000, r = cleanRes(m.res);
+      if (r.quit) {
+        // a forfeit earns nothing, however long it lasted; in ranked it still costs rank points
+        if (t.ranked) { w.rp = Math.max(0, (w.rp || 0) - 16); res.rp = -16; this.sql.exec("UPDATE users SET rating = ? WHERE id = ?", w.rp, uid); }
+        res.quit = 1; return done(res);
+      }
       if (now() - t.at < min) { this.putWal(uid, w); return fail("That match was too short to count."); }
-      const r = cleanRes(m.res);
       if (r.win) {
         const c = Math.min(WIN_COINS, DAY_COINS - e.c); if (c > 0) { w.coins += c; e.c += c; res.coins = c; } else res.capped.push("coins");
         if (Math.random() < CAT.bpChance) { const pool = Object.keys(IT).filter((id) => has(id, "c") && !w.inv[id] && (w.bp[id] || 0) < CAT.bpN); if (pool.length) { const id = pick(pool); w.bp[id] = (w.bp[id] || 0) + 1; res.bp = { id, n: w.bp[id], seen: !!w.seen[id] }; } }
