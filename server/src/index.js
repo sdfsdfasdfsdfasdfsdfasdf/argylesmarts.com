@@ -30,7 +30,9 @@ const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const RESERVED = ["admin", "moderator", "megs", "system", "server", "support", "official", "staff", "null", "undefined"];
 const BAD = ["fuck", "shit", "bitch", "cunt", "nigg", "fag", "rape", "porn", "dick", "pussy", "whore", "slut", "nazi", "hitler"];
 // team size per online mode; r1 is ranked (1v1, solo only)
-const MODES = { r1: { size: 1, ranked: 1, solo: 1 }, q1: { size: 1 }, q5: { size: 5 } };
+// rk1 to rk5 are Ranked Solo, Duos, Trios, Squads and Team; nobody found in 15 seconds means computer players fill in
+const MODES = { r1: { size: 1, ranked: 1, solo: 1 }, q1: { size: 1 }, q5: { size: 5 }, rk1: { size: 1, ranked: 1, solo: 1 }, rk2: { size: 2, ranked: 1 }, rk3: { size: 3, ranked: 1 }, rk4: { size: 4, ranked: 1 }, rk5: { size: 5, ranked: 1 } };
+const WAIT_BOTS = 15000;
 // skins only admins can wear; anyone else has them taken off their look
 const ADMIN_ITEMS = ["s67", "ad_arch", "ad_gm", "ad_gold", "ad_dev", "ad_found"];
 // the one-time code that makes an account an admin (only its hash is here); it works for two accounts, then never again
@@ -433,12 +435,18 @@ export class Hub extends DurableObject {
         if (A.length && B.length) this.startMatch(mode, [A, B], false);
       }
     }
-    if (this.sql.exec("SELECT 1 FROM queue").toArray().length) await this.ctx.storage.setAlarm(now() + 3000);
+    // anyone still waiting after 15 seconds plays with computer players instead
+    for (const r of this.sql.exec("SELECT leader, mode, at FROM queue ORDER BY at").toArray()) {
+      const M = MODES[r.mode]; if (!M || t - r.at < WAIT_BOTS) continue;
+      this.startMatch(r.mode, [this.unitOf(r.leader), []], !!M.ranked);
+    }
+    if (this.sql.exec("SELECT 1 FROM queue").toArray().length) await this.ctx.storage.setAlarm(now() + 1000);
   }
   async alarm() { await this.tryMatch(); }
 
   startMatch(mode, sides, ranked, host, opts) {
     const id = rid(6), all = sides.flat();
+    opts = Object.assign({ seed: Math.floor(Math.random() * 1e9) }, opts || {});
     for (const u of all) { const L = this.leaderOf(u) || u; this.sql.exec("DELETE FROM queue WHERE leader = ?", L); }
     const members = [];
     sides.forEach((s, i) => s.forEach((u) => members.push({ id: u, side: i })));
@@ -462,12 +470,9 @@ export class Hub extends DurableObject {
     if (!mt) return;
     const me = mt.members.find((m) => m.id === uid); me.left = 1;
     this.sql.exec("UPDATE matches SET members = ? WHERE id = ?", JSON.stringify(mt.members), mt.id);
-    // quitting a ranked match counts as a loss
-    if (mt.ranked) this.sql.exec("INSERT OR REPLACE INTO mres(mid, uid, won) VALUES(?, ?, 0)", mt.id, uid);
     const rest = mt.members.filter((m) => !m.left);
     for (const m of rest) this.to(m.id, { t: "gone", mid: mt.id, id: uid, host: mt.host === uid, dropped: !!dropped });
-    if (!rest.length || mt.host === uid) { this.sql.exec("UPDATE matches SET done = 1 WHERE id = ?", mt.id); if (mt.ranked) this.settle(mt.id, true); }
-    else if (mt.ranked) this.settle(mt.id, false);
+    if (!rest.length || mt.host === uid) this.sql.exec("UPDATE matches SET done = 1 WHERE id = ?", mt.id);
   }
   // ranked: rating changes once every player has reported and the reports agree (a quitter counts as a loss)
   settle(mid, force) {
@@ -837,7 +842,7 @@ export class Hub extends DurableObject {
       if (L !== uid) return this.send(ws, { t: "err", c: "queue", msg: "Only the party leader can start" });
       if (this.myMatch(uid)) return this.send(ws, { t: "err", c: "queue", msg: "You are already in a match" });
       const unit = this.unitOf(L);
-      if (M.solo && unit.length > 1) return this.send(ws, { t: "err", c: "queue", msg: "Ranked is solo only for now" });
+      if (M.solo && unit.length > 1) return this.send(ws, { t: "err", c: "queue", msg: "Ranked Solo is for one player. A party plays Duos and up." });
       if (unit.length > M.size) return this.send(ws, { t: "err", c: "queue", msg: "Your party is too big for that mode" });
       if (unit.some((id) => !this.online(id))) return this.send(ws, { t: "err", c: "queue", msg: "Everyone in the party needs to be online" });
       const r = this.user(L).rating;
@@ -867,8 +872,7 @@ export class Hub extends DurableObject {
     }
     if (t === "result") {
       const mt = this.myMatch(uid); if (!mt) return;
-      if (mt.ranked) { this.sql.exec("INSERT OR REPLACE INTO mres(mid, uid, won) VALUES(?, ?, ?)", mt.id, uid, m.won ? 1 : 0); this.settle(mt.id, false); }
-      else if (mt.host === uid) this.sql.exec("UPDATE matches SET done = 1 WHERE id = ?", mt.id);
+      if (mt.host === uid) this.sql.exec("UPDATE matches SET done = 1 WHERE id = ?", mt.id);
       return;
     }
     if (t === "mleave") return this.leaveMatch(uid, false);
