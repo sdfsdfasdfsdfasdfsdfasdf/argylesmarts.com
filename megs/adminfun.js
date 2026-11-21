@@ -88,6 +88,7 @@ function waitUi(f){ if (MG.ui && MG.ui.ACT && MG.ui.VIEW && MG.ui.VIEW.admin && 
 waitUi(function(){
   var U = MG.ui, ACT = U.ACT, VIEW = U.VIEW, N = MG.net, esc = U.esc, tabOn = false;
   N.hook("fun", function(m){ var f = RUN[m.k]; if (!f) return; try { f(m); } catch (e) {} from(m.from || "an admin"); });
+  N.hook("adm", function(m){ if (m.op === "watch" && !m.ok) U.toast(esc(m.msg || "Couldn't watch that.")); });
   N.hook("adm", function(m){ if (m.op === "fun") U.toast(m.ok ? "Sent " + esc((FUN.filter(function(x){ return x[0] === m.k; })[0] || [0, m.k])[1]) + " to " + esc(m.name) + "." : esc(m.msg || "Couldn't send that.")); });
 
   // ---- the Friends tab on the admin page ----
@@ -97,6 +98,8 @@ waitUi(function(){
     if (i < 0) return h;
     var j = h.indexOf("</div>", i), tabs = h.slice(i, j).replace(/ on"/g, '"').replace(/class="tab on/g, 'class="tab');
     var btn = '<button class="tab' + (tabOn ? " on" : "") + '" data-a="admFr">Friends' + (N.friends && N.friends.length ? " (" + N.friends.length + ")" : "") + '</button>';
+    // every player found by a search gets a Watch button too
+    h = h.replace(/(data-a="admCoins" data-id="([^"]+)">Give coins<\/button>)/g, '$1<button class="btn sm gold" data-a="admWatch" data-id="$2">Watch their match</button>');
     if (!tabOn) return h.slice(0, j) + btn + h.slice(j);
     var end = h.lastIndexOf('<p class="mute">Coming next');
     return h.slice(0, i) + tabs + btn + "</div>" + friends() + (end > 0 ? h.slice(end) : "</div>");
@@ -105,11 +108,12 @@ waitUi(function(){
     var list = (N.friends || []).slice().sort(function(a, b){ return (b.on ? 1 : 0) - (a.on ? 1 : 0); });
     if (!list.length) return '<p class="mute">You have no friends added yet. Add some from the Friends screen, then they show up here.</p>';
     return '<p class="mute">Open a friend to give coins or items, rename them or ban them. Pranks only reach friends who are online, last a few seconds and show who sent them.</p><div class="admL">' + list.map(function(f){
-      return '<div class="admU"><div class="admH"><b>' + esc(f.name) + '</b><small>' + (f.on ? '<i class="dot on"></i> Online' : "Offline") + '</small><button class="btn sm ghost" data-a="admOpen" data-n="' + esc(f.name) + '" style="margin-left:auto">Open tools</button></div>' +
+      return '<div class="admU"><div class="admH"><b>' + esc(f.name) + '</b><small>' + (f.on ? '<i class="dot on"></i> Online' : "Offline") + '</small><button class="btn sm gold" ' + (f.on ? 'data-a="admWatch" data-id="' + f.id + '"' : "disabled") + ' style="margin-left:auto">Watch</button><button class="btn sm ghost" data-a="admOpen" data-n="' + esc(f.name) + '">Open tools</button></div>' +
         '<div class="row fxRow">' + FUN.filter(function(x){ return x[0] !== "say"; }).map(function(x){ return '<button class="btn sm' + (f.on ? "" : " ghost") + '"' + (f.on ? ' data-a="admFun" data-id="' + f.id + '" data-k="' + x[0] + '"' : " disabled") + ' title="' + x[2] + '">' + x[1] + '</button>'; }).join("") + '</div>' +
         '<div class="row"><input maxlength="80" placeholder="A message for their screen" id="afx_' + f.id + '"' + (f.on ? "" : " disabled") + '><button class="btn sm gold"' + (f.on ? ' data-a="admFun" data-id="' + f.id + '" data-k="say"' : " disabled") + '>Send message</button></div></div>';
     }).join("") + '</div>';
   }
+  ACT.admWatch = function(d, b){ N.send({t: "adm", op: "watch", id: b.getAttribute("data-id")}); };
   ACT.admFr = function(){ tabOn = true; U.go("admin"); };
   var tab0 = ACT.admTab; ACT.admTab = function(){ tabOn = false; return tab0.apply(this, arguments); };
   var open0 = ACT.admOpen; ACT.admOpen = function(){ tabOn = false; return open0.apply(this, arguments); };
