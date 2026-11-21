@@ -43,7 +43,7 @@ waitUi(function(){
   // the ranked tiles on the Play screen
   ACT.rk = function(d){
     var n = +d.v || 1, s = S();
-    if (n === 1 && MG.net && MG.net.inParty && MG.net.inParty()) return U.toast("A party plays ranked 2v2 and up.");   // 1v1 is on the small field now; the cage is in Game Modes
+    if (n === 1) { if (MG.net && MG.net.inParty && MG.net.inParty()) return U.toast("A party plays ranked 2v2 and up."); return ACT.ranked(); }   // ranked 1v1 is in the cage
     var lv = MG.clamp(MG.lvlFor(s.elo) + (Math.random() - 0.5) * 1.2, 0.3, 9.5), k = Math.floor(Math.random() * 36), ch = MG.CAMP[Math.floor(k / 6)].m[k % 6], f = MG.club(ch);
     f.lv = lv;
     MG.teamGo({name: "Ranked " + MG.SIZE_N[n], sub: "Two halves of 1.5 minutes. Rank points are on the line.", foe: f, foeRp: s.elo, half: 90, mate: 6, n: n, ranked: 1, mode: "rteam", back: "home",
