@@ -122,14 +122,14 @@ function teamGo(o){
   };
   m.quit = function(){ go(o.back || "home"); };
   o.again = o.again || function(){ teamGo(o); };
-  modal('<div class="load"><div class="spin"></div><h2>' + esc(o.name) + '</h2><p>' + esc(s.name || "You") + ' and friends v ' + esc(o.foe.name) + '</p><p class="mute">Finding players... Online play is coming soon. For now every match is against computer teams.</p></div>');
+  modal('<div class="load"><div class="spin"></div><h2>' + esc(o.name) + '</h2><p>' + esc(s.name || "You") + ' ' + ((o.n || 5) > 1 ? 'and friends ' : '') + 'v ' + esc(o.foe.name) + '</p><p class="mute">' + ((o.n || 5) > 1 ? 'Your team-mates and the other side are bots (computer players).' : 'Your opponent is a bot (computer player).') + '</p></div>');
   setTimeout(function(){ close(); MG.play(m); }, 1300);
 }
 MG.teamGo = teamGo; MG.teamSides = {my: mySides, foe: foeSides, club: randClub};
 VIEW.team = function(){
   var n = +tset.n || 5;
-  return head("Practice " + MG.SIZE_N[n], n + "v" + n + " on a full-size pitch with two halves. Your team-mates and the other side are computer players. No rank points.") +
-    '<div class="cols"><section class="panel"><h3>Team size</h3>' + chips([["2", "Duos 2v2"], ["3", "Trios 3v3"], ["4", "Squads 4v4"], ["5", "Team 5v5"]], String(n), "tsize") + '<h3>Opponent strength</h3>' + chips(TEAMLV, tset.lv, "tlv") + '<h3>Half length</h3>' + chips([["90", "1.5 min"], ["150", "2.5 min"], ["240", "4 min"], ["360", "6 min"]], tset.half, "thalf") +
+  return head("Practice " + MG.SIZE_N[n], n + "v" + n + " on a pitch sized to the teams (5v5 is the full field), with two halves. Your team-mates and the other side are computer players. No rank points.") +
+    '<div class="cols"><section class="panel"><h3>Team size</h3>' + chips([["1", "Solo 1v1"], ["2", "Duos 2v2"], ["3", "Trios 3v3"], ["4", "Squads 4v4"], ["5", "Team 5v5"]], String(n), "tsize") + '<h3>Opponent strength</h3>' + chips(TEAMLV, tset.lv, "tlv") + '<h3>Half length</h3>' + chips([["90", "1.5 min"], ["150", "2.5 min"], ["240", "4 min"], ["360", "6 min"]], tset.half, "thalf") +
     '<div class="row kickbar"><button class="btn big" data-a="teamPlay">' + ic("play") + 'Kick off</button></div></section>' + controls() + '</div>';
 };
 function controls(){
