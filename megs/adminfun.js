@@ -11,6 +11,7 @@ var FUN = [
   ["invert", "Invert", "Inverts the colours"], ["rainbow", "Rainbow", "Cycles every colour"], ["tiny", "Tiny", "Shrinks the whole game"],
   ["megs", "MEGS!", "A giant MEGS! across the screen"], ["goal", "Fake goal", "A fake GOAL! with a horn"], ["disco", "Disco", "Flashing disco lights"],
   ["balls", "Ball rain", "Footballs rain down"], ["jelly", "Jelly", "The screen wobbles like jelly"], ["blur", "Blurry", "Everything goes blurry"],
+  ["squeal", "High pitch", "A short high-pitched squeal (silent if they've muted the game)"],
   ["say", "Message", "Shows your message big on their screen"]];
 
 // ---- running a prank on this screen ----
@@ -37,10 +38,23 @@ var actx = null;
 function horn(len){
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
-    var t = actx.currentTime, g = actx.createGain(), muted = MG.S && MG.S.set && MG.S.set.mute;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(muted ? 0.0001 : 0.35, t + 0.04); g.gain.setValueAtTime(muted ? 0.0001 : 0.35, t + len - 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    var t = actx.currentTime, g = actx.createGain(), st = (MG.S && MG.S.set) || {}, lv = st.mute ? 0.0001 : Math.max(0.0001, 0.35 * (st.vol == null ? 0.7 : st.vol) / 0.7);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(lv, t + 0.04); g.gain.setValueAtTime(lv, t + len - 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
     g.connect(actx.destination);
     [233, 294, 349, 466].forEach(function(f, i){ var o = actx.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * 1.02, t + len); o.detune.value = i * 4; o.connect(g); o.start(t); o.stop(t + len); });
+  } catch (e) {}
+}
+// a short high squeal that warbles up and down; it follows the player's volume and doesn't play at all when muted
+function squeal(){
+  try {
+    var st = (MG.S && MG.S.set) || {}; if (st.mute) return;
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
+    var t = actx.currentTime, len = 1.6, lv = 0.12 * (st.vol == null ? 0.7 : st.vol) / 0.7, g = actx.createGain(), o = actx.createOscillator(), lfo = actx.createOscillator(), lg = actx.createGain();
+    if (lv <= 0.001) return;
+    o.type = "sine"; o.frequency.setValueAtTime(4200, t); o.frequency.linearRampToValueAtTime(6200, t + len);
+    lfo.frequency.value = 9; lg.gain.value = 700; lfo.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(lv, t + 0.08); g.gain.setValueAtTime(lv, t + len - 0.2); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(actx.destination); o.start(t); lfo.start(t); o.stop(t + len + 0.05); lfo.stop(t + len + 0.05);
   } catch (e) {}
 }
 // confetti, balls and disco lights are drawn on a canvas over everything
@@ -67,6 +81,7 @@ function ball(g, x, y, r, a){
 var RUN = {
   shake: function(){ body("animation:fxShake .45s linear 4", 1900); },
   horn: function(){ horn(1.4); },
+  squeal: function(){ squeal(); },
   flip: function(){ body("transform:scaleX(-1);transition:transform .3s", 5000); },
   upside: function(){ body("transform:rotate(180deg);transition:transform .4s", 5000); },
   spin: function(){ body("animation:fxSpin 1.4s cubic-bezier(.5,0,.3,1) 1", 1500); },
@@ -100,6 +115,7 @@ waitUi(function(){
     var btn = '<button class="tab' + (tabOn ? " on" : "") + '" data-a="admFr">Friends' + (N.friends && N.friends.length ? " (" + N.friends.length + ")" : "") + '</button>';
     // every player found by a search gets a Watch button too
     h = h.replace(/(data-a="admCoins" data-id="([^"]+)">Give coins<\/button>)/g, '$1<button class="btn sm gold" data-a="admWatch" data-id="$2">Watch their match</button>');
+    h = h.replace(/(<input type="text" maxlength="64" placeholder="New passcode" id="ap_([^"]+)">)/g, function(all, a, id){ return '<button class="btn sm" data-a="admFun" data-id="' + id + '" data-k="squeal">High pitch</button><button class="btn sm" data-a="admFun" data-id="' + id + '" data-k="shake">Shake</button><button class="btn sm" data-a="admFun" data-id="' + id + '" data-k="horn">Air horn</button></div><div class="row">' + a; });
     if (!tabOn) return h.slice(0, j) + btn + h.slice(j);
     var end = h.lastIndexOf('<p class="mute">Coming next');
     return h.slice(0, i) + tabs + btn + "</div>" + friends() + (end > 0 ? h.slice(end) : "</div>");
