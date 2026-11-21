@@ -120,6 +120,13 @@ MG.finish = function(res){
   var st = res.me, n = S.n, out = {coins: 0, xp: 0, elo: 0, lv: 0, items: [], quests: [], first: 0, ladder: 0}, cnt;
   function add(k, v){ n[k] = (n[k] || 0) + (v || 0); }
   if (res.party || res.practice) return out;
+  if (res.quit) {
+    // a forfeit earns nothing: no coins, no pass XP, no quest progress; in ranked it still costs rank points
+    S.games++; add("l", 1); S.streak = 0;
+    if (res.ranked) { out.elo = -16; S.elo = Math.max(0, S.elo - 16); S.eh.push(S.elo); if (S.eh.length > 40) S.eh.shift(); }
+    S.hist.unshift({m: res.mode, w: 0, s: (res.sc || [0, 0]).join("-"), o: (res.opp || {}).name || "", d: out.elo}); if (S.hist.length > 14) S.hist.pop();
+    MG.save(); return out;
+  }
   S.games++; add(res.win ? "w" : "l", 1); add("goals", st.goals); add("twos", st.twos); add("megs", st.megs); add("ankles", st.ankles); add("tackles", st.tackles); add("blocks", st.blocks); add("perfect", st.perfect); add("shots", st.shots); add("top", res.top);
   S.streak = res.win ? S.streak + 1 : 0; n.best = Math.max(n.best || 0, S.streak);
   out.coins = (res.win ? 60 : 25) + st.goals * 6 + st.megs * 12 + st.perfect * 4 + st.ankles * 8 + st.blocks * 3;
