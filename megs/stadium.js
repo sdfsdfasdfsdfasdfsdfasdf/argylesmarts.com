@@ -138,7 +138,7 @@ function boardText(v, T, x0, y0, x1, y1, t, cheer, n){
 }
 V.back = function(m){
   var v = this, g = v.g, w = v.w, h = v.h, t = v.t, T = T0(v), ht = T.ht || 1, z1 = 14 * ht, y1 = -H - 4 - 24, ez = 12.6 * ht, ex = 24, cheer = v.cheer || 0, i, q, c, s, k, x, y, a, gr, top;
-  if (v._sid !== T.id) { v._sid = T.id; v._cr = crowdFor(T); }
+  if (v._sid !== T.id + ":" + L) { v._sid = T.id + ":" + L; v._cr = crowdFor(T); }
   top = v.pr(L / 2, y1 - 3, z1 + (T.roof ? 5 : 1)).y;
   backdrop(v, T, t, top);
   // floodlight pylons behind the corners of the far stand
@@ -246,6 +246,7 @@ V.pitch = function(){
 // weather in front of everything: snow or embers
 var draw0 = V.draw;
 V.draw = function(m, dt){
+  L = TK.L; H = TK.H;   // the pitch size follows the team size
   R.LO = 1; try { draw0.call(this, m, dt); } finally { R.LO = 0; }   // players on the big pitch are small: draw them in low detail
   var v = this, T = T0(v), g = v.g, i, x, y, r, n;
   if (!T.snow && !T.embers) return;
