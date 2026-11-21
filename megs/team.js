@@ -29,6 +29,8 @@ function TeamMatch(cfg){
   }
   // a defender or forward without a partner plays down the middle
   m.p.forEach(function(p){ var mate = {1: 2, 2: 1, 3: 4, 4: 3}[p.role]; p.solo = mate && m.p[p.tm * 5 + mate].out ? 1 : 0; if (p.out) { p.x = -80; p.y = -80; } });
+  // online: every other human steers one player of their own (cfg.xh: player numbers), never switching
+  m.xh = {}; (c.xh || []).forEach(function(i){ m.xh[i] = {inp: {}, prev: {}}; });
   m.kickoff(c.first || 0);
 }
 var M = TeamMatch.prototype;
@@ -101,7 +103,7 @@ M.step = function(){
     m.full(); return;
   }
   m.control(dt);
-  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; if (m.ctl[p.tm] === i && m.cfg.human[p.tm]) m.human(p, dt); else m.think(p, dt, 0); }
+  for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; if (m.xh[i]) m.hx(p, dt); else if (m.ctl[p.tm] === i && m.cfg.human[p.tm]) m.human(p, dt); else m.think(p, dt, 0); }
   for (i = 0; i < 10; i++) if (!m.p[i].out) m.move(m.p[i], dt, 0);
   m.collide(); m.crease(); m.contest(dt); m.ball(dt); m.pick();
 };
@@ -114,7 +116,7 @@ M.control = function(dt){
     if (!m.cfg.human[tm]) continue;
     inp = m.inp[tm]; pr = m.prev[tm]; m.ctlT[tm] -= dt; cur = m.p[m.ctl[tm]] || m.p[tm * 5 + 3];
     best = null; bd = 1e9; alt = null;
-    for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (p.out) continue; d = hyp(p.x - b.x, p.y - b.y) + (m.ox(tm) - p.x) * m.dir(tm) * -0.1; if (d < bd) { alt = best; bd = d; best = p; } else if (!alt || d < hyp(alt.x - b.x, alt.y - b.y)) alt = p; }
+    for (i = tm * 5 + 1; i < tm * 5 + 5; i++) { p = m.p[i]; if (p.out || m.xh[i]) continue; d = hyp(p.x - b.x, p.y - b.y) + (m.ox(tm) - p.x) * m.dir(tm) * -0.1; if (d < bd) { alt = best; bd = d; best = p; } else if (!alt || d < hyp(alt.x - b.x, alt.y - b.y)) alt = p; }
     // the switch button always works
     if (inp.c && !pr.c) { var to = best === cur ? alt || best : best; if (to) { m.ctl[tm] = to.i; m.ctlT[tm] = 1.2; } continue; }
     // while your team has the ball, or a pass is on its way to a team-mate, you stay on your own player:
@@ -128,6 +130,10 @@ M.control = function(dt){
 };
 
 // ---- a human side's player ----
+M.hx = function(p, dt){ var m = this, x = m.xh[p.i], ki = m.inp[p.tm], kp = m.prev[p.tm]; m.inp[p.tm] = x.inp; m.prev[p.tm] = x.prev; try { m.human(p, dt); } finally { m.inp[p.tm] = ki; m.prev[p.tm] = kp; } };
+M.isH = function(p){ return !!(this.xh && this.xh[p.i]) || !!(this.cfg.human[p.tm] && this.ctl[p.tm] === p.i); };
+// every human-steered player: [side, player number]
+M.hlist = function(){ var m = this, a = [], k, i; for (k = 0; k < 2; k++) if (m.cfg.human[k] && m.ctl[k] >= 0) a.push([k, m.ctl[k]]); for (i in m.xh) a.push([m.p[i].tm, +i]); return a; };
 M.human = function(p, dt){
   var m = this, b = m.b, inp = m.inp[p.tm], pr = m.prev[p.tm], has = b.own === p.i, l = hyp(inp.mx || 0, inp.my || 0), sp = m.spd(p, has), x, y, o, d;
   // the camera looks across the pitch from the +y side: right on the keys is +x, up is towards the far touchline (-y)
@@ -145,15 +151,15 @@ M.human = function(p, dt){
   }
   pr.sh = inp.sh; pr.a = inp.a; pr.b = inp.b; pr.c = inp.c; pr.d = inp.d;
 };
-M.spd = function(p, has){ return (has ? 5.6 : 6.3) * (0.86 + 0.14 * p.sk) * (p.wind >= 0 ? 0.55 : 1) * (this.cfg.human[p.tm] && this.ctl[p.tm] === p.i ? 1.08 : 1); };
+M.spd = function(p, has){ return (has ? 5.6 : 6.3) * (0.86 + 0.14 * p.sk) * (p.wind >= 0 ? 0.55 : 1) * (this.isH(p) ? 1.08 : 1); };
 
 // ---- shooting: a marker sweeps across the aim bar while shoot is held; the goal is the green part ----
 M.range = function(p){ var d = hyp(this.gx(p.tm) - this.b.x, this.b.y); return Math.max(GW + 0.8, d * 0.42); };
 // the green zone is small and centred: its middle is a perfect strike, the rest of it a little off the aim, outside it well off
 M.green = function(p){ return clamp(0.55 * (GW - 0.3) / this.range(p), 0.05, 0.4); };
-M.sweep = function(p){ var u; if (p.ai.shotX != null && !(this.cfg.human[p.tm] && this.ctl[p.tm] === p.i)) return p.ai.shotX; u = p.wind / 0.62 % 2; return u < 1 ? -1 + 2 * u : 3 - 2 * u; };
+M.sweep = function(p){ var u; if (p.ai.shotX != null && !this.isH(p)) return p.ai.shotX; u = p.wind / 0.62 % 2; return u < 1 ? -1 + 2 * u : 3 - 2 * u; };
 // where the shooter aims: the corner the stick points to, otherwise the corner further from the keeper
-M.aimY = function(p){ var m = this, k = m.p[(1 - p.tm) * 5], inp = m.inp[p.tm], my = m.cfg.human[p.tm] && m.ctl[p.tm] === p.i && inp ? inp.my || 0 : 0, side = Math.abs(my) > 0.4 ? (my < 0 ? -1 : 1) : (k.y > m.b.y ? -1 : 1); return side * (GW - 0.55); };
+M.aimY = function(p){ var m = this, k = m.p[(1 - p.tm) * 5], inp = m.inp[p.tm], my = m.isH(p) && inp ? inp.my || 0 : 0, side = Math.abs(my) > 0.4 ? (my < 0 ? -1 : 1) : (k.y > m.b.y ? -1 : 1); return side * (GW - 0.55); };
 M.dev = function(p, x){ var gw = this.green(p), a = Math.abs(x), s = x < 0 ? -1 : 1; return s * (a <= gw ? 0.5 * Math.pow(a / gw, 1.5) : 0.5 + (a - gw) / (1 - gw) * this.range(p) * 1.1); };
 M.meter = function(p){ return p.wind >= 0 && this.b.own === p.i ? {m: this.sweep(p) * (p.tm ? -1 : 1), gw: this.green(p)} : null; };
 M.target = function(p){ var m = this; return {x: m.gx(p.tm), y: clamp(m.aimY(p) + m.dev(p, m.sweep(p)) * (p.tm ? -1 : 1), -H, H), z: 1}; };
@@ -553,7 +559,7 @@ V.draw = function(m, dt){
   v.t += dt; v.cheer = Math.max(0, (v.cheer || 0) - dt * 0.4);
   if (m.phase === "goal") v.cheer = 1;
   // the camera sits close and follows the ball; the other mode keeps both the ball and your player in view
-  var cmode = MG.S && MG.S.set ? MG.S.set.tcam || 0 : 0, me = m.cfg && m.cfg.human && m.cfg.human[0] && m.ctl[0] >= 0 ? m.p[m.ctl[0]] : null, gx = b.x, gy = b.y, cz = 14;
+  var cmode = MG.S && MG.S.set ? MG.S.set.tcam || 0 : 0, me = m.meI != null ? m.p[m.meI] : m.cfg && m.cfg.human && m.cfg.human[0] && m.ctl[0] >= 0 ? m.p[m.ctl[0]] : null, gx = b.x, gy = b.y, cz = 14;
   if (cmode === 1 && me) { var ddx = me.x - b.x, ddy = me.y - b.y; gx = b.x + ddx / 2; gy = b.y + ddy / 2; cz = clamp(13 + hyp(ddx * 0.55, ddy * 1.1) * 0.6, 14, 28); }
   gx = clamp(gx, 7, L - 7); gy = clamp(gy, -H + 3, H - 3);
   tx = gx; ty = gy + cz / Math.tan(c.a);
@@ -566,8 +572,8 @@ V.draw = function(m, dt){
   for (i = 0; i < 10; i++) { p = m.p[i]; if (p.out) continue; q = v.pr(p.x, p.y, 0); g.fillStyle = "rgba(0,10,0,.3)"; g.beginPath(); g.ellipse(q.x + q.s * 0.25, q.y, q.s * 0.42, q.s * 0.13, 0, 0, TAU); g.fill(); }
   q = v.pr(b.x, b.y, 0); g.fillStyle = "rgba(0,10,0," + (0.35 / (1 + b.z * 0.5)) + ")"; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.2 * (1 + b.z * 0.15), q.s * 0.08, 0, 0, TAU); g.fill();
   // markers on the ground under the players each human is steering
-  for (k = 0; k < 2; k++) {
-    if (!m.cfg.human[k] || m.ctl[k] < 0) continue; p = m.p[m.ctl[k]]; q = v.pr(p.x, p.y, 0.02);
+  for (var hi = 0, HL = m.hlist ? m.hlist() : []; hi < HL.length; hi++) {
+    k = HL[hi][0]; p = m.p[HL[hi][1]]; q = v.pr(p.x, p.y, 0.02);
     g.strokeStyle = v.ring[k]; g.lineWidth = Math.max(2, q.s * 0.08); g.globalAlpha = 0.9; g.globalAlpha = 0.3; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.6, q.s * 0.2, 0, 0, TAU); g.stroke();
     // the bright part of the ring is the sprint bar
     g.globalAlpha = p.tired ? 0.55 + 0.35 * Math.sin(v.t * 12) : 0.95; g.beginPath(); g.ellipse(q.x, q.y, q.s * 0.6, q.s * 0.2, 0, -PI / 2, -PI / 2 + TAU * clamp(p.en == null ? 1 : p.en, 0.001, 1)); g.stroke(); g.globalAlpha = 1;
@@ -592,8 +598,8 @@ V.draw = function(m, dt){
     g.lineWidth = Math.max(3, s * 0.2); g.strokeStyle = "rgba(8,9,22,.85)"; g.strokeText("BACK UP!", q.x, q.y); g.fillStyle = "#ff3b4a"; g.fillText("BACK UP!", q.x, q.y);
   }
   // the player each human is steering: an arrow and a name
-  for (k = 0; k < 2; k++) {
-    if (!m.cfg.human[k] || m.ctl[k] < 0) continue; p = m.p[m.ctl[k]]; q = v.pr(p.x, p.y, 2.35);
+  for (hi = 0, HL = m.hlist ? m.hlist() : []; hi < HL.length; hi++) {
+    k = HL[hi][0]; p = m.p[HL[hi][1]]; q = v.pr(p.x, p.y, 2.35);
     g.fillStyle = v.ring[k]; g.strokeStyle = "rgba(8,9,22,.8)"; g.lineWidth = 2; g.beginPath(); g.moveTo(q.x - 7, q.y - 12); g.lineTo(q.x + 7, q.y - 12); g.lineTo(q.x, q.y - 2); g.closePath(); g.fill(); g.stroke();
     if (v.o.names && p.name) { g.font = "700 12px " + R.FONT; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.lineWidth = 3; g.strokeText(p.name, q.x, q.y - 16); g.fillStyle = "#fff"; g.fillText(p.name, q.x, q.y - 16); }
   }
