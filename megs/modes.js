@@ -69,6 +69,8 @@ waitUi(function(){
   ].join("");
   var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
   // the party changing (someone joins, leaves, or the leader changes) redraws the picker
+  // the lobby may already be on screen from before this loaded: draw it again with the picker
+  if (U.cur && U.cur() === "home" && !document.querySelector(".rlGo")) U.go("home");
   if (MG.net && MG.net.hook) MG.net.hook("party", function(){ setTimeout(function(){ if (U.cur && U.cur() === "home") { var g = document.querySelector(".rlGo"); if (g) g.innerHTML = picker() + playRow(); } }, 0); });
 });
 })();
