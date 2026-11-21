@@ -127,15 +127,18 @@ ACT.practice = function(){
 function rules(){ var st = S().set; return {target: st.clock ? 0 : st.target, two: !!st.two, take: !!st.take, sc: st.sc, clock: st.clock}; }
 function ruleText(c){ return (c.clock ? Math.round(c.clock) + " seconds" : "First to " + c.target) + (c.two ? ". Long range counts double" : "") + (c.take ? ". Scorer keeps the ball." : ". Possession swaps after a goal."); }
 VIEW.quick = function(){
-  var ms = QM;
-  return head("Quick and Arcade", "Pick a game, then how tough the rival should be. Nothing but coins and XP on the line.") +
+  var ms = QM.filter(function(k){ return k !== "quick"; });   // plain 1v1 starts straight from Game Modes
+  if (ms.indexOf(quick.mode) < 0) quick.mode = ms[0];
+  return head("Arcade", "Pick a game, then how tough the rival should be. Nothing but coins and XP on the line.") +
     '<div class="modes">' + ms.map(function(k){ var m = MG.MODES[k]; return '<button class="mode' + (quick.mode === k ? " sel" : "") + '" style="--g:linear-gradient(135deg,' + MCOL[k] + ')" data-a="qmode" data-id="' + k + '">' + ic(MICO[k]) + '<b>' + m.n + '</b><span>' + (k === "quick" ? ruleText(rules()) : m.d) + '</span></button>'; }).join("") + '</div>' +
     '<section class="panel kickp"><h3>Rival</h3><div class="set"><div>Difficulty<small id="lvn">' + MG.LEVELS[quick.lv] + '</small></div><input type="range" min="0" max="10" step="1" value="' + quick.lv + '" id="qlv"></div>' +
-    '<div class="row"><button class="btn big" data-a="playQuick">' + ic("play") + 'Kick off</button></div><p class="mute">The rules for Quick Match can be changed in Settings.</p></section>';
+    '<div class="row"><button class="btn big" data-a="playQuick">' + ic("play") + 'Kick off</button></div><p class="mute">The rules for 1v1 can be changed in Settings.</p></section>';
   // (the Rival panel with Kick off stays stuck to the bottom of the screen, so you never have to scroll to it)
 };
 AFTER.quick = function(){ $("qlv").addEventListener("input", function(){ quick.lv = +this.value; $("lvn").textContent = MG.LEVELS[quick.lv]; }); };
 ACT.qmode = function(d){ quick.mode = d.id; go("quick"); };
+// Game Modes: the cage 1v1 starts straight away, no set-up screen
+ACT.cage1 = function(){ var c = rules(); start(MG.bot(quick.lv, Math.floor(Math.random() * 1e6)), {name: "1v1", sub: ruleText(c), cfg: c, mode: "quick", back: "play"}); };
 ACT.playQuick = function(){
   var k = quick.mode, m = MG.MODES[k], f = MG.bot(quick.lv, Math.floor(Math.random() * 1e6)), c = k === "quick" ? rules() : m.cfg;
   S().set.diff = quick.lv; MG.save();
@@ -424,7 +427,7 @@ VIEW.settings = function(){
     '<h3>Picture</h3>' + sl("fx", "Particles", [[0, "Few"], [1, "Normal"], [2, "Lots"]]) + sl("net", "Goal net", [[1, "Fine mesh"], [0, "Simple mesh"]], "Simple is lighter on slow devices") + tg("trail", "Ball trails") + tg("aura", "Kit auras") + rg("shake", "Screen shake", 0, 1.5, 0.1) + tg("flash", "Flashes", "Turn off if bright flashes bother you") + tg("slow", "Slow motion on goals") + sl("fps", "Frame rate", [[0, "Full"], [1, "Half, to save battery"]]) +
     '<h3>Camera</h3>' + rg("zoom", "Zoom", -1, 1, 0.1) + rg("pan", "Follow the ball sideways", 0, 1.5, 0.1) + '</section>' +
     '<section class="panel"><h3>On screen</h3>' + tg("meter", "Shot meter") + tg("aim", "Shot lines", "A dashed line shows where every shot is aimed, yours and theirs") + tg("pops", "Callouts", "PERFECT, MEGS and the rest") + tg("banner", "Goal banners") + tg("names", "Name tags") + tg("rings", "Sprint rings", "The ring under your player empties as you sprint") + tg("hints", "Control hints") + tg("cb", "Colour-blind meter", "Blue and white in place of green") + rg("hud", "Scoreboard size", 0.8, 1.4, 0.05) +
-    '<h3>Quick Match and Co-op rules</h3>' + sl("target", "First to", [[3, "3 goals"], [5, "5 goals"], [7, "7 goals"], [11, "11 goals"]]) + sl("clock", "Match clock", [[0, "Off"], [60, "60 seconds"], [90, "90 seconds"], [180, "3 minutes"]], "With a clock on, most goals wins") + tg("two", "Long range counts double") + tg("take", "Scorer keeps the ball") + sl("sc", "Possession clock", [[0, "Off"], [8, "8 seconds"], [12, "12 seconds"], [20, "20 seconds"]]) + '</section></div>' +
+    '<h3>1v1 and Co-op rules</h3>' + sl("target", "First to", [[3, "3 goals"], [5, "5 goals"], [7, "7 goals"], [11, "11 goals"]]) + sl("clock", "Match clock", [[0, "Off"], [60, "60 seconds"], [90, "90 seconds"], [180, "3 minutes"]], "With a clock on, most goals wins") + tg("two", "Long range counts double") + tg("take", "Scorer keeps the ball") + sl("sc", "Possession clock", [[0, "Off"], [8, "8 seconds"], [12, "12 seconds"], [20, "20 seconds"]]) + '</section></div>' +
     '<div class="cols"><section class="panel"><h3>Your keys <small>against the computer</small></h3>' + keyRows("k1") + '</section><section class="panel"><h3>Co-op: player 1</h3>' + keyRows("kp") + '</section></div><div class="cols"><section class="panel"><h3>Co-op: player 2</h3>' + keyRows("k2") + '</section><section class="panel"><h3>Sharing a keyboard</h3><p class="mute">In Co-op player 1 has W A S D with R T Y F G and left Shift to sprint, and player 2 has the arrow keys with J K L I O and right Shift. On your own you get W A S D to move, Space to shoot, K L I O for the moves and left Shift to sprint. Sprinting empties the ring under your player; let it fill back up.</p></section></div>' +
     '<div class="cols"><section class="panel"><h3>Gamepad and touch</h3>' + tg("pad", "Gamepads", "Stick to move, A shoot, X cut, B drag, Y burst, bumpers megs") + rg("tsize", "Touch button size", 0.7, 1.4, 0.05) + rg("top", "Touch button opacity", 0.3, 1, 0.05) + "" + tg("lefty", "Left-handed touch layout") + tg("buzz", "Vibration") +
     '<div class="row"><button class="btn ghost sm" data-a="keysReset">Reset the keys</button><button class="btn ghost sm" data-a="setReset">Reset every setting</button></div></section>' +
