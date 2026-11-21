@@ -35,7 +35,7 @@ waitUi(function(){
   Object.keys(SETUP).forEach(function(n){
     after(n, function(){
       var v = document.getElementById("view"); if (!v || v.querySelector(".gnav")) return;
-      v.insertAdjacentHTML("afterbegin", '<div class="gnav"><button class="btn ghost sm" data-a="go" data-v="play">' + ic("back") + 'Back to Play</button><ol><li>Pick a mode</li><li class="on">Set up: ' + SETUP[n] + '</li><li>Kick off</li></ol></div>');
+      v.insertAdjacentHTML("afterbegin", '<div class="gnav"><button class="btn ghost sm" data-a="go" data-v="play">' + ic("back") + 'Back to Game Modes</button><ol><li>Pick a mode</li><li class="on">Set up: ' + SETUP[n] + '</li><li>Kick off</li></ol></div>');
     });
   });
   after("play", function(){
