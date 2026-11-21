@@ -17,56 +17,73 @@ function buzz(ms){ if (MG.S.set.buzz && navigator.vibrate) { try { navigator.vib
 
 // ---- sound: everything is synthesised, there are no audio files ----
 function ac(){
-  var C = window.AudioContext || window.webkitAudioContext, d, i;
+  var C = window.AudioContext || window.webkitAudioContext, d, i, lp, comp, master;
   if (AC || !C) return AC;
-  AC = new C(); out = AC.createGain(); out.connect(AC.destination);
+  AC = new C();
+  // everything goes through a quieter master, a gentle top-end roll-off and a limiter, so nothing is harsh or spikes
+  out = AC.createGain(); master = AC.createGain(); master.gain.value = 0.55;
+  lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 6500; lp.Q.value = 0.5;
+  comp = AC.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 6; comp.attack.value = 0.004; comp.release.value = 0.2;
+  out.connect(master); master.connect(lp); lp.connect(comp); comp.connect(AC.destination);
   nz = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); d = nz.getChannelData(0); for (i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   return AC;
 }
+// a soft note: a short fade in (no click) and a smooth fade out
 function tone(f0, f1, d, type, g, at){
   var t = AC.currentTime + (at || 0), o = AC.createOscillator(), e = AC.createGain();
   if (g <= 0.0005) return;
   o.type = type; o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + d);
-  e.gain.setValueAtTime(g, t); e.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(e); e.connect(out); o.start(t); o.stop(t + d + 0.03);
+  e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(g, t + Math.min(0.012, d * 0.2)); e.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(e); e.connect(out); o.start(t); o.stop(t + d + 0.03);
 }
 function hiss(d, g, f, q, type, at, atk){
   var t = AC.currentTime + (at || 0), s = AC.createBufferSource(), fl = AC.createBiquadFilter(), e = AC.createGain();
   if (g <= 0.0005) return;
-  s.buffer = nz; s.loop = true; fl.type = type || "bandpass"; fl.frequency.value = f; fl.Q.value = q || 1;
-  e.gain.setValueAtTime(0.001, t); e.gain.linearRampToValueAtTime(g, t + (atk || 0.006)); e.gain.exponentialRampToValueAtTime(0.001, t + d);
+  s.buffer = nz; s.loop = true; s.playbackRate.value = 0.9 + Math.random() * 0.2; fl.type = type || "bandpass"; fl.frequency.value = f; fl.Q.value = q || 1;
+  e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(g, t + (atk || 0.008)); e.gain.exponentialRampToValueAtTime(0.0001, t + d);
   s.connect(fl); fl.connect(e); e.connect(out); s.start(t); s.stop(t + d + 0.05);
 }
+// a referee's pea whistle: a pure tone with a fast warble and a little breath
+function whistle(d, g, at){
+  var t = AC.currentTime + (at || 0), o = AC.createOscillator(), lfo = AC.createOscillator(), lg = AC.createGain(), e = AC.createGain();
+  if (g <= 0.0005) return;
+  o.type = "sine"; o.frequency.value = 2650; lfo.frequency.value = 28; lg.gain.value = 55; lfo.connect(lg); lg.connect(o.frequency);
+  e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(g, t + 0.02); e.gain.setValueAtTime(g, t + d - 0.05); e.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(e); e.connect(out); o.start(t); lfo.start(t); o.stop(t + d + 0.03); lfo.stop(t + d + 0.03);
+  hiss(d, g * 0.35, 2650, 6, "bandpass", at, 0.02);
+}
+var NOTE = {C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568, C7: 2093};
 MG.sfx = function(k, v){
-  var s = MG.S.set, g = s.mute ? 0 : s.vol * s.sfx, c = s.mute ? 0 : s.vol * s.crowd, p;
+  var s = MG.S.set, g = s.mute ? 0 : s.vol * s.sfx, c = s.mute ? 0 : s.vol * s.crowd, p, N = NOTE;
   if ((g <= 0 && c <= 0) || !ac()) return;
   if (AC.state === "suspended") AC.resume();
-  if (k === "kick") { p = MG.clamp((v || 18) / 22, 0.5, 1.1); hiss(0.08, 0.5 * g * p, 700, 0.8, "lowpass"); tone(170, 55, 0.13, "sine", 0.7 * g * p); }
-  else if (k === "bounce") tone(120, 70, 0.08, "sine", MG.clamp((v || 3) / 9, 0.1, 0.5) * g);
-  else if (k === "post") { tone(930, 900, 0.5, "triangle", 0.4 * g); tone(1870, 1840, 0.35, "sine", 0.22 * g); tone(2790, 2700, 0.2, "sine", 0.1 * g); }
-  else if (k === "wall") hiss(0.14, MG.clamp((v || 4) / 14, 0.08, 0.4) * g, 2600, 4);
-  else if (k === "net") hiss(0.4, MG.clamp((v || 6) / 16, 0.15, 0.5) * g, 4200, 0.7, "highpass");
-  else if (k === "thud") { tone(95, 60, 0.1, "sine", 0.5 * g); hiss(0.05, 0.25 * g, 500, 1, "lowpass"); }
-  else if (k === "perfect") { tone(1320, 1320, 0.12, "sine", 0.22 * g); tone(1980, 1980, 0.2, "sine", 0.18 * g, 0.07); }
-  else if (k === "megs") { tone(620, 930, 0.09, "square", 0.12 * g); tone(930, 1400, 0.12, "square", 0.12 * g, 0.1); }
-  else if (k === "ankles") tone(520, 180, 0.28, "sawtooth", 0.13 * g);
-  else if (k === "turn") tone(300, 200, 0.12, "triangle", 0.2 * g);
-  else if (k === "steal") { tone(240, 480, 0.07, "triangle", 0.26 * g); tone(480, 720, 0.09, "triangle", 0.22 * g, 0.07); hiss(0.05, 0.2 * g, 900, 1, "lowpass"); }
-  else if (k === "trick") { tone(700, 1050, 0.08, "sine", 0.16 * g); tone(1050, 1570, 0.1, "sine", 0.14 * g, 0.08); }
-  else if (k === "whistle") { tone(2350, 2350, 0.22, "square", 0.07 * g); tone(2480, 2480, 0.22, "square", 0.05 * g); }
-  else if (k === "goal") { hiss(1.8, 0.5 * c, 1100, 0.6, "bandpass", 0, 0.25); hiss(1.5, 0.3 * c, 2400, 0.8, "bandpass", 0.05, 0.3); tone(2350, 2350, 0.5, "square", 0.06 * g, 0.15); }
-  else if (k === "final") [0, 0.3, 0.6].forEach(function(t, i){ tone(2350, 2350, i === 2 ? 0.7 : 0.2, "square", 0.07 * g, t); });
-  else if (k === "ui") tone(680, 680, 0.045, "triangle", 0.1 * g);
-  else if (k === "coin") { tone(1250, 1250, 0.07, "square", 0.08 * g); tone(1880, 1880, 0.12, "square", 0.08 * g, 0.07); }
-  else if (k === "win") [523, 659, 784, 1047].forEach(function(f, i){ tone(f, f, 0.22, "triangle", 0.16 * g, i * 0.11); });
-  else if (k === "lose") [392, 330, 262].forEach(function(f, i){ tone(f, f, 0.3, "triangle", 0.14 * g, i * 0.16); });
-  else if (k === "rare") for (p = 0; p <= (v || 0) + 2; p++) tone(440 * Math.pow(1.26, p), 440 * Math.pow(1.26, p), 0.2, "triangle", 0.14 * g, p * 0.08);
+  if (k === "kick") { p = MG.clamp((v || 18) / 22, 0.5, 1.1); tone(150, 55, 0.12, "sine", 0.42 * g * p); hiss(0.05, 0.16 * g * p, 600, 0.7, "lowpass"); }
+  else if (k === "bounce") tone(110, 70, 0.07, "sine", MG.clamp((v || 3) / 9, 0.08, 0.3) * g);
+  else if (k === "post") { tone(1180, 1160, 0.3, "triangle", 0.14 * g); tone(2360, 2330, 0.18, "sine", 0.05 * g); }
+  else if (k === "wall") hiss(0.1, MG.clamp((v || 4) / 14, 0.05, 0.22) * g, 1200, 0.7, "lowpass");
+  else if (k === "net") hiss(0.32, MG.clamp((v || 6) / 16, 0.08, 0.24) * g, 2600, 0.6, "lowpass", 0, 0.03);
+  else if (k === "thud") { tone(90, 55, 0.1, "sine", 0.32 * g); hiss(0.04, 0.12 * g, 450, 0.8, "lowpass"); }
+  else if (k === "perfect") { tone(N.E6, N.E6, 0.16, "sine", 0.1 * g); tone(N.G6, N.G6, 0.24, "sine", 0.07 * g, 0.07); }
+  else if (k === "megs") [N.C5, N.E5, N.G5, N.C6].forEach(function(f, i){ tone(f, f, 0.14, "triangle", 0.1 * g, i * 0.06); });
+  else if (k === "ankles") { hiss(0.22, 0.16 * g, 1400, 0.8, "lowpass", 0, 0.05); tone(420, 210, 0.16, "sine", 0.07 * g); }
+  else if (k === "turn") tone(330, 260, 0.08, "sine", 0.08 * g);
+  else if (k === "steal") { tone(N.G5 / 2, N.D5, 0.09, "triangle", 0.12 * g); hiss(0.04, 0.1 * g, 700, 0.8, "lowpass"); }
+  else if (k === "trick") { tone(N.G5, N.C6, 0.1, "sine", 0.09 * g); tone(N.C6, N.E6, 0.12, "sine", 0.06 * g, 0.07); }
+  else if (k === "whistle") whistle(0.24, 0.06 * g);
+  else if (k === "goal") { hiss(1.8, 0.26 * c, 900, 0.5, "bandpass", 0, 0.3); hiss(1.4, 0.12 * c, 1800, 0.7, "bandpass", 0.08, 0.35); [N.C5, N.E5, N.G5].forEach(function(f){ tone(f, f, 0.9, "triangle", 0.05 * g, 0.05); }); }
+  else if (k === "final") [0, 0.32, 0.64].forEach(function(t, i){ whistle(i === 2 ? 0.6 : 0.2, 0.06 * g, t); });
+  else if (k === "ui") tone(880, 880, 0.035, "sine", 0.045 * g);
+  else if (k === "coin") { tone(N.G6, N.G6, 0.14, "sine", 0.07 * g); tone(N.C7, N.C7, 0.22, "sine", 0.06 * g, 0.07); }
+  else if (k === "win") [N.C5, N.E5, N.G5, N.C6].forEach(function(f, i){ tone(f, f, 0.32, "triangle", 0.09 * g, i * 0.1); });
+  else if (k === "lose") [N.G5 / 1.5, N.E5 / 1.5, N.C5 / 1.5].forEach(function(f, i){ tone(f, f, 0.38, "sine", 0.08 * g, i * 0.17); });
+  else if (k === "rare") { var sc = [N.C5, N.D5, N.E5, N.G5, N.A5, N.C6, N.E6, N.G6]; for (p = 0; p <= Math.min(7, (v || 0) + 2); p++) tone(sc[p], sc[p], 0.26, "sine", 0.07 * g, p * 0.08); }
 };
 // a quiet bed of crowd noise while a match is on
 function ambOn(){
   var s = MG.S.set, f;
   ambOff(); if (s.mute || !ac()) return;
   amb = {s: AC.createBufferSource(), g: AC.createGain()}; f = AC.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 420; f.Q.value = 0.5;
-  amb.s.buffer = nz; amb.s.loop = true; amb.g.gain.value = 0.05 * s.vol * s.crowd; amb.s.connect(f); f.connect(amb.g); amb.g.connect(out); amb.s.start();
+  amb.s.buffer = nz; amb.s.loop = true; amb.g.gain.value = 0.035 * s.vol * s.crowd; amb.s.connect(f); f.connect(amb.g); amb.g.connect(out); amb.s.start();
 }
 function ambOff(){ if (amb) { try { amb.s.stop(); } catch (e) {} amb = null; } }
 
@@ -211,7 +228,7 @@ MG.applySet = function(){
   if (run) applyView(run.view);
   st.style.setProperty("--ts", s.tsize); st.style.setProperty("--to", s.top); st.style.setProperty("--hud", s.hud);
   st.classList.toggle("lefty", !!s.lefty); st.classList.toggle("nohint", !s.hints);
-  if (amb) amb.g.gain.value = s.mute ? 0 : 0.05 * s.vol * s.crowd;
+  if (amb) amb.g.gain.value = s.mute ? 0 : 0.035 * s.vol * s.crowd;
 };
 function pause(on){
   var r = run, b = $("pause");
