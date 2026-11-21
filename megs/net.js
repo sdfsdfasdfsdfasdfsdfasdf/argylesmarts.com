@@ -15,7 +15,7 @@ function keep(a){ try { if (a) localStorage.setItem(KEY, JSON.stringify(a)); els
 // a random id for this device, so a ban sticks to the device and not just the account
 var DEV = (function(){ var d = ""; try { d = localStorage.getItem("megs.dev") || ""; if (!/^[a-z0-9]{16,40}$/.test(d)) { d = ""; for (var i = 0; i < 24; i++) d += "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]; localStorage.setItem("megs.dev", d); } } catch (e) {} return d; })();
 // the game's version: the server turns away pages too old to use the bank, so a cached old page can't undo anything
-MG.VER = 3;
+MG.VER = 4;
 function send(o){ if (ws && ws.readyState === 1) { if (/^(hello|signup|login|chk)$/.test(o.t)) { o.dev = DEV; o.ver = MG.VER; } ws.send(JSON.stringify(o)); return true; } return false; }
 // a banned device gets a screen it can't get past; it goes away only if an admin lifts the ban
 function banFlag(){ try { return localStorage.getItem("megs.ban") === "1"; } catch (e) { return false; } }
