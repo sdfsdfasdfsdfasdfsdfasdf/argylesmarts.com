@@ -592,7 +592,7 @@ export class Hub extends DurableObject {
     if (op === "unwatch") { this.unwatch(uid); return out({ ok: true }); }
     if (op === "fun") {
       // harmless pranks an admin can send to someone online: the game does them for a few seconds
-      const FUN = ["shake", "horn", "flip", "confetti", "spin", "invert", "rainbow", "tiny", "megs", "goal", "disco", "balls", "jelly", "say", "upside", "blur"];
+      const FUN = ["shake", "horn", "flip", "confetti", "spin", "invert", "rainbow", "tiny", "megs", "goal", "disco", "balls", "jelly", "say", "upside", "blur", "squeal"];
       const k = String(m.k || ""), u = this.user(id);
       if (FUN.indexOf(k) < 0 || !u) return out({ ok: false, msg: "Unknown prank or player." });
       if (!this.online(id)) return out({ ok: false, msg: u.name + " isn't online." });
