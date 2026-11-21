@@ -535,7 +535,12 @@ V.pitch = function(){
       a.strokeStyle = sh < 0.45 ? "rgba(0,34,0," + (0.08 + c() * 0.16) + ")" : sh < 0.9 ? "rgba(190,255,150," + (0.04 + c() * 0.09) + ")" : "rgba(120,110,40," + (0.05 + c() * 0.08) + ")"; a.lineWidth = 0.6 + c() * 1.1;
       a.beginPath(); a.moveTo(gx, gy); a.lineTo(gx + Math.cos(ga) * gl, gy + Math.sin(ga) * gl); a.stroke(); }
     for (i = 0; i < 70; i++) { var cx0 = c() * 384, cy0 = c() * 384, cr = 3 + c() * 9, k2; a.fillStyle = c() < 0.5 ? "rgba(0,30,0,.05)" : "rgba(210,255,170,.04)"; for (k2 = 0; k2 < 6; k2++) { a.beginPath(); a.arc(cx0 + (c() - 0.5) * cr * 2, cy0 + (c() - 0.5) * cr * 2, cr * (0.3 + c() * 0.5), 0, TAU); a.fill(); } } }
-  g.save(); g.fillStyle = g.createPattern(v.grass, "repeat"); g.beginPath(); [[-7, -H - 2.2], [L + 7, -H - 2.2], [L + 7, H + 8], [-7, H + 8]].forEach(function(pt){ var q = v.pr(pt[0], pt[1], 0); g.lineTo(q.x, q.y); }); g.fill(); g.restore();
+  g.save(); var gpat = g.createPattern(v.grass, "repeat"), cm = v.cam, TW = 9;
+  // the grain is stuck to the ground: the texture is laid on the pitch around a tile corner near the camera's aim
+  // (snapping to whole tiles keeps it seamless as the camera moves)
+  try { var ax = Math.round(cm.x / TW) * TW, ay = Math.round((cm.y - cm.z / Math.tan(cm.a)) / TW) * TW, o0 = v.pr(ax, ay, 0), ox = v.pr(ax + 1, ay, 0), oy = v.pr(ax, ay + 1, 0), k = TW / 384;
+    gpat.setTransform(new DOMMatrix([(ox.x - o0.x) * k, (ox.y - o0.y) * k, (oy.x - o0.x) * k, (oy.y - o0.y) * k, o0.x, o0.y])); } catch (e) {}
+  g.fillStyle = gpat; g.beginPath(); [[-7, -H - 2.2], [L + 7, -H - 2.2], [L + 7, H + 8], [-7, H + 8]].forEach(function(pt){ var q = v.pr(pt[0], pt[1], 0); g.lineTo(q.x, q.y); }); g.fill(); g.restore();
   c = "rgba(255,255,255,.88)";
   v.line([0, -H, 0, L, -H, 0, L, H, 0, 0, H, 0, 0, -H, 0], 0.12, c);
   v.line([L / 2, -H, 0, L / 2, H, 0], 0.12, c);
