@@ -35,6 +35,13 @@ function text(t, size, col){
   document.body.appendChild(d); setTimeout(function(){ d.remove(); }, 2700);
 }
 var actx = null;
+// iPad and iPhone keep web sound off until the page is touched, so the prank sounds get woken on every tap too
+(function(){
+  function unlock(){
+    try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state !== "running") actx.resume(); var b = actx.createBuffer(1, 1, 22050), s = actx.createBufferSource(); s.buffer = b; s.connect(actx.destination); s.start(0); } catch (e) {}
+  }
+  ["touchend", "pointerup", "click", "keydown"].forEach(function(k){ window.addEventListener(k, unlock, true); });
+})();
 function horn(len){
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
