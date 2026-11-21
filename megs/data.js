@@ -234,7 +234,7 @@ MG.ARCH = [
 ];
 MG.MODES = {
   ranked: {n: "Ranked Solo", d: "First to 5. Long range counts double. Rank points on the line.", cfg: {}},
-  quick: {n: "Quick Match", d: "First to 3 against a rival as tough as you like.", cfg: {target: 3}},
+  quick: {n: "1v1", d: "First to 3 against a rival as tough as you like.", cfg: {target: 3}},
   panna: {n: "Panna KO", d: "First to 3, but a nutmeg ends it on the spot.", cfg: {target: 3, panna: true}, arc: 1},
   golden: {n: "Golden Goal", d: "One goal. That is the whole game.", cfg: {target: 1, golden: true}, arc: 1},
   far: {n: "Long Shots", d: "Only goals from outside the arc count, and they count double. First to 6.", cfg: {target: 6, far: true}, arc: 1},
