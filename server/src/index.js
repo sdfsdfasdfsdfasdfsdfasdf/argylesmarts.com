@@ -592,12 +592,15 @@ export class Hub extends DurableObject {
     if (op === "unwatch") { this.unwatch(uid); return out({ ok: true }); }
     if (op === "fun") {
       // harmless pranks an admin can send to someone online: the game does them for a few seconds
-      const FUN = ["shake", "horn", "flip", "confetti", "spin", "invert", "rainbow", "tiny", "megs", "goal", "disco", "balls", "jelly", "say", "upside", "blur", "squeal"];
+      const FUN = ["shake", "horn", "flip", "confetti", "spin", "invert", "rainbow", "tiny", "megs", "goal", "disco", "balls", "jelly", "say", "upside", "blur", "squeal", "draw"];
       const k = String(m.k || ""), u = this.user(id);
       if (FUN.indexOf(k) < 0 || !u) return out({ ok: false, msg: "Unknown prank or player." });
       if (!this.online(id)) return out({ ok: false, msg: u.name + " isn't online." });
       this.funAt = this.funAt || {}; if (now() - (this.funAt[uid] || 0) < 700) return out({ ok: false, msg: "Slow down a little." }); this.funAt[uid] = now();
-      this.to(id, { t: "fun", k, txt: String(m.txt || "").replace(/[<>]/g, "").slice(0, 80), from: (this.user(uid) || {}).name || "An admin" });
+      // a drawn sound: up to 12 lines of up to 150 [seconds 0-3, hertz 100-8000] points
+      const draw = k === "draw" && Array.isArray(m.s) ? m.s.slice(0, 12).map((l) => (Array.isArray(l) ? l : []).slice(0, 150).map((p) => [Math.max(0, Math.min(3, +p[0] || 0)), Math.max(100, Math.min(8000, +p[1] || 440))])).filter((l) => l.length > 1) : null;
+      if (k === "draw" && (!draw || !draw.length)) return out({ ok: false, msg: "Draw a line first." });
+      this.to(id, { t: "fun", k, txt: String(m.txt || "").replace(/[<>]/g, "").slice(0, 80), s: draw || undefined, from: (this.user(uid) || {}).name || "An admin" });
       return out({ ok: true, k, name: u.name });
     }
     if (op === "rdel") { this.sql.exec("DELETE FROM reports WHERE id = ?", +m.rid); return out({ rid: +m.rid }); }
