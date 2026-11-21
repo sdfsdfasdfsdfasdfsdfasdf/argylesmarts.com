@@ -125,7 +125,7 @@ function teamGo(o){
   modal('<div class="load"><div class="spin"></div><h2>' + esc(o.name) + '</h2><p>' + esc(s.name || "You") + ' and friends v ' + esc(o.foe.name) + '</p><p class="mute">Finding players... Online play is coming soon. For now every match is against computer teams.</p></div>');
   setTimeout(function(){ close(); MG.play(m); }, 1300);
 }
-MG.teamGo = teamGo;
+MG.teamGo = teamGo; MG.teamSides = {my: mySides, foe: foeSides, club: randClub};
 VIEW.team = function(){
   var n = +tset.n || 5;
   return head("Practice " + MG.SIZE_N[n], n + "v" + n + " on a full-size pitch with two halves. Your team-mates and the other side are computer players. No rank points.") +
