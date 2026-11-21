@@ -35,8 +35,9 @@ waitUi(function(){
   // [action, view, icon, name, what it is, colours, solo/party/both, tag]
   // practice against computer players, any team size; nothing here touches your rank
   var NOW = [
-    ["go", "quick", "ball", "Practice Solo", "1v1 in the cage against a computer player. First to 5.", "#2c8fa3,#15475a", "solo", "Start here"],
-    ["prac", "2", "users", "Practice Duos", "2v2 against computer players, full pitch.", "#0e7490,#0b3b52", "", "2v2"],
+    ["go", "quick", "ball", "Cage 1v1", "1v1 in the cage against a computer player. First to 5.", "#2c8fa3,#15475a", "solo", "Start here"],
+    ["prac", "1", "user", "Practice Solo", "1v1 on the small field against a computer player.", "#2b62d9,#1a2f7a", "solo", "1v1"],
+    ["prac", "2", "users", "Practice Duos", "2v2 against computer players on a small field.", "#0e7490,#0b3b52", "", "2v2"],
     ["prac", "3", "users", "Practice Trios", "3v3 against computer players.", "#15803d,#0b3d24", "", "3v3"],
     ["prac", "4", "users", "Practice Squads", "4v4 against computer players.", "#a16207,#5a3a06", "", "4v4"],
     ["prac", "5", "users", "Practice Team", "5v5, the full team, two halves.", "#7c3aed,#3b1d7a", "", "5v5"],
