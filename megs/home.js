@@ -35,8 +35,8 @@ waitUi(function(){
   // [action, view, icon, name, what it is, colours, solo/party/both, tag]
   // practice against computer players, any team size; nothing here touches your rank
   var NOW = [
-    ["go", "quick", "ball", "Cage 1v1", "1v1 in the cage against a computer player. First to 5.", "#2c8fa3,#15475a", "solo", "Start here"],
-    ["prac", "1", "user", "Practice Solo", "1v1 on the small field against a computer player.", "#2b62d9,#1a2f7a", "solo", "1v1"],
+    ["cage1", "", "ball", "Cage 1v1", "1v1 in the cage against a computer player. First to 5.", "#2c8fa3,#15475a", "solo", "Start here"],
+    ["prac", "1", "user", "Practice Solo Field", "1v1 on a small grass field against a computer player.", "#2b62d9,#1a2f7a", "solo", "1v1"],
     ["prac", "2", "users", "Practice Duos", "2v2 against computer players on a small field.", "#0e7490,#0b3b52", "", "2v2"],
     ["prac", "3", "users", "Practice Trios", "3v3 against computer players.", "#15803d,#0b3d24", "", "3v3"],
     ["prac", "4", "users", "Practice Squads", "4v4 against computer players.", "#a16207,#5a3a06", "", "4v4"],
@@ -48,6 +48,7 @@ waitUi(function(){
     ["go", "cups", "trophy", "Cups", "A knockout cup: 8 players, 3 rounds.", "#a16207,#5a3a06", "solo", "Prizes"],
     ["go", "gauntlet", "shield", "The Gauntlet", "Endless rivals, each one harder. How far can you go?", "#b91c1c,#4a0d0d", "solo", "High score"]];
   var FUN = [
+    ["go", "quick", "bolt", "Arcade", "Wild rules: moon gravity, ice, pinball and more.", "#0f766e,#123b3a", "solo", "Arcade"],
     ["practice", "", "ball", "Kickabout", "Practise moves. No clock, no score.", "#3d4370,#22264a", "solo", "Learn"],
     ["go", "party", "users", "Co-op", "Two players on one keyboard.", "#a23bb5,#4f1f6b", "", "Same device"]];
   // ranked: the only matches that earn or lose rank points. A party plays 2v2 and up
